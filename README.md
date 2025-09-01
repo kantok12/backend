@@ -1,4 +1,4 @@
-# 🏭 Sistema de Gestión de Personal y Mantenimiento Industrial
+# 🏭 Sistema de Gestión de Personal 
 
 Backend completo desarrollado con Node.js, Express y PostgreSQL para la gestión integral de personal y sistemas de mantenimiento industrial.
 
