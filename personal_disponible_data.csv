@@ -1,0 +1,50 @@
+rut,sexo,fecha_nacimiento,licencia_conducir,talla_zapatos,talla_pantalones,talla_poleras,cargo,estado_id,comentario_estado,zona_geografica
+19838046-6,M,1997-11-20,B,43,M,M,Experto en Prevención De Riesgos,1,Importado: Aguirre Bobadilla Jesus Andres,Metropolitana de Santiago
+20227477-3,M,2000-01-09,B,41,L,L,Ingeniero de Servicios,1,Importado: Araya Garrido Carlos Daniel,Metropolitana de Santiago
+20181372-7,M,1999-03-17,B,42,XL,XXL,Ingeniero de Servicios,1,Importado: Arrue Pacheco Camilo Ignacio,Valparaíso
+21312534-6,M,2003-05-30,N,41,42,M,Lubricador,1,Importado: Barraza Barraza Matias Antonio,Metropolitana de Santiago
+21160051-9,M,2002-10-29,BC,42,M,M,Lubricador,1,Importado: Barrera Tapia Justen Brandon,Metropolitana de Santiago
+26258374-0,M,1988-11-19,BC,44,L,L,Ingeniero de Servicios,1,Importado: Bastidas Valbuena Enyelber Gregorio,Metropolitana de Santiago
+19058504-2,M,1995-08-28,N,42,S,S,Lubricador,1,Importado: Bermudez Navarro Renato Alfredo,Metropolitana de Santiago
+19887445-0,M,1998-02-13,A2,40,M,M,Ingeniero de Servicios,1,Importado: Castro Ahumada Mauro Andres,Valparaíso
+20062278-2,M,1998-09-01,B,40,M,M,Lubricador,1,Importado: Castro Orellana Alejandro Ignacio,Metropolitana de Santiago
+18079702-5,F,1992-04-04,N,38,M,M,Lubricador 2,1,Importado: Cayuleo Paillaleo Gabriela Soledad,Metropolitana de Santiago
+19219362-1,M,1995-09-23,N,41,L,L,Lubricador,1,Importado: Contreras Gonzalez Orlando Matias,Metropolitana de Santiago
+20040524-2,M,1998-10-16,B,41,M,M,Lubricador 2,1,Importado: Diaz Araya Ignacio Alberto,Metropolitana de Santiago
+17952688-3,F,1991-11-18,N,40,M,M,Lubricador,1,Importado: Escobar Muñoz Andrea Belen,Metropolitana de Santiago
+20729622-8,F,2001-02-26,N,34,M,S,Lubricador 1,1,Importado: Espinoza Castro Nicoles Dayans,Valparaíso
+15740140-8,F,1983-11-12,N,38,M,S,Capataz Lubricador,1,Importado: Estay Gonzalez Jenniffer Ana,Metropolitana de Santiago
+19613228-7,M,1997-07-16,N,42,M,M,Lubricador,1,Importado: Faundez Soto Sebastian Alejandro Andres,Valparaíso
+19020815-K,M,1995-05-24,N,43,M,M,Lubricador 2,1,Importado: Figueroa Leiva Gustavo Nicolas,Metropolitana de Santiago
+20647833-0,M,2001-03-14,B,40,M,M,Lubricador,1,Importado: Flores Contreras Axel Javier,Metropolitana de Santiago
+21116563-4,M,2003-01-07,N,45,L,L,Lubricador,1,Importado: Gomez Gatica Carlos Jordan,Metropolitana de Santiago
+19124812-0,M,1996-05-04,B,41,M,S,Lubricador 2,1,Importado: Gonzalez Vargas Ian Ricardo Alfonso,Valparaíso
+17835132-K,M,1991-03-19,B,40,M,L,Capataz Lubricador,1,Importado: Herrera Molina Matias Ignacio,Valparaíso
+16673044-9,M,1987-03-29,B,45,M,M,Experto en Prevención De Riesgos,1,Importado: Inostroza Epul Javier Alexi,Metropolitana de Santiago
+20813565-1,M,2001-11-19,B,40,M,M,Lubricador,1,Importado: Kemp Correa Lucas Sebastian,Metropolitana de Santiago
+8546019-6,M,1972-01-26,B,42,L,L,Lubricador,1,Importado: Lufin Cantillana Roderick Stewart,Metropolitana de Santiago
+19741830-3,M,1997-06-01,B,42,S,S,Ingeniero de Servicios,1,Importado: Manuguian Ortega Sebastian Ignacio,Metropolitana de Santiago
+20204930-3,M,1999-07-01,B,44,M,M,Lubricador 2,1,Importado: Monsalvez Solis Bladimir Elias,Metropolitana de Santiago
+20381631-6,M,2000-12-05,B,41,M,M,Lubricador,1,Importado: Montoya Mora Sebastian Alonso,Metropolitana de Santiago
+7685732-6,M,1958-11-05,N,40,M,M,Capataz Lubricador,1,Importado: Morales Alfonso Carlos Andres,Metropolitana de Santiago
+15765434-9,M,1984-03-17,B,S/I,M,M,Lubricador,1,Importado: Morales Fernandez Jonathan Alexis,Valparaíso
+16924504-5,M,1988-08-17,B,40,M,M,Ingeniero de Servicios,1,Importado: Morales Ortiz Xavier Mauricio,Metropolitana de Santiago
+18539810-2,M,1993-06-30,B,43,XL,XL,Ingeniero de Servicios,1,Importado: Moreno Pavez Marcos Ignacio,Metropolitana de Santiago
+19228889-4,M,1996-01-31,B,42,M,M,Ingeniero de Servicios,1,Importado: Nilo Hernandez Christopher Byron,Metropolitana de Santiago
+20222493-8,M,1999-10-04,B,41,M,M,Lubricador 2,1,Importado: Olivos Becerra Amaro Allen,Metropolitana de Santiago
+19453262-8,M,1995-11-27,B,42,M,L,Ingeniero de Servicios,1,Importado: Olmos Chavez Carlos Cristian,Valparaíso
+20182299-8,M,1999-04-27,B,42,XL,XL,Lubricador,1,Importado: Orellana Zamora Bryan David,Valparaíso
+17413346-8,M,1989-11-07,B,43,M - 44,M,Lubricador,1,Importado: Poblete Toro Alexis Esteban,Metropolitana de Santiago
+19320040-0,M,1996-04-10,N,42,M,M,Lubricador,1,Importado: Ramirez Contreras Paul Angelo,Metropolitana de Santiago
+19155245-8,M,1996-02-24,B,40,M,M,Lubricador,1,Importado: Salinas Diaz Sebastian Antonio,Valparaíso
+21096262-K,M,2002-08-30,N,43,XL,XL,Lubricador,1,Importado: Sandoval Cortez Matias Ignacio,Metropolitana de Santiago
+15338132-1,M,1982-09-14,B,39,46,S,Experto en Prevención De Riesgos,1,Importado: Schaffhauser Rodrigo Andres,Metropolitana de Santiago
+16944848-5,M,1988-04-11,B,40,M,M,Experto en Prevención De Riesgos,1,Importado: Sepulveda Baeza Francisco Eduardo,Metropolitana de Santiago
+20804350-1,M,2001-08-14,B,43,M,M,Ingeniero de Servicios,1,Importado: Silva Vergara Matias Alejandro,Valparaíso
+19559742-1,M,1997-03-28,B,44,XL,XL,Lubricador,1,Importado: Suarez Unzueta Nicolas Alberto,Metropolitana de Santiago
+20559985-1,M,2001-10-25,BC,44,L,L,Lubricador,1,Importado: Vallejos Valdebenito Jose Edmundo,Metropolitana de Santiago
+18841612-8,M,1994-05-25,B,40,M,M,Lubricador 2,1,Importado: Vergara Araya Alister Adrian,Valparaíso
+18544721-9,M,1993-04-15,B,40,M,M,Lubricador 1,1,Importado: Vergara Norambuena Michael Alexis,Metropolitana de Santiago
+21364997-3,M,2000-11-30,B,40,M,M,Ingeniero de Servicios,1,Importado: Villanueva Moncada Benjamin Ernesto,Valparaíso
+20377186-K,M,1999-12-03,B,42,48,L,Lubricador,1,Importado: Zapata Gonzalez Benjamin Ignacio,Metropolitana de Santiago
+21235268-3,M,2003-02-11,B,40,M,S,Lubricador,1,Importado: Zavalla Gonzalez Carlos Ignacio,Metropolitana de Santiago

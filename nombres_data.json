@@ -1,0 +1,304 @@
+{
+  "metadata": {
+    "total_records": 49,
+    "generated_at": "2025-08-28T19:19:10.608Z",
+    "source_file": "Personal Servicios.xlsx",
+    "target_table": "nombre"
+  },
+  "data": [
+    {
+      "nombre_completo": "Aguirre Bobadilla Jesus Andres",
+      "primer_nombre": "Aguirre",
+      "apellidos": "Bobadilla Jesus Andres",
+      "rut": "19838046-6"
+    },
+    {
+      "nombre_completo": "Araya Garrido Carlos Daniel",
+      "primer_nombre": "Araya",
+      "apellidos": "Garrido Carlos Daniel",
+      "rut": "20227477-3"
+    },
+    {
+      "nombre_completo": "Arrue Pacheco Camilo Ignacio",
+      "primer_nombre": "Arrue",
+      "apellidos": "Pacheco Camilo Ignacio",
+      "rut": "20181372-7"
+    },
+    {
+      "nombre_completo": "Barraza Barraza Matias Antonio",
+      "primer_nombre": "Barraza",
+      "apellidos": "Barraza Matias Antonio",
+      "rut": "21312534-6"
+    },
+    {
+      "nombre_completo": "Barrera Tapia Justen Brandon",
+      "primer_nombre": "Barrera",
+      "apellidos": "Tapia Justen Brandon",
+      "rut": "21160051-9"
+    },
+    {
+      "nombre_completo": "Bastidas Valbuena Enyelber Gregorio",
+      "primer_nombre": "Bastidas",
+      "apellidos": "Valbuena Enyelber Gregorio",
+      "rut": "26258374-0"
+    },
+    {
+      "nombre_completo": "Bermudez Navarro Renato Alfredo",
+      "primer_nombre": "Bermudez",
+      "apellidos": "Navarro Renato Alfredo",
+      "rut": "19058504-2"
+    },
+    {
+      "nombre_completo": "Castro Ahumada Mauro Andres",
+      "primer_nombre": "Castro",
+      "apellidos": "Ahumada Mauro Andres",
+      "rut": "19887445-0"
+    },
+    {
+      "nombre_completo": "Castro Orellana Alejandro Ignacio",
+      "primer_nombre": "Castro",
+      "apellidos": "Orellana Alejandro Ignacio",
+      "rut": "20062278-2"
+    },
+    {
+      "nombre_completo": "Cayuleo Paillaleo Gabriela Soledad",
+      "primer_nombre": "Cayuleo",
+      "apellidos": "Paillaleo Gabriela Soledad",
+      "rut": "18079702-5"
+    },
+    {
+      "nombre_completo": "Contreras Gonzalez Orlando Matias",
+      "primer_nombre": "Contreras",
+      "apellidos": "Gonzalez Orlando Matias",
+      "rut": "19219362-1"
+    },
+    {
+      "nombre_completo": "Diaz Araya Ignacio Alberto",
+      "primer_nombre": "Diaz",
+      "apellidos": "Araya Ignacio Alberto",
+      "rut": "20040524-2"
+    },
+    {
+      "nombre_completo": "Escobar Muñoz Andrea Belen",
+      "primer_nombre": "Escobar",
+      "apellidos": "Muñoz Andrea Belen",
+      "rut": "17952688-3"
+    },
+    {
+      "nombre_completo": "Espinoza Castro Nicoles Dayans",
+      "primer_nombre": "Espinoza",
+      "apellidos": "Castro Nicoles Dayans",
+      "rut": "20729622-8"
+    },
+    {
+      "nombre_completo": "Estay Gonzalez Jenniffer Ana",
+      "primer_nombre": "Estay",
+      "apellidos": "Gonzalez Jenniffer Ana",
+      "rut": "15740140-8"
+    },
+    {
+      "nombre_completo": "Faundez Soto Sebastian Alejandro Andres",
+      "primer_nombre": "Faundez",
+      "apellidos": "Soto Sebastian Alejandro Andres",
+      "rut": "19613228-7"
+    },
+    {
+      "nombre_completo": "Figueroa Leiva Gustavo Nicolas",
+      "primer_nombre": "Figueroa",
+      "apellidos": "Leiva Gustavo Nicolas",
+      "rut": "19020815-K"
+    },
+    {
+      "nombre_completo": "Flores Contreras Axel Javier",
+      "primer_nombre": "Flores",
+      "apellidos": "Contreras Axel Javier",
+      "rut": "20647833-0"
+    },
+    {
+      "nombre_completo": "Gomez Gatica Carlos Jordan",
+      "primer_nombre": "Gomez",
+      "apellidos": "Gatica Carlos Jordan",
+      "rut": "21116563-4"
+    },
+    {
+      "nombre_completo": "Gonzalez Vargas Ian Ricardo Alfonso",
+      "primer_nombre": "Gonzalez",
+      "apellidos": "Vargas Ian Ricardo Alfonso",
+      "rut": "19124812-0"
+    },
+    {
+      "nombre_completo": "Herrera Molina Matias Ignacio",
+      "primer_nombre": "Herrera",
+      "apellidos": "Molina Matias Ignacio",
+      "rut": "17835132-K"
+    },
+    {
+      "nombre_completo": "Inostroza Epul Javier Alexi",
+      "primer_nombre": "Inostroza",
+      "apellidos": "Epul Javier Alexi",
+      "rut": "16673044-9"
+    },
+    {
+      "nombre_completo": "Kemp Correa Lucas Sebastian",
+      "primer_nombre": "Kemp",
+      "apellidos": "Correa Lucas Sebastian",
+      "rut": "20813565-1"
+    },
+    {
+      "nombre_completo": "Lufin Cantillana Roderick Stewart",
+      "primer_nombre": "Lufin",
+      "apellidos": "Cantillana Roderick Stewart",
+      "rut": "8546019-6"
+    },
+    {
+      "nombre_completo": "Manuguian Ortega Sebastian Ignacio",
+      "primer_nombre": "Manuguian",
+      "apellidos": "Ortega Sebastian Ignacio",
+      "rut": "19741830-3"
+    },
+    {
+      "nombre_completo": "Monsalvez Solis Bladimir Elias",
+      "primer_nombre": "Monsalvez",
+      "apellidos": "Solis Bladimir Elias",
+      "rut": "20204930-3"
+    },
+    {
+      "nombre_completo": "Montoya Mora Sebastian Alonso",
+      "primer_nombre": "Montoya",
+      "apellidos": "Mora Sebastian Alonso",
+      "rut": "20381631-6"
+    },
+    {
+      "nombre_completo": "Morales Alfonso Carlos Andres",
+      "primer_nombre": "Morales",
+      "apellidos": "Alfonso Carlos Andres",
+      "rut": "7685732-6"
+    },
+    {
+      "nombre_completo": "Morales Fernandez Jonathan Alexis",
+      "primer_nombre": "Morales",
+      "apellidos": "Fernandez Jonathan Alexis",
+      "rut": "15765434-9"
+    },
+    {
+      "nombre_completo": "Morales Ortiz Xavier Mauricio",
+      "primer_nombre": "Morales",
+      "apellidos": "Ortiz Xavier Mauricio",
+      "rut": "16924504-5"
+    },
+    {
+      "nombre_completo": "Moreno Pavez Marcos Ignacio",
+      "primer_nombre": "Moreno",
+      "apellidos": "Pavez Marcos Ignacio",
+      "rut": "18539810-2"
+    },
+    {
+      "nombre_completo": "Nilo Hernandez Christopher Byron",
+      "primer_nombre": "Nilo",
+      "apellidos": "Hernandez Christopher Byron",
+      "rut": "19228889-4"
+    },
+    {
+      "nombre_completo": "Olivos Becerra Amaro Allen",
+      "primer_nombre": "Olivos",
+      "apellidos": "Becerra Amaro Allen",
+      "rut": "20222493-8"
+    },
+    {
+      "nombre_completo": "Olmos Chavez Carlos Cristian",
+      "primer_nombre": "Olmos",
+      "apellidos": "Chavez Carlos Cristian",
+      "rut": "19453262-8"
+    },
+    {
+      "nombre_completo": "Orellana Zamora Bryan David",
+      "primer_nombre": "Orellana",
+      "apellidos": "Zamora Bryan David",
+      "rut": "20182299-8"
+    },
+    {
+      "nombre_completo": "Poblete Toro Alexis Esteban",
+      "primer_nombre": "Poblete",
+      "apellidos": "Toro Alexis Esteban",
+      "rut": "17413346-8"
+    },
+    {
+      "nombre_completo": "Ramirez Contreras Paul Angelo",
+      "primer_nombre": "Ramirez",
+      "apellidos": "Contreras Paul Angelo",
+      "rut": "19320040-0"
+    },
+    {
+      "nombre_completo": "Salinas Diaz Sebastian Antonio",
+      "primer_nombre": "Salinas",
+      "apellidos": "Diaz Sebastian Antonio",
+      "rut": "19155245-8"
+    },
+    {
+      "nombre_completo": "Sandoval Cortez Matias Ignacio",
+      "primer_nombre": "Sandoval",
+      "apellidos": "Cortez Matias Ignacio",
+      "rut": "21096262-K"
+    },
+    {
+      "nombre_completo": "Schaffhauser Rodrigo Andres",
+      "primer_nombre": "Schaffhauser",
+      "apellidos": "Rodrigo Andres",
+      "rut": "15338132-1"
+    },
+    {
+      "nombre_completo": "Sepulveda Baeza Francisco Eduardo",
+      "primer_nombre": "Sepulveda",
+      "apellidos": "Baeza Francisco Eduardo",
+      "rut": "16944848-5"
+    },
+    {
+      "nombre_completo": "Silva Vergara Matias Alejandro",
+      "primer_nombre": "Silva",
+      "apellidos": "Vergara Matias Alejandro",
+      "rut": "20804350-1"
+    },
+    {
+      "nombre_completo": "Suarez Unzueta Nicolas Alberto",
+      "primer_nombre": "Suarez",
+      "apellidos": "Unzueta Nicolas Alberto",
+      "rut": "19559742-1"
+    },
+    {
+      "nombre_completo": "Vallejos Valdebenito Jose Edmundo",
+      "primer_nombre": "Vallejos",
+      "apellidos": "Valdebenito Jose Edmundo",
+      "rut": "20559985-1"
+    },
+    {
+      "nombre_completo": "Vergara Araya Alister Adrian",
+      "primer_nombre": "Vergara",
+      "apellidos": "Araya Alister Adrian",
+      "rut": "18841612-8"
+    },
+    {
+      "nombre_completo": "Vergara Norambuena Michael Alexis",
+      "primer_nombre": "Vergara",
+      "apellidos": "Norambuena Michael Alexis",
+      "rut": "18544721-9"
+    },
+    {
+      "nombre_completo": "Villanueva Moncada Benjamin Ernesto",
+      "primer_nombre": "Villanueva",
+      "apellidos": "Moncada Benjamin Ernesto",
+      "rut": "21364997-3"
+    },
+    {
+      "nombre_completo": "Zapata Gonzalez Benjamin Ignacio",
+      "primer_nombre": "Zapata",
+      "apellidos": "Gonzalez Benjamin Ignacio",
+      "rut": "20377186-K"
+    },
+    {
+      "nombre_completo": "Zavalla Gonzalez Carlos Ignacio",
+      "primer_nombre": "Zavalla",
+      "apellidos": "Gonzalez Carlos Ignacio",
+      "rut": "21235268-3"
+    }
+  ]
+}
