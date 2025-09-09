@@ -354,3 +354,12 @@ Cuando todo funcione correctamente verás:
 ---
 
 **💡 Nota**: Los errores que viste son comunes en configuraciones de desarrollo React+Express. Con estos pasos deberían resolverse completamente.
+
+
+
+
+
+
+
+
+

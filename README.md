@@ -1,4 +1,4 @@
-# 🏭 Sistema de Gestión de Personal y Mantenimiento Industrial
+# 🏭 Sistema de Gestión de Personal y
 
 Backend completo desarrollado con Node.js, Express y PostgreSQL para la gestión integral de personal y sistemas de mantenimiento industrial.
 
@@ -14,7 +14,7 @@ Faenas → Plantas → Líneas → Equipos → Componentes → Puntos de Lubrica
 
 - **🔐 Autenticación JWT**: Sistema completo de autenticación y autorización
 - **👥 Gestión de Personal**: CRUD completo para personal disponible con estados y validaciones
-- **🎓 Cursos y Certificaciones**: Sistema de seguimiento de capacitaciones y certificaciones
+- **🎓 Cursos y Certificaciones**: Sistema de seguimiento de capacitaciones y certificaciones con gestión de documentos
 - **🏭 Gestión de Equipos**: Manejo jerárquico de faenas, plantas, líneas y equipos
 - **🔧 Mantenimiento**: Sistema completo de lubricación y tareas de mantenimiento
 - **📊 Estadísticas**: Reportes y análisis de datos en tiempo real
@@ -22,6 +22,66 @@ Faenas → Plantas → Líneas → Equipos → Componentes → Puntos de Lubrica
 - **🛡️ Seguridad**: Middleware de seguridad con Helmet y CORS configurado
 - **📈 Monitoreo**: Sistema de logging avanzado con Morgan y tracking de performance
 - **🔍 Búsqueda Avanzada**: Filtros y búsquedas en todos los módulos
+
+## 💻 Tecnologías y Lenguajes Utilizados
+
+### 🔧 **Backend/Runtime**
+- **Node.js** `v16+` - Runtime principal de JavaScript
+- **Express.js** `v4.18.2` - Framework web minimalista y rápido
+
+### 🗄️ **Base de Datos**
+- **PostgreSQL** - Base de datos relacional principal
+- **Supabase** `v2.21.0` - Plataforma BaaS con PostgreSQL administrado
+- **pg** `v8.16.3` - Driver nativo PostgreSQL para Node.js
+
+### 🔐 **Autenticación y Seguridad**
+- **JSON Web Token (JWT)** `v9.0.2` - Autenticación basada en tokens
+- **bcryptjs** `v2.4.3` - Hashing de contraseñas
+- **Helmet** `v7.0.0` - Middleware de seguridad para Express
+- **CORS** `v2.8.5` - Control de acceso entre orígenes
+
+### 📊 **Validación y Procesamiento**
+- **Express Validator** `v7.0.1` - Validación de datos de entrada
+- **XLSX** `v0.18.5` - Procesamiento de archivos Excel
+- **Morgan** `v1.10.0` - Logging de requests HTTP
+
+### 🌐 **Configuración y Entorno**
+- **dotenv** `v16.3.1` - Gestión de variables de entorno
+- **PM2** - Gestión de procesos en producción (configurado)
+
+### 🧪 **Testing y Desarrollo**
+- **Jest** `v29.7.0` - Framework de testing
+- **Supertest** `v6.3.3` - Testing de APIs HTTP
+- **Nodemon** `v3.0.1` - Auto-restart durante desarrollo
+
+### 📋 **Lenguajes de Programación**
+- **JavaScript (ES6+)** - Lenguaje principal del backend
+- **SQL** - Consultas y estructuras de base de datos
+- **JSON** - Formato de intercambio de datos
+- **Markdown** - Documentación
+
+### 🔨 **Herramientas de Desarrollo**
+- **npm** - Gestión de dependencias
+- **Git** - Control de versiones
+- **PowerShell/Bash** - Scripts de automatización
+
+### 📁 **Archivos de Configuración**
+- **package.json** - Configuración de dependencias y scripts
+- **ecosystem.config.js** - Configuración PM2 para producción
+- **.env** - Variables de entorno (local)
+- **.gitignore** - Control de archivos en Git
+
+### 🏗️ **Arquitectura y Patrones**
+- **REST API** - Arquitectura de servicios web
+- **MVC Pattern** - Modelo-Vista-Controlador (adaptado)
+- **Middleware Pattern** - Para autenticación, validación y logging
+- **Repository Pattern** - Abstracción de acceso a datos
+- **Environment-based Config** - Configuración por entornos
+
+### 🔄 **Integraciones**
+- **Supabase API** - Cliente oficial para PostgreSQL administrado
+- **Network Configuration** - Acceso local y red configurado
+- **Cross-platform** - Compatible con Windows, Linux, macOS
 
 ## 📋 Prerrequisitos
 
@@ -121,7 +181,10 @@ backend/
 │   ├── CORS_SETUP.md            # Configuración de CORS
 │   ├── NETWORK_SETUP.md         # Configuración de red
 │   ├── PRESENTACION_BACKEND.md  # Resumen ejecutivo
-│   └── RESUMEN_ENDPOINTS.md     # Resumen de todos los endpoints
+│   ├── RESUMEN_ENDPOINTS.md     # Resumen de todos los endpoints
+│   ├── GESTION_DOCUMENTOS_CURSOS.md # **NUEVO**: Gestión de documentos
+│   ├── ENDPOINTS_DOCUMENTOS_CURSOS.md # **NUEVO**: Documentación completa para frontend
+│   └── ESTRUCTURA_COMPLETA_PROYECTO.md # Estructura completa del proyecto
 ├── server.js                    # Servidor principal
 ├── package.json                 # Dependencias y scripts
 └── README.md                   # Esta documentación
@@ -139,11 +202,16 @@ backend/
 - **GET** `/verify-import` - Verificación de importación
 
 ### 🎓 Cursos y Certificaciones (`/api/cursos`)
-- **GET** `/` - Listado de cursos con paginación
+- **GET** `/` - Listado de cursos con paginación y conteo de documentos
 - **POST** `/` - Crear nuevo curso
 - **GET** `/persona/:rut` - Cursos de una persona específica
 - **PUT** `/:id` - Actualizar curso
 - **DELETE** `/:id` - Eliminar curso
+- **POST** `/:id/documentos` - **NUEVO**: Subir documentos al curso
+- **GET** `/:id/documentos` - **NUEVO**: Listar documentos del curso
+- **GET** `/documentos/:id/descargar` - **NUEVO**: Descargar documento
+- **GET** `/documentos/:id/vista` - **NUEVO**: Visualizar documento
+- **DELETE** `/documentos/:id` - **NUEVO**: Eliminar documento
 
 ### ⚙️ Estados del Sistema (`/api/estados`)
 - **GET** `/` - Listado de estados disponibles
@@ -267,6 +335,7 @@ Toda la documentación técnica detallada se encuentra en la carpeta `docs/`:
 - **[CORS_SETUP.md](docs/CORS_SETUP.md)** - Configuración de CORS para diferentes entornos
 - **[NETWORK_SETUP.md](docs/NETWORK_SETUP.md)** - Configuración para acceso en red local
 - **[RESUMEN_ENDPOINTS.md](docs/RESUMEN_ENDPOINTS.md)** - Resumen ejecutivo de todos los endpoints
+- **[ENDPOINTS_DOCUMENTOS_CURSOS.md](docs/ENDPOINTS_DOCUMENTOS_CURSOS.md)** - **NUEVO**: Documentación completa de endpoints de documentos para frontend
 
 ## 🧪 Testing y Desarrollo
 

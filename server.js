@@ -24,7 +24,8 @@ const tareasProgramadasRoutes = require('./routes/tareas-programadas');
 const tareasEjecutadasRoutes = require('./routes/tareas-ejecutadas');
 const personalDisponibleRoutes = require('./routes/personal-disponible');
 const nombresRoutes = require('./routes/nombres');
-const cursosRoutes = require('./routes/cursos');
+const cursosRoutes = require('./routes/cursos-new');
+const documentosRoutes = require('./routes/documentos');
 
 // Importar middleware
 const { errorHandler } = require('./middleware/errorHandler');
@@ -123,6 +124,7 @@ app.use('/api/tareas-ejecutadas', tareasEjecutadasRoutes);
 app.use('/api/personal-disponible', personalDisponibleRoutes);
 app.use('/api/nombres', nombresRoutes);
 app.use('/api/cursos', cursosRoutes);
+app.use('/api/documentos', documentosRoutes);
 
 // Ruta de salud
 app.get('/api/health', (req, res) => {
@@ -159,7 +161,8 @@ app.get('/', (req, res) => {
         tareasEjecutadas: '/api/tareas-ejecutadas',
         personalDisponible: '/api/personal-disponible',
         nombres: '/api/nombres',
-        cursos: '/api/cursos'
+        cursos: '/api/cursos',
+        documentos: '/api/documentos'
       },
       health: '/api/health'
     }
