@@ -1,137 +1,109 @@
 const express = require('express');
 const router = express.Router();
-const { getSupabaseAdminClient } = require('../config/database');
+const { query } = require('../config/postgresql');
 
-// GET /tareas-proyectadas - listar todas las tareas proyectadas (con paginación opcional)
+// GET /tareas-proyectadas - obtener todas las tareas proyectadas
 router.get('/', async (req, res) => {
   try {
-    const supabase = getSupabaseAdminClient();
     const limit = Number(req.query.limit) || 20;
     const offset = Number(req.query.offset) || 0;
+    const search = req.query.search;
+    const estado = req.query.estado;
     const puntoLubricacionId = req.query.punto_lubricacion_id;
-    const fechaDesde = req.query.fecha_desde;
-    const fechaHasta = req.query.fecha_hasta;
-    const frecuencia = req.query.frecuencia;
-    const origen = req.query.origen;
 
-    let query = supabase
-      .from('tareas_proyectadas')
-      .select(`
-        *,
-        punto_lubricacion!inner(
-          id, nombre, cantidad, frecuencia,
-          componentes!inner(
-            id, nombre,
-            equipos!inner(
-              id, nombre, codigo_equipo,
-              lineas!inner(
-                id, nombre,
-                plantas!inner(
-                  id, nombre,
-                  faenas!inner(id, nombre)
-                )
-              )
-            )
-          ),
-          lubricantes!inner(id, marca, tipo)
-        )
-      `)
-      .range(offset, offset + limit - 1)
-      .order('fecha_proyectada', { ascending: true });
+    let sqlQuery = `
+      SELECT 
+        tp.*,
+        pl.nombre as punto_lubricacion_nombre,
+        c.nombre as componente_nombre,
+        e.nombre as equipo_nombre,
+        e.codigo_equipo,
+        l.nombre as linea_nombre,
+        p.nombre as planta_nombre,
+        f.nombre as faena_nombre,
+        lub.marca as lubricante_marca,
+        lub.tipo as lubricante_tipo
+      FROM lubricacion.tareas_proyectadas tp
+      JOIN lubricacion.punto_lubricacion pl ON tp.punto_lubricacion_id = pl.id
+      JOIN lubricacion.componentes c ON pl.componente_id = c.id
+      JOIN lubricacion.equipos e ON c.equipo_id = e.id
+      JOIN lubricacion.lineas l ON e.linea_id = l.id
+      JOIN lubricacion.plantas p ON l.planta_id = p.id
+      JOIN lubricacion.faenas f ON p.faena_id = f.id
+      JOIN lubricacion.lubricantes lub ON pl.lubricante_id = lub.id
+      WHERE 1=1
+    `;
+    const params = [];
+    let paramCount = 0;
+
+    if (search) {
+      paramCount++;
+      sqlQuery += ` AND (tp.descripcion ILIKE $${paramCount} OR pl.nombre ILIKE $${paramCount})`;
+      params.push(`%${search}%`);
+    }
+
+    if (estado) {
+      paramCount++;
+      sqlQuery += ` AND tp.estado = $${paramCount}`;
+      params.push(estado);
+    }
 
     if (puntoLubricacionId) {
-      query = query.eq('punto_lubricacion_id', puntoLubricacionId);
+      paramCount++;
+      sqlQuery += ` AND tp.punto_lubricacion_id = $${paramCount}`;
+      params.push(puntoLubricacionId);
     }
 
-    if (fechaDesde) {
-      query = query.gte('fecha_proyectada', fechaDesde);
-    }
+    sqlQuery += ` ORDER BY tp.fecha_proyectada DESC LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`;
+    params.push(limit, offset);
 
-    if (fechaHasta) {
-      query = query.lte('fecha_proyectada', fechaHasta);
-    }
-
-    if (frecuencia) {
-      query = query.ilike('frecuencia', `%${frecuencia}%`);
-    }
-
-    if (origen) {
-      query = query.eq('origen', origen);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      return res.status(500).json({ 
-        error: 'Error al obtener tareas proyectadas',
-        details: error.message 
-      });
-    }
-
-    res.json({
-      success: true,
-      data: data,
-      pagination: {
-        offset,
-        limit,
-        count: data.length
-      }
-    });
-
+    const result = await query(sqlQuery, params);
+    res.json(result.rows);
   } catch (error) {
-    console.error('Error en GET /tareas-proyectadas:', error);
     res.status(500).json({ 
-      error: 'Error interno del servidor',
+      error: 'Error al obtener tareas proyectadas',
       details: error.message 
     });
   }
 });
 
-// GET /tareas-proyectadas/:id - obtener una tarea proyectada por ID
+// GET /tareas-proyectadas/:id - obtener tarea proyectada por ID
 router.get('/:id', async (req, res) => {
   try {
-    const supabase = getSupabaseAdminClient();
     const { id } = req.params;
-
-    const { data, error } = await supabase
-      .from('tareas_proyectadas')
-      .select(`
-        *,
-        punto_lubricacion!inner(
-          id, nombre, cantidad, frecuencia,
-          componentes!inner(
-            id, nombre,
-            equipos!inner(
-              id, nombre, codigo_equipo,
-              lineas!inner(
-                id, nombre,
-                plantas!inner(
-                  id, nombre,
-                  faenas!inner(id, nombre)
-                )
-              )
-            )
-          ),
-          lubricantes!inner(id, marca, tipo, especificaciones)
-        )
-      `)
-      .eq('id', id)
-      .single();
-
-    if (error) {
+    
+    const result = await query(`
+      SELECT 
+        tp.*,
+        pl.nombre as punto_lubricacion_nombre,
+        c.nombre as componente_nombre,
+        e.nombre as equipo_nombre,
+        e.codigo_equipo,
+        l.nombre as linea_nombre,
+        p.nombre as planta_nombre,
+        f.nombre as faena_nombre,
+        lub.marca as lubricante_marca,
+        lub.tipo as lubricante_tipo
+      FROM lubricacion.tareas_proyectadas tp
+      JOIN lubricacion.punto_lubricacion pl ON tp.punto_lubricacion_id = pl.id
+      JOIN lubricacion.componentes c ON pl.componente_id = c.id
+      JOIN lubricacion.equipos e ON c.equipo_id = e.id
+      JOIN lubricacion.lineas l ON e.linea_id = l.id
+      JOIN lubricacion.plantas p ON l.planta_id = p.id
+      JOIN lubricacion.faenas f ON p.faena_id = f.id
+      JOIN lubricacion.lubricantes lub ON pl.lubricante_id = lub.id
+      WHERE tp.id = $1
+    `, [id]);
+    
+    if (result.rows.length === 0) {
       return res.status(404).json({ 
         error: 'Tarea proyectada no encontrada',
-        details: error.message 
+        message: `No se encontró una tarea proyectada con ID: ${id}`
       });
     }
-
-    res.json({
-      success: true,
-      data: data
-    });
-
+    
+    res.json(result.rows[0]);
   } catch (error) {
-    console.error('Error en GET /tareas-proyectadas/:id:', error);
     res.status(500).json({ 
       error: 'Error interno del servidor',
       details: error.message 
@@ -139,271 +111,117 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// GET /tareas-proyectadas/calendario/mes - obtener tareas proyectadas por mes
-router.get('/calendario/mes', async (req, res) => {
-  try {
-    const supabase = getSupabaseAdminClient();
-    const año = req.query.año || new Date().getFullYear();
-    const mes = req.query.mes || (new Date().getMonth() + 1);
-
-    // Crear fechas del primer y último día del mes
-    const fechaInicio = `${año}-${mes.toString().padStart(2, '0')}-01`;
-    const fechaFin = new Date(año, mes, 0).toISOString().split('T')[0]; // Último día del mes
-
-    const { data, error } = await supabase
-      .from('tareas_proyectadas')
-      .select(`
-        *,
-        punto_lubricacion!inner(
-          id, nombre,
-          componentes!inner(
-            id, nombre,
-            equipos!inner(id, nombre, codigo_equipo)
-          ),
-          lubricantes!inner(id, marca, tipo)
-        )
-      `)
-      .gte('fecha_proyectada', fechaInicio)
-      .lte('fecha_proyectada', fechaFin)
-      .order('fecha_proyectada', { ascending: true });
-
-    if (error) {
-      return res.status(500).json({ 
-        error: 'Error al obtener calendario de tareas',
-        details: error.message 
-      });
-    }
-
-    // Agrupar por fecha
-    const tareasPorFecha = data.reduce((acc, tarea) => {
-      const fecha = tarea.fecha_proyectada;
-      if (!acc[fecha]) {
-        acc[fecha] = [];
-      }
-      acc[fecha].push(tarea);
-      return acc;
-    }, {});
-
-    res.json({
-      success: true,
-      data: tareasPorFecha,
-      meta: {
-        año: parseInt(año),
-        mes: parseInt(mes),
-        totalTareas: data.length
-      }
-    });
-
-  } catch (error) {
-    console.error('Error en GET /tareas-proyectadas/calendario/mes:', error);
-    res.status(500).json({ 
-      error: 'Error interno del servidor',
-      details: error.message 
-    });
-  }
-});
-
-// POST /tareas-proyectadas - crear una nueva tarea proyectada
+// POST /tareas-proyectadas - crear nueva tarea proyectada
 router.post('/', async (req, res) => {
   try {
-    const supabase = getSupabaseAdminClient();
-    const payload = req.body;
+    const { 
+      punto_lubricacion_id, 
+      fecha_proyectada, 
+      descripcion, 
+      estado, 
+      observaciones 
+    } = req.body;
 
-    if (!payload || Object.keys(payload).length === 0) {
+    if (!req.body || Object.keys(req.body).length === 0) {
       return res.status(400).json({
         error: 'Datos requeridos',
         message: 'El cuerpo de la petición no puede estar vacío'
       });
     }
 
-    // Validar campos requeridos
-    if (!payload.punto_lubricacion_id || !payload.fecha_proyectada) {
-      return res.status(400).json({
-        error: 'Campos requeridos faltantes',
-        message: 'punto_lubricacion_id y fecha_proyectada son requeridos'
-      });
-    }
+    const result = await query(`
+      INSERT INTO lubricacion.tareas_proyectadas 
+      (punto_lubricacion_id, fecha_proyectada, descripcion, estado, observaciones)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *
+    `, [punto_lubricacion_id, fecha_proyectada, descripcion, estado, observaciones]);
 
-    const { data, error } = await supabase
-      .from('tareas_proyectadas')
-      .insert([payload])
-      .select(`
-        *,
-        punto_lubricacion!inner(
-          id, nombre, cantidad, frecuencia,
-          componentes!inner(
-            id, nombre,
-            equipos!inner(id, nombre, codigo_equipo)
-          ),
-          lubricantes!inner(id, marca, tipo)
-        )
-      `);
-
-    if (error) {
-      return res.status(400).json({ 
-        error: 'Error al crear tarea proyectada',
-        details: error.message 
-      });
-    }
-
-    res.status(201).json({
-      success: true,
-      data: data[0],
-      message: 'Tarea proyectada creada exitosamente'
-    });
-
+    res.status(201).json(result.rows[0]);
   } catch (error) {
-    console.error('Error en POST /tareas-proyectadas:', error);
-    res.status(500).json({ 
-      error: 'Error interno del servidor',
+    res.status(400).json({ 
+      error: 'Error al crear tarea proyectada',
       details: error.message 
     });
   }
 });
 
-// POST /tareas-proyectadas/bulk - crear múltiples tareas proyectadas
-router.post('/bulk', async (req, res) => {
-  try {
-    const supabase = getSupabaseAdminClient();
-    const { tareas } = req.body;
-
-    if (!Array.isArray(tareas) || tareas.length === 0) {
-      return res.status(400).json({
-        error: 'Datos requeridos',
-        message: 'Se requiere un array de tareas no vacío'
-      });
-    }
-
-    const { data, error } = await supabase
-      .from('tareas_proyectadas')
-      .insert(tareas)
-      .select();
-
-    if (error) {
-      return res.status(400).json({ 
-        error: 'Error al crear tareas proyectadas',
-        details: error.message 
-      });
-    }
-
-    res.status(201).json({
-      success: true,
-      data: data,
-      message: `${data.length} tareas proyectadas creadas exitosamente`
-    });
-
-  } catch (error) {
-    console.error('Error en POST /tareas-proyectadas/bulk:', error);
-    res.status(500).json({ 
-      error: 'Error interno del servidor',
-      details: error.message 
-    });
-  }
-});
-
-// PUT /tareas-proyectadas/:id - actualizar una tarea proyectada
+// PUT /tareas-proyectadas/:id - actualizar tarea proyectada
 router.put('/:id', async (req, res) => {
   try {
-    const supabase = getSupabaseAdminClient();
     const { id } = req.params;
-    const payload = req.body;
+    const { 
+      punto_lubricacion_id, 
+      fecha_proyectada, 
+      descripcion, 
+      estado, 
+      observaciones 
+    } = req.body;
 
-    if (!payload || Object.keys(payload).length === 0) {
+    if (!req.body || Object.keys(req.body).length === 0) {
       return res.status(400).json({
         error: 'Datos requeridos',
         message: 'El cuerpo de la petición no puede estar vacío'
       });
     }
 
-    const { data, error } = await supabase
-      .from('tareas_proyectadas')
-      .update(payload)
-      .eq('id', id)
-      .select(`
-        *,
-        punto_lubricacion!inner(
-          id, nombre, cantidad, frecuencia,
-          componentes!inner(
-            id, nombre,
-            equipos!inner(id, nombre, codigo_equipo)
-          ),
-          lubricantes!inner(id, marca, tipo)
-        )
-      `);
+    const result = await query(`
+      UPDATE lubricacion.tareas_proyectadas 
+      SET 
+        punto_lubricacion_id = $1, 
+        fecha_proyectada = $2, 
+        descripcion = $3, 
+        estado = $4, 
+        observaciones = $5,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $6
+      RETURNING *
+    `, [punto_lubricacion_id, fecha_proyectada, descripcion, estado, observaciones, id]);
 
-    if (error) {
-      return res.status(400).json({ 
-        error: 'Error al actualizar tarea proyectada',
-        details: error.message 
-      });
-    }
-
-    if (!data || data.length === 0) {
+    if (result.rows.length === 0) {
       return res.status(404).json({
         error: 'Tarea proyectada no encontrada',
         message: `No se encontró una tarea proyectada con ID: ${id}`
       });
     }
 
-    res.json({
-      success: true,
-      data: data[0],
-      message: 'Tarea proyectada actualizada exitosamente'
-    });
-
+    res.json(result.rows[0]);
   } catch (error) {
-    console.error('Error en PUT /tareas-proyectadas/:id:', error);
-    res.status(500).json({ 
-      error: 'Error interno del servidor',
+    res.status(400).json({ 
+      error: 'Error al actualizar tarea proyectada',
       details: error.message 
     });
   }
 });
 
-// DELETE /tareas-proyectadas/:id - eliminar una tarea proyectada
+// DELETE /tareas-proyectadas/:id - eliminar tarea proyectada
 router.delete('/:id', async (req, res) => {
   try {
-    const supabase = getSupabaseAdminClient();
     const { id } = req.params;
 
-    const { data: existingTarea, error: selectError } = await supabase
-      .from('tareas_proyectadas')
-      .select('id')
-      .eq('id', id)
-      .single();
+    const checkResult = await query(
+      'SELECT id FROM lubricacion.tareas_proyectadas WHERE id = $1',
+      [id]
+    );
 
-    if (selectError || !existingTarea) {
+    if (checkResult.rows.length === 0) {
       return res.status(404).json({
         error: 'Tarea proyectada no encontrada',
         message: `No se encontró una tarea proyectada con ID: ${id}`
       });
     }
 
-    const { error } = await supabase
-      .from('tareas_proyectadas')
-      .delete()
-      .eq('id', id);
+    await query('DELETE FROM lubricacion.tareas_proyectadas WHERE id = $1', [id]);
 
-    if (error) {
-      return res.status(400).json({ 
-        error: 'Error al eliminar tarea proyectada',
-        details: error.message 
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'Tarea proyectada eliminada exitosamente'
+    res.json({ 
+      message: 'Tarea proyectada eliminada exitosamente',
+      id: id 
     });
-
   } catch (error) {
-    console.error('Error en DELETE /tareas-proyectadas/:id:', error);
-    res.status(500).json({ 
-      error: 'Error interno del servidor',
+    res.status(400).json({ 
+      error: 'Error al eliminar tarea proyectada',
       details: error.message 
     });
   }
 });
 
 module.exports = router;
-

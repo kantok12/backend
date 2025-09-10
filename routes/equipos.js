@@ -1,88 +1,69 @@
 const express = require('express');
 const router = express.Router();
-const { getSupabaseAdminClient } = require('../config/database');
+const { query } = require('../config/postgresql');
 
-// GET /equipos - listar todos los equipos (con paginación opcional)
+// GET /equipos - obtener todos los equipos
 router.get('/', async (req, res) => {
   try {
-    const supabase = getSupabaseAdminClient();
     const limit = Number(req.query.limit) || 20;
     const offset = Number(req.query.offset) || 0;
     const search = req.query.search;
+    const estado = req.query.estado;
     const lineaId = req.query.linea_id;
-    const codigoEquipo = req.query.codigo_equipo;
 
-    let query = supabase
-      .from('equipos')
-      .select('*, lineas!inner(id, nombre, plantas!inner(id, nombre, faenas!inner(id, nombre)))')
-      .range(offset, offset + limit - 1);
+    let sqlQuery = `
+      SELECT * FROM lubricacion.equipos
+      WHERE 1=1
+    `;
+    const params = [];
+    let paramCount = 0;
 
     if (search) {
-      query = query.or(`nombre.ilike.%${search}%, codigo_equipo.ilike.%${search}%`);
+      paramCount++;
+      sqlQuery += ` AND (nombre ILIKE $${paramCount} OR descripcion ILIKE $${paramCount} OR codigo_equipo ILIKE $${paramCount})`;
+      params.push(`%${search}%`);
+    }
+
+    if (estado) {
+      paramCount++;
+      sqlQuery += ` AND estado = $${paramCount}`;
+      params.push(estado);
     }
 
     if (lineaId) {
-      query = query.eq('linea_id', lineaId);
+      paramCount++;
+      sqlQuery += ` AND linea_id = $${paramCount}`;
+      params.push(lineaId);
     }
 
-    if (codigoEquipo) {
-      query = query.ilike('codigo_equipo', `%${codigoEquipo}%`);
-    }
+    sqlQuery += ` ORDER BY id LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`;
+    params.push(limit, offset);
 
-    const { data, error } = await query;
-
-    if (error) {
-      return res.status(500).json({ 
-        error: 'Error al obtener equipos',
-        details: error.message 
-      });
-    }
-
-    res.json({
-      success: true,
-      data: data,
-      pagination: {
-        offset,
-        limit,
-        count: data.length
-      }
-    });
-
+    const result = await query(sqlQuery, params);
+    res.json(result.rows);
   } catch (error) {
-    console.error('Error en GET /equipos:', error);
     res.status(500).json({ 
-      error: 'Error interno del servidor',
+      error: 'Error al obtener equipos',
       details: error.message 
     });
   }
 });
 
-// GET /equipos/:id - obtener un equipo por ID
+// GET /equipos/:id - obtener equipo por ID
 router.get('/:id', async (req, res) => {
   try {
-    const supabase = getSupabaseAdminClient();
     const { id } = req.params;
-
-    const { data, error } = await supabase
-      .from('equipos')
-      .select('*, lineas!inner(id, nombre, plantas!inner(id, nombre, faenas!inner(id, nombre)))')
-      .eq('id', id)
-      .single();
-
-    if (error) {
+    const result = await query('SELECT * FROM lubricacion.equipos WHERE id = $1', [id]);
+    
+    if (result.rows.length === 0) {
       return res.status(404).json({ 
         error: 'Equipo no encontrado',
-        details: error.message 
+        message: `No se encontró un equipo con ID: ${id}`
       });
     }
-
-    res.json({
-      success: true,
-      data: data
-    });
-
+    
+    res.json(result.rows[0]);
   } catch (error) {
-    console.error('Error en GET /equipos/:id:', error);
     res.status(500).json({ 
       error: 'Error interno del servidor',
       details: error.message 
@@ -93,176 +74,115 @@ router.get('/:id', async (req, res) => {
 // GET /equipos/:id/componentes - obtener componentes de un equipo
 router.get('/:id/componentes', async (req, res) => {
   try {
-    const supabase = getSupabaseAdminClient();
     const { id } = req.params;
     const limit = Number(req.query.limit) || 20;
     const offset = Number(req.query.offset) || 0;
 
-    const { data, error } = await supabase
-      .from('componentes')
-      .select('*')
-      .eq('equipo_id', id)
-      .range(offset, offset + limit - 1);
+    const result = await query(`
+      SELECT * FROM lubricacion.componentes 
+      WHERE equipo_id = $1 
+      ORDER BY id 
+      LIMIT $2 OFFSET $3
+    `, [id, limit, offset]);
 
-    if (error) {
-      return res.status(500).json({ 
-        error: 'Error al obtener componentes del equipo',
-        details: error.message 
-      });
-    }
-
-    res.json({
-      success: true,
-      data: data,
-      pagination: {
-        offset,
-        limit,
-        count: data.length
-      }
-    });
-
+    res.json(result.rows);
   } catch (error) {
-    console.error('Error en GET /equipos/:id/componentes:', error);
     res.status(500).json({ 
-      error: 'Error interno del servidor',
+      error: 'Error al obtener componentes',
       details: error.message 
     });
   }
 });
 
-// POST /equipos - crear un nuevo equipo
+// POST /equipos - crear nuevo equipo
 router.post('/', async (req, res) => {
   try {
-    const supabase = getSupabaseAdminClient();
-    const payload = req.body;
+    const { nombre, descripcion, codigo_equipo, estado, linea_id } = req.body;
 
-    if (!payload || Object.keys(payload).length === 0) {
+    if (!req.body || Object.keys(req.body).length === 0) {
       return res.status(400).json({
         error: 'Datos requeridos',
         message: 'El cuerpo de la petición no puede estar vacío'
       });
     }
 
-    const { data, error } = await supabase
-      .from('equipos')
-      .insert([payload])
-      .select('*, lineas!inner(id, nombre, plantas!inner(id, nombre, faenas!inner(id, nombre)))');
+    const result = await query(`
+      INSERT INTO lubricacion.equipos (nombre, descripcion, codigo_equipo, estado, linea_id)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *
+    `, [nombre, descripcion, codigo_equipo, estado, linea_id]);
 
-    if (error) {
-      return res.status(400).json({ 
-        error: 'Error al crear equipo',
-        details: error.message 
-      });
-    }
-
-    res.status(201).json({
-      success: true,
-      data: data[0],
-      message: 'Equipo creado exitosamente'
-    });
-
+    res.status(201).json(result.rows[0]);
   } catch (error) {
-    console.error('Error en POST /equipos:', error);
-    res.status(500).json({ 
-      error: 'Error interno del servidor',
+    res.status(400).json({ 
+      error: 'Error al crear equipo',
       details: error.message 
     });
   }
 });
 
-// PUT /equipos/:id - actualizar un equipo
+// PUT /equipos/:id - actualizar equipo
 router.put('/:id', async (req, res) => {
   try {
-    const supabase = getSupabaseAdminClient();
     const { id } = req.params;
-    const payload = req.body;
+    const { nombre, descripcion, codigo_equipo, estado, linea_id } = req.body;
 
-    if (!payload || Object.keys(payload).length === 0) {
+    if (!req.body || Object.keys(req.body).length === 0) {
       return res.status(400).json({
         error: 'Datos requeridos',
         message: 'El cuerpo de la petición no puede estar vacío'
       });
     }
 
-    const { data, error } = await supabase
-      .from('equipos')
-      .update(payload)
-      .eq('id', id)
-      .select('*, lineas!inner(id, nombre, plantas!inner(id, nombre, faenas!inner(id, nombre)))');
+    const result = await query(`
+      UPDATE lubricacion.equipos 
+      SET nombre = $1, descripcion = $2, codigo_equipo = $3, estado = $4, linea_id = $5, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $6
+      RETURNING *
+    `, [nombre, descripcion, codigo_equipo, estado, linea_id, id]);
 
-    if (error) {
-      return res.status(400).json({ 
-        error: 'Error al actualizar equipo',
-        details: error.message 
-      });
-    }
-
-    if (!data || data.length === 0) {
+    if (result.rows.length === 0) {
       return res.status(404).json({
         error: 'Equipo no encontrado',
         message: `No se encontró un equipo con ID: ${id}`
       });
     }
 
-    res.json({
-      success: true,
-      data: data[0],
-      message: 'Equipo actualizado exitosamente'
-    });
-
+    res.json(result.rows[0]);
   } catch (error) {
-    console.error('Error en PUT /equipos/:id:', error);
-    res.status(500).json({ 
-      error: 'Error interno del servidor',
+    res.status(400).json({ 
+      error: 'Error al actualizar equipo',
       details: error.message 
     });
   }
 });
 
-// DELETE /equipos/:id - eliminar un equipo
+// DELETE /equipos/:id - eliminar equipo
 router.delete('/:id', async (req, res) => {
   try {
-    const supabase = getSupabaseAdminClient();
     const { id } = req.params;
 
-    const { data: existingEquipo, error: selectError } = await supabase
-      .from('equipos')
-      .select('id')
-      .eq('id', id)
-      .single();
+    const checkResult = await query('SELECT id FROM lubricacion.equipos WHERE id = $1', [id]);
 
-    if (selectError || !existingEquipo) {
+    if (checkResult.rows.length === 0) {
       return res.status(404).json({
         error: 'Equipo no encontrado',
         message: `No se encontró un equipo con ID: ${id}`
       });
     }
 
-    const { error } = await supabase
-      .from('equipos')
-      .delete()
-      .eq('id', id);
+    await query('DELETE FROM lubricacion.equipos WHERE id = $1', [id]);
 
-    if (error) {
-      return res.status(400).json({ 
-        error: 'Error al eliminar equipo',
-        details: error.message 
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'Equipo eliminado exitosamente'
+    res.json({ 
+      message: 'Equipo eliminado exitosamente',
+      id: id 
     });
-
   } catch (error) {
-    console.error('Error en DELETE /equipos/:id:', error);
-    res.status(500).json({ 
-      error: 'Error interno del servidor',
+    res.status(400).json({ 
+      error: 'Error al eliminar equipo',
       details: error.message 
     });
   }
 });
 
 module.exports = router;
-

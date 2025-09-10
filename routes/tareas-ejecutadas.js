@@ -1,482 +1,233 @@
 const express = require('express');
 const router = express.Router();
-const { supabase } = require('../config/database');
+const { query } = require('../config/postgresql');
 
-// GET /api/tareas-ejecutadas - Obtener todas las tareas ejecutadas
+// GET /tareas-ejecutadas - obtener todas las tareas ejecutadas
 router.get('/', async (req, res) => {
   try {
-    const { 
-      limit = 20, 
-      offset = 0, 
-      tarea_programada_id,
-      personal_ejecutor,
-      fecha_desde,
-      fecha_hasta,
-      cumplimiento
-    } = req.query;
+    const limit = Number(req.query.limit) || 20;
+    const offset = Number(req.query.offset) || 0;
+    const search = req.query.search;
+    const estado = req.query.estado;
+    const puntoLubricacionId = req.query.punto_lubricacion_id;
 
-    // Construir query base
-    let query = supabase
-      .from('tareas_ejecutadas')
-      .select(`
-        *,
-        tareas_programadas!inner(
-          id,
-          fecha_programada,
-          estado,
-          punto_lubricacion_id,
-          punto_lubricacion(
-            id,
-            nombre,
-            componentes(
-              id,
-              nombre,
-              equipos(
-                id,
-                nombre,
-                codigo_equipo
-              )
-            )
-          )
-        )
-      `)
-      .order('fecha_ejecucion', { ascending: false });
+    let sqlQuery = `
+      SELECT 
+        te.*,
+        pl.nombre as punto_lubricacion_nombre,
+        c.nombre as componente_nombre,
+        e.nombre as equipo_nombre,
+        e.codigo_equipo,
+        l.nombre as linea_nombre,
+        p.nombre as planta_nombre,
+        f.nombre as faena_nombre,
+        lub.marca as lubricante_marca,
+        lub.tipo as lubricante_tipo
+      FROM lubricacion.tareas_ejecutadas te
+      JOIN lubricacion.punto_lubricacion pl ON te.punto_lubricacion_id = pl.id
+      JOIN lubricacion.componentes c ON pl.componente_id = c.id
+      JOIN lubricacion.equipos e ON c.equipo_id = e.id
+      JOIN lubricacion.lineas l ON e.linea_id = l.id
+      JOIN lubricacion.plantas p ON l.planta_id = p.id
+      JOIN lubricacion.faenas f ON p.faena_id = f.id
+      JOIN lubricacion.lubricantes lub ON pl.lubricante_id = lub.id
+      WHERE 1=1
+    `;
+    const params = [];
+    let paramCount = 0;
 
-    // Aplicar filtros
-    if (tarea_programada_id) {
-      query = query.eq('tarea_programada_id', tarea_programada_id);
+    if (search) {
+      paramCount++;
+      sqlQuery += ` AND (te.descripcion ILIKE $${paramCount} OR pl.nombre ILIKE $${paramCount})`;
+      params.push(`%${search}%`);
     }
 
-    if (personal_ejecutor) {
-      query = query.eq('personal_ejecutor', personal_ejecutor);
+    if (estado) {
+      paramCount++;
+      sqlQuery += ` AND te.estado = $${paramCount}`;
+      params.push(estado);
     }
 
-    if (fecha_desde) {
-      query = query.gte('fecha_ejecucion', fecha_desde);
+    if (puntoLubricacionId) {
+      paramCount++;
+      sqlQuery += ` AND te.punto_lubricacion_id = $${paramCount}`;
+      params.push(puntoLubricacionId);
     }
 
-    if (fecha_hasta) {
-      query = query.lte('fecha_ejecucion', fecha_hasta);
-    }
+    sqlQuery += ` ORDER BY te.fecha_ejecucion DESC LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`;
+    params.push(limit, offset);
 
-    if (cumplimiento !== undefined) {
-      query = query.eq('cumplimiento', cumplimiento === 'true');
-    }
-
-    // Aplicar paginación
-    query = query.range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
-
-    const { data, error, count } = await query;
-
-    if (error) {
-      console.error('Error al obtener tareas ejecutadas:', error);
-      return res.status(500).json({
-        error: 'Error al obtener tareas ejecutadas',
-        details: error.message
-      });
-    }
-
-    res.json({
-      success: true,
-      data: data || [],
-      pagination: {
-        offset: parseInt(offset),
-        limit: parseInt(limit),
-        count: data?.length || 0
-      }
-    });
-
+    const result = await query(sqlQuery, params);
+    res.json(result.rows);
   } catch (error) {
-    console.error('Error en GET /tareas-ejecutadas:', error);
-    res.status(500).json({
-      error: 'Error interno del servidor',
-      details: error.message
+    res.status(500).json({ 
+      error: 'Error al obtener tareas ejecutadas',
+      details: error.message 
     });
   }
 });
 
-// GET /api/tareas-ejecutadas/personal/:rutPersonal - Obtener tareas ejecutadas por personal específico
-router.get('/personal/:rutPersonal', async (req, res) => {
-  try {
-    const { rutPersonal } = req.params;
-    const { limit = 20, offset = 0 } = req.query;
-
-    const { data, error } = await supabase
-      .from('tareas_ejecutadas')
-      .select(`
-        *,
-        tareas_programadas(
-          id,
-          fecha_programada,
-          punto_lubricacion(
-            id,
-            nombre,
-            componentes(
-              nombre,
-              equipos(
-                nombre,
-                codigo_equipo
-              )
-            )
-          )
-        )
-      `)
-      .eq('personal_ejecutor', rutPersonal)
-      .order('fecha_ejecucion', { ascending: false })
-      .range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
-
-    if (error) {
-      console.error('Error al obtener tareas del personal:', error);
-      return res.status(500).json({
-        error: 'Error al obtener tareas del personal',
-        details: error.message
-      });
-    }
-
-    res.json({
-      success: true,
-      personal_ejecutor: rutPersonal,
-      data: data || [],
-      pagination: {
-        offset: parseInt(offset),
-        limit: parseInt(limit),
-        count: data?.length || 0
-      }
-    });
-
-  } catch (error) {
-    console.error('Error en GET /tareas-ejecutadas/personal:', error);
-    res.status(500).json({
-      error: 'Error interno del servidor',
-      details: error.message
-    });
-  }
-});
-
-// GET /api/tareas-ejecutadas/estadisticas/cumplimiento - Estadísticas de cumplimiento
-router.get('/estadisticas/cumplimiento', async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from('tareas_ejecutadas')
-      .select('cumplimiento');
-
-    if (error) {
-      console.error('Error al obtener estadísticas:', error);
-      return res.status(500).json({
-        error: 'Error al obtener estadísticas',
-        details: error.message
-      });
-    }
-
-    const total = data?.length || 0;
-    const cumplidas = data?.filter(t => t.cumplimiento === true).length || 0;
-    const noCumplidas = data?.filter(t => t.cumplimiento === false).length || 0;
-    const sinDatos = total - cumplidas - noCumplidas;
-    const porcentajeCumplimiento = total > 0 ? ((cumplidas / total) * 100).toFixed(2) : '0.00';
-
-    res.json({
-      success: true,
-      data: {
-        total,
-        cumplidas,
-        noCumplidas,
-        sinDatos,
-        porcentajeCumplimiento
-      }
-    });
-
-  } catch (error) {
-    console.error('Error en GET /estadisticas/cumplimiento:', error);
-    res.status(500).json({
-      error: 'Error interno del servidor',
-      details: error.message
-    });
-  }
-});
-
-// GET /api/tareas-ejecutadas/estadisticas/consumo-lubricante - Estadísticas de consumo
-router.get('/estadisticas/consumo-lubricante', async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from('tareas_ejecutadas')
-      .select(`
-        cantidad_usada,
-        tareas_programadas(
-          punto_lubricacion(
-            cantidad,
-            lubricantes(
-              marca,
-              tipo
-            )
-          )
-        )
-      `)
-      .not('cantidad_usada', 'is', null);
-
-    if (error) {
-      console.error('Error al obtener consumo de lubricantes:', error);
-      return res.status(500).json({
-        error: 'Error al obtener consumo de lubricantes',
-        details: error.message
-      });
-    }
-
-    // Procesar datos para estadísticas
-    const consumoTotal = data?.reduce((sum, item) => sum + (item.cantidad_usada || 0), 0) || 0;
-    const consumoPromedio = data?.length > 0 ? (consumoTotal / data.length).toFixed(2) : '0.00';
-
-    res.json({
-      success: true,
-      data: {
-        totalEjecuciones: data?.length || 0,
-        consumoTotal: consumoTotal.toFixed(2),
-        consumoPromedio,
-        detalles: data || []
-      }
-    });
-
-  } catch (error) {
-    console.error('Error en GET /estadisticas/consumo-lubricante:', error);
-    res.status(500).json({
-      error: 'Error interno del servidor',
-      details: error.message
-    });
-  }
-});
-
-// POST /api/tareas-ejecutadas - Crear nueva tarea ejecutada
-router.post('/', async (req, res) => {
-  try {
-    const {
-      tarea_programada_id,
-      fecha_ejecucion,
-      personal_ejecutor,
-      cantidad_usada,
-      observaciones,
-      cumplimiento
-    } = req.body;
-
-    // Validaciones básicas
-    if (!tarea_programada_id || !fecha_ejecucion || !personal_ejecutor) {
-      return res.status(400).json({
-        error: 'Datos faltantes',
-        message: 'tarea_programada_id, fecha_ejecucion y personal_ejecutor son requeridos'
-      });
-    }
-
-    const { data, error } = await supabase
-      .from('tareas_ejecutadas')
-      .insert([{
-        tarea_programada_id,
-        fecha_ejecucion,
-        personal_ejecutor,
-        cantidad_usada: cantidad_usada || null,
-        observaciones: observaciones || null,
-        cumplimiento: cumplimiento !== undefined ? cumplimiento : true
-      }])
-      .select();
-
-    if (error) {
-      console.error('Error al crear tarea ejecutada:', error);
-      return res.status(500).json({
-        error: 'Error al crear tarea ejecutada',
-        details: error.message
-      });
-    }
-
-    res.status(201).json({
-      success: true,
-      data: data[0],
-      message: 'Tarea ejecutada creada exitosamente'
-    });
-
-  } catch (error) {
-    console.error('Error en POST /tareas-ejecutadas:', error);
-    res.status(500).json({
-      error: 'Error interno del servidor',
-      details: error.message
-    });
-  }
-});
-
-// GET /api/tareas-ejecutadas/:id - Obtener tarea ejecutada por ID
+// GET /tareas-ejecutadas/:id - obtener tarea ejecutada por ID
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-
-    const { data, error } = await supabase
-      .from('tareas_ejecutadas')
-      .select(`
-        *,
-        tareas_programadas(
-          id,
-          fecha_programada,
-          estado,
-          punto_lubricacion(
-            id,
-            nombre,
-            cantidad,
-            frecuencia,
-            componentes(
-              id,
-              nombre,
-              equipos(
-                id,
-                nombre,
-                codigo_equipo,
-                lineas(
-                  id,
-                  nombre,
-                  plantas(
-                    id,
-                    nombre,
-                    faenas(
-                      id,
-                      nombre
-                    )
-                  )
-                )
-              )
-            ),
-            lubricantes(
-              id,
-              marca,
-              tipo
-            )
-          )
-        )
-      `)
-      .eq('id', id)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return res.status(404).json({
-          error: 'Tarea ejecutada no encontrada'
-        });
-      }
-      console.error('Error al obtener tarea ejecutada:', error);
-      return res.status(500).json({
-        error: 'Error al obtener tarea ejecutada',
-        details: error.message
+    
+    const result = await query(`
+      SELECT 
+        te.*,
+        pl.nombre as punto_lubricacion_nombre,
+        c.nombre as componente_nombre,
+        e.nombre as equipo_nombre,
+        e.codigo_equipo,
+        l.nombre as linea_nombre,
+        p.nombre as planta_nombre,
+        f.nombre as faena_nombre,
+        lub.marca as lubricante_marca,
+        lub.tipo as lubricante_tipo
+      FROM lubricacion.tareas_ejecutadas te
+      JOIN lubricacion.punto_lubricacion pl ON te.punto_lubricacion_id = pl.id
+      JOIN lubricacion.componentes c ON pl.componente_id = c.id
+      JOIN lubricacion.equipos e ON c.equipo_id = e.id
+      JOIN lubricacion.lineas l ON e.linea_id = l.id
+      JOIN lubricacion.plantas p ON l.planta_id = p.id
+      JOIN lubricacion.faenas f ON p.faena_id = f.id
+      JOIN lubricacion.lubricantes lub ON pl.lubricante_id = lub.id
+      WHERE te.id = $1
+    `, [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        error: 'Tarea ejecutada no encontrada',
+        message: `No se encontró una tarea ejecutada con ID: ${id}`
       });
     }
-
-    res.json({
-      success: true,
-      data
-    });
-
+    
+    res.json(result.rows[0]);
   } catch (error) {
-    console.error('Error en GET /tareas-ejecutadas/:id:', error);
-    res.status(500).json({
+    res.status(500).json({ 
       error: 'Error interno del servidor',
-      details: error.message
+      details: error.message 
     });
   }
 });
 
-// PUT /api/tareas-ejecutadas/:id - Actualizar tarea ejecutada
+// POST /tareas-ejecutadas - crear nueva tarea ejecutada
+router.post('/', async (req, res) => {
+  try {
+    const { 
+      punto_lubricacion_id, 
+      fecha_ejecucion, 
+      descripcion, 
+      estado, 
+      observaciones,
+      cantidad_usada,
+      responsable
+    } = req.body;
+
+    if (!req.body || Object.keys(req.body).length === 0) {
+      return res.status(400).json({
+        error: 'Datos requeridos',
+        message: 'El cuerpo de la petición no puede estar vacío'
+      });
+    }
+
+    const result = await query(`
+      INSERT INTO lubricacion.tareas_ejecutadas 
+      (punto_lubricacion_id, fecha_ejecucion, descripcion, estado, observaciones, cantidad_usada, responsable)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING *
+    `, [punto_lubricacion_id, fecha_ejecucion, descripcion, estado, observaciones, cantidad_usada, responsable]);
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    res.status(400).json({ 
+      error: 'Error al crear tarea ejecutada',
+      details: error.message 
+    });
+  }
+});
+
+// PUT /tareas-ejecutadas/:id - actualizar tarea ejecutada
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const {
-      fecha_ejecucion,
-      personal_ejecutor,
-      cantidad_usada,
+    const { 
+      punto_lubricacion_id, 
+      fecha_ejecucion, 
+      descripcion, 
+      estado, 
       observaciones,
-      cumplimiento
+      cantidad_usada,
+      responsable
     } = req.body;
 
-    // Construir objeto de actualización
-    const updateData = {};
-    if (fecha_ejecucion !== undefined) updateData.fecha_ejecucion = fecha_ejecucion;
-    if (personal_ejecutor !== undefined) updateData.personal_ejecutor = personal_ejecutor;
-    if (cantidad_usada !== undefined) updateData.cantidad_usada = cantidad_usada;
-    if (observaciones !== undefined) updateData.observaciones = observaciones;
-    if (cumplimiento !== undefined) updateData.cumplimiento = cumplimiento;
-
-    const { data, error } = await supabase
-      .from('tareas_ejecutadas')
-      .update(updateData)
-      .eq('id', id)
-      .select();
-
-    if (error) {
-      console.error('Error al actualizar tarea ejecutada:', error);
-      return res.status(500).json({
-        error: 'Error al actualizar tarea ejecutada',
-        details: error.message
+    if (!req.body || Object.keys(req.body).length === 0) {
+      return res.status(400).json({
+        error: 'Datos requeridos',
+        message: 'El cuerpo de la petición no puede estar vacío'
       });
     }
 
-    if (!data || data.length === 0) {
+    const result = await query(`
+      UPDATE lubricacion.tareas_ejecutadas 
+      SET 
+        punto_lubricacion_id = $1, 
+        fecha_ejecucion = $2, 
+        descripcion = $3, 
+        estado = $4, 
+        observaciones = $5,
+        cantidad_usada = $6,
+        responsable = $7,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $8
+      RETURNING *
+    `, [punto_lubricacion_id, fecha_ejecucion, descripcion, estado, observaciones, cantidad_usada, responsable, id]);
+
+    if (result.rows.length === 0) {
       return res.status(404).json({
-        error: 'Tarea ejecutada no encontrada'
+        error: 'Tarea ejecutada no encontrada',
+        message: `No se encontró una tarea ejecutada con ID: ${id}`
       });
     }
 
-    res.json({
-      success: true,
-      data: data[0],
-      message: 'Tarea ejecutada actualizada exitosamente'
-    });
-
+    res.json(result.rows[0]);
   } catch (error) {
-    console.error('Error en PUT /tareas-ejecutadas/:id:', error);
-    res.status(500).json({
-      error: 'Error interno del servidor',
-      details: error.message
+    res.status(400).json({ 
+      error: 'Error al actualizar tarea ejecutada',
+      details: error.message 
     });
   }
 });
 
-// DELETE /api/tareas-ejecutadas/:id - Eliminar tarea ejecutada
+// DELETE /tareas-ejecutadas/:id - eliminar tarea ejecutada
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
-    const { data, error } = await supabase
-      .from('tareas_ejecutadas')
-      .delete()
-      .eq('id', id)
-      .select();
+    const checkResult = await query(
+      'SELECT id FROM lubricacion.tareas_ejecutadas WHERE id = $1',
+      [id]
+    );
 
-    if (error) {
-      console.error('Error al eliminar tarea ejecutada:', error);
-      return res.status(500).json({
-        error: 'Error al eliminar tarea ejecutada',
-        details: error.message
-      });
-    }
-
-    if (!data || data.length === 0) {
+    if (checkResult.rows.length === 0) {
       return res.status(404).json({
-        error: 'Tarea ejecutada no encontrada'
+        error: 'Tarea ejecutada no encontrada',
+        message: `No se encontró una tarea ejecutada con ID: ${id}`
       });
     }
 
-    res.json({
-      success: true,
-      message: 'Tarea ejecutada eliminada exitosamente'
-    });
+    await query('DELETE FROM lubricacion.tareas_ejecutadas WHERE id = $1', [id]);
 
+    res.json({ 
+      message: 'Tarea ejecutada eliminada exitosamente',
+      id: id 
+    });
   } catch (error) {
-    console.error('Error en DELETE /tareas-ejecutadas/:id:', error);
-    res.status(500).json({
-      error: 'Error interno del servidor',
-      details: error.message
+    res.status(400).json({ 
+      error: 'Error al eliminar tarea ejecutada',
+      details: error.message 
     });
   }
 });
 
 module.exports = router;
-
-
-
-
-
-
-
-
-

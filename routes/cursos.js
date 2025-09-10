@@ -16,6 +16,96 @@ const fs = require('fs');
  * - fecha_obtencion: date (Fecha de obtención)
  */
 
+// GET /api/cursos/stats - Obtener estadísticas de cursos
+router.get('/stats', async (req, res) => {
+  try {
+    console.log('📊 GET /api/cursos/stats - Obteniendo estadísticas de cursos');
+
+    // Estadísticas generales
+    const totalCursos = await query(`
+      SELECT COUNT(*) as total
+      FROM mantenimiento.cursos 
+      WHERE activo = true
+    `);
+
+    const cursosPorEstado = await query(`
+      SELECT 
+        estado,
+        COUNT(*) as cantidad
+      FROM mantenimiento.cursos 
+      WHERE activo = true
+      GROUP BY estado
+      ORDER BY cantidad DESC
+    `);
+
+    const cursosPorInstitucion = await query(`
+      SELECT 
+        institucion,
+        COUNT(*) as cantidad
+      FROM mantenimiento.cursos 
+      WHERE activo = true AND institucion IS NOT NULL
+      GROUP BY institucion
+      ORDER BY cantidad DESC
+      LIMIT 10
+    `);
+
+    const cursosPorMes = await query(`
+      SELECT 
+        DATE_TRUNC('month', fecha_creacion) as mes,
+        COUNT(*) as cantidad
+      FROM mantenimiento.cursos 
+      WHERE activo = true
+      AND fecha_creacion >= CURRENT_DATE - INTERVAL '12 months'
+      GROUP BY DATE_TRUNC('month', fecha_creacion)
+      ORDER BY mes DESC
+    `);
+
+    const cursosVencidos = await query(`
+      SELECT COUNT(*) as cantidad
+      FROM mantenimiento.cursos 
+      WHERE activo = true 
+      AND estado = 'vencido'
+    `);
+
+    const cursosPorVencer = await query(`
+      SELECT COUNT(*) as cantidad
+      FROM mantenimiento.cursos 
+      WHERE activo = true 
+      AND estado = 'por_vencer'
+    `);
+
+    const cursosActivos = await query(`
+      SELECT COUNT(*) as cantidad
+      FROM mantenimiento.cursos 
+      WHERE activo = true 
+      AND estado = 'activo'
+    `);
+
+    const estadisticas = {
+      total_cursos: parseInt(totalCursos.rows[0].total),
+      por_estado: cursosPorEstado.rows,
+      por_institucion: cursosPorInstitucion.rows,
+      por_mes: cursosPorMes.rows,
+      resumen: {
+        activos: parseInt(cursosActivos.rows[0].cantidad),
+        por_vencer: parseInt(cursosPorVencer.rows[0].cantidad),
+        vencidos: parseInt(cursosVencidos.rows[0].cantidad)
+      },
+      fecha_consulta: new Date().toISOString()
+    };
+
+    console.log(`✅ Estadísticas obtenidas: ${estadisticas.total_cursos} cursos totales`);
+    res.json(estadisticas);
+
+  } catch (error) {
+    console.error('❌ Error en GET /api/cursos/stats:', error);
+    res.status(500).json({ 
+      error: 'Error al obtener estadísticas de cursos',
+      details: error.message 
+    });
+  }
+});
+
 // GET /api/cursos - Obtener todos los cursos/certificaciones
 router.get('/', async (req, res) => {
   try {

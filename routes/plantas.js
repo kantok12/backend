@@ -2,81 +2,49 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../config/postgresql');
 
-// GET /plantas - listar todas las plantas (con paginación opcional)
+// GET /plantas - obtener todas las plantas
 router.get('/', async (req, res) => {
   try {
     const limit = Number(req.query.limit) || 20;
     const offset = Number(req.query.offset) || 0;
     const search = req.query.search;
+    const estado = req.query.estado;
     const faenaId = req.query.faena_id;
 
-    // Construir consulta SQL
-    let queryText = `
-      SELECT p.*, f.nombre as faena_nombre 
-      FROM mantenimiento.plantas p
-      LEFT JOIN mantenimiento.faenas f ON p.faena_id = f.id
+    let sqlQuery = `
+      SELECT * FROM lubricacion.plantas
       WHERE 1=1
     `;
-    const queryParams = [];
-    let paramIndex = 1;
-
-    // Filtro por faena
-    if (faenaId) {
-      queryText += ` AND p.faena_id = $${paramIndex}`;
-      queryParams.push(faenaId);
-      paramIndex++;
-    }
-
-    // Filtro de búsqueda por nombre
-    if (search) {
-      queryText += ` AND p.nombre ILIKE $${paramIndex}`;
-      queryParams.push(`%${search}%`);
-      paramIndex++;
-    }
-
-    // Agregar paginación
-    queryText += ` ORDER BY p.nombre LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-    queryParams.push(limit, offset);
-
-    const result = await query(queryText, queryParams);
-
-    // Consulta para contar total
-    let countQuery = `SELECT COUNT(*) FROM mantenimiento.plantas p WHERE 1=1`;
-    const countParams = [];
-    let countParamIndex = 1;
-
-    if (faenaId) {
-      countQuery += ` AND p.faena_id = $${countParamIndex}`;
-      countParams.push(faenaId);
-      countParamIndex++;
-    }
+    const params = [];
+    let paramCount = 0;
 
     if (search) {
-      countQuery += ` AND p.nombre ILIKE $${countParamIndex}`;
-      countParams.push(`%${search}%`);
+      paramCount++;
+      sqlQuery += ` AND (nombre ILIKE $${paramCount} OR descripcion ILIKE $${paramCount})`;
+      params.push(`%${search}%`);
     }
 
-    const countResult = await query(countQuery, countParams);
-    const totalCount = parseInt(countResult.rows[0].count);
+    if (estado) {
+      paramCount++;
+      sqlQuery += ` AND estado = $${paramCount}`;
+      params.push(estado);
+    }
 
-    res.json({
-      success: true,
-      message: result.rows.length > 0 ? 'Plantas obtenidas exitosamente' : 'No se encontraron plantas',
-      data: result.rows,
-      pagination: {
-        limit,
-        offset,
-        total: totalCount,
-        hasMore: (offset + limit) < totalCount
-      }
-    });
+    if (faenaId) {
+      paramCount++;
+      sqlQuery += ` AND faena_id = $${paramCount}`;
+      params.push(faenaId);
+    }
 
+    sqlQuery += ` ORDER BY id LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`;
+    params.push(limit, offset);
+
+    const result = await query(sqlQuery, params);
+    res.json(result.rows);
   } catch (error) {
-    console.error('Error al obtener plantas:', error);
-    res.status(500).json({
-      success: false,
+    res.status(500).json({ 
       error: 'Error al obtener plantas',
-      message: error.message
+      details: error.message 
     });
   }
 });
@@ -85,36 +53,20 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-
-    const queryText = `
-      SELECT p.*, f.nombre as faena_nombre 
-      FROM mantenimiento.plantas p
-      LEFT JOIN mantenimiento.faenas f ON p.faena_id = f.id
-      WHERE p.id = $1
-    `;
-
-    const result = await query(queryText, [id]);
-
+    const result = await query('SELECT * FROM lubricacion.plantas WHERE id = $1', [id]);
+    
     if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
+      return res.status(404).json({ 
         error: 'Planta no encontrada',
-        message: `No existe una planta con ID ${id}`
+        message: `No se encontró una planta con ID: ${id}`
       });
     }
-
-    res.json({
-      success: true,
-      message: 'Planta obtenida exitosamente',
-      data: result.rows[0]
-    });
-
+    
+    res.json(result.rows[0]);
   } catch (error) {
-    console.error('Error al obtener planta:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Error al obtener planta',
-      message: error.message
+    res.status(500).json({ 
+      error: 'Error interno del servidor',
+      details: error.message 
     });
   }
 });
@@ -122,41 +74,26 @@ router.get('/:id', async (req, res) => {
 // POST /plantas - crear nueva planta
 router.post('/', async (req, res) => {
   try {
-    const { nombre, descripcion, faena_id } = req.body;
+    const { nombre, descripcion, ubicacion, estado, faena_id } = req.body;
 
-    // Validaciones
-    if (!nombre || nombre.trim().length === 0) {
+    if (!req.body || Object.keys(req.body).length === 0) {
       return res.status(400).json({
-        success: false,
-        error: 'Datos inválidos',
-        message: 'El nombre es requerido'
+        error: 'Datos requeridos',
+        message: 'El cuerpo de la petición no puede estar vacío'
       });
     }
 
-    const queryText = `
-      INSERT INTO mantenimiento.plantas (nombre, descripcion, faena_id, created_at, updated_at)
-      VALUES ($1, $2, $3, NOW(), NOW())
+    const result = await query(`
+      INSERT INTO lubricacion.plantas (nombre, descripcion, ubicacion, estado, faena_id)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING *
-    `;
+    `, [nombre, descripcion, ubicacion, estado, faena_id]);
 
-    const result = await query(queryText, [
-      nombre.trim(),
-      descripcion || null,
-      faena_id || null
-    ]);
-
-    res.status(201).json({
-      success: true,
-      message: 'Planta creada exitosamente',
-      data: result.rows[0]
-    });
-
+    res.status(201).json(result.rows[0]);
   } catch (error) {
-    console.error('Error al crear planta:', error);
-    res.status(500).json({
-      success: false,
+    res.status(400).json({ 
       error: 'Error al crear planta',
-      message: error.message
+      details: error.message 
     });
   }
 });
@@ -165,51 +102,34 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, descripcion, faena_id } = req.body;
+    const { nombre, descripcion, ubicacion, estado, faena_id } = req.body;
 
-    // Validaciones
-    if (!nombre || nombre.trim().length === 0) {
+    if (!req.body || Object.keys(req.body).length === 0) {
       return res.status(400).json({
-        success: false,
-        error: 'Datos inválidos',
-        message: 'El nombre es requerido'
+        error: 'Datos requeridos',
+        message: 'El cuerpo de la petición no puede estar vacío'
       });
     }
 
-    const queryText = `
-      UPDATE mantenimiento.plantas 
-      SET nombre = $1, descripcion = $2, faena_id = $3, updated_at = NOW()
-      WHERE id = $4
+    const result = await query(`
+      UPDATE lubricacion.plantas 
+      SET nombre = $1, descripcion = $2, ubicacion = $3, estado = $4, faena_id = $5, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $6
       RETURNING *
-    `;
-
-    const result = await query(queryText, [
-      nombre.trim(),
-      descripcion || null,
-      faena_id || null,
-      id
-    ]);
+    `, [nombre, descripcion, ubicacion, estado, faena_id, id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({
-        success: false,
         error: 'Planta no encontrada',
-        message: `No existe una planta con ID ${id}`
+        message: `No se encontró una planta con ID: ${id}`
       });
     }
 
-    res.json({
-      success: true,
-      message: 'Planta actualizada exitosamente',
-      data: result.rows[0]
-    });
-
+    res.json(result.rows[0]);
   } catch (error) {
-    console.error('Error al actualizar planta:', error);
-    res.status(500).json({
-      success: false,
+    res.status(400).json({ 
       error: 'Error al actualizar planta',
-      message: error.message
+      details: error.message 
     });
   }
 });
@@ -219,29 +139,25 @@ router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
-    const queryText = 'DELETE FROM mantenimiento.plantas WHERE id = $1 RETURNING *';
-    const result = await query(queryText, [id]);
+    const checkResult = await query('SELECT id FROM lubricacion.plantas WHERE id = $1', [id]);
 
-    if (result.rows.length === 0) {
+    if (checkResult.rows.length === 0) {
       return res.status(404).json({
-        success: false,
         error: 'Planta no encontrada',
-        message: `No existe una planta con ID ${id}`
+        message: `No se encontró una planta con ID: ${id}`
       });
     }
 
-    res.json({
-      success: true,
-      message: 'Planta eliminada exitosamente',
-      data: result.rows[0]
-    });
+    await query('DELETE FROM lubricacion.plantas WHERE id = $1', [id]);
 
+    res.json({ 
+      message: 'Planta eliminada exitosamente',
+      id: id 
+    });
   } catch (error) {
-    console.error('Error al eliminar planta:', error);
-    res.status(500).json({
-      success: false,
+    res.status(400).json({ 
       error: 'Error al eliminar planta',
-      message: error.message
+      details: error.message 
     });
   }
 });

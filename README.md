@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-# 🏭 Sistema de Gestión de Personal 
-=======
-# 🏭 Sistema de Gestión de Personal y
->>>>>>> 3fa15ed4745860b81fcecf47db551d6c7c911e1c
+# 🏭 Sistema de Gestión de Personal y Mantenimiento Industrial
 
 Backend completo desarrollado con Node.js, Express y PostgreSQL para la gestión integral de personal y sistemas de mantenimiento industrial.
 
@@ -230,22 +226,75 @@ backend/
 - **Equipos** (`/api/equipos`) - Equipos industriales
 - **Componentes** (`/api/componentes`) - Componentes de equipos
 
-### 🔧 Sistema de Mantenimiento
-- **Lubricantes** (`/api/lubricantes`) - Gestión de lubricantes
-- **Puntos de Lubricación** (`/api/punto-lubricacion`) - Puntos de mantenimiento
-- **Tareas Proyectadas** (`/api/tareas-proyectadas`) - Planificación de tareas
-- **Tareas Programadas** (`/api/tareas-programadas`) - Programación de mantenimiento
+### 🔧 Sistema de Mantenimiento Industrial
+
+#### 📊 **Esquema Mantenimiento** (Personal y Cursos)
+- **Personal Disponible** (`/api/personal-disponible`) - ✅ **FUNCIONANDO**
+  - `GET /api/personal-disponible` - Listar personal con paginación
+  - `POST /api/personal-disponible` - Crear nuevo personal
+  - `PUT /api/personal-disponible/:rut` - Actualizar personal
+  - `GET /api/personal-disponible/:rut` - Obtener personal por RUT
+
+- **Cursos y Certificaciones** (`/api/cursos`) - ✅ **FUNCIONANDO**
+  - `GET /api/cursos` - Listar cursos con filtros
+  - `POST /api/cursos` - Crear nuevo curso
+  - `GET /api/cursos/persona/:rut` - Cursos por persona
+  - `POST /api/cursos/:id/documentos` - Subir documentos
+  - `GET /api/cursos/:id/documentos` - Ver documentos
+  - `GET /api/documentos` - Documentos generales
+
+- **Estados del Sistema** (`/api/estados`) - ✅ **FUNCIONANDO**
+  - `GET /api/estados` - Listar estados disponibles
+
+#### 🏗️ **Esquema Lubricación - Estructura Jerárquica**
+- **Faenas** (`/api/faenas`) - ✅ **FUNCIONANDO**
+- **Plantas** (`/api/plantas`) - ✅ **FUNCIONANDO**
+- **Líneas** (`/api/lineas`) - ✅ **FUNCIONANDO**
+- **Equipos** (`/api/equipos`) - ✅ **FUNCIONANDO**
+- **Componentes** (`/api/componentes`) - ✅ **FUNCIONANDO**
+
+#### 🔧 **Esquema Lubricación - Sistema de Lubricación**
+- **Lubricantes** (`/api/lubricantes`) - ✅ **FUNCIONANDO**
+- **Puntos de Lubricación** (`/api/punto-lubricacion`) - ✅ **FUNCIONANDO**
+
+#### 📋 **Esquema Lubricación - Gestión de Tareas**
+- **Tareas Proyectadas** (`/api/tareas-proyectadas`) - ✅ **FUNCIONANDO**
+- **Tareas Programadas** (`/api/tareas-programadas`) - ✅ **FUNCIONANDO**
+- **Tareas Ejecutadas** (`/api/tareas-ejecutadas`) - ⚠️ **EN CORRECCIÓN**
 
 ### 🏥 Utilidades
 - **GET** `/api/health` - Health check del servidor
 - **GET** `/` - Información general de la API
+
+## 📊 Estado Actual del Sistema
+
+### ✅ **Endpoints Funcionando (12/14)**
+- **Tasa de éxito: 85.7%**
+- **Base de datos**: PostgreSQL conectada correctamente
+- **Esquemas**: `mantenimiento` y `lubricacion` operativos
+- **Conexión**: Supabase configurada y funcionando
+
+### ⚠️ **Endpoints en Corrección (2/14)**
+- `/api/cursos/stats` - Endpoint de estadísticas (pendiente implementación)
+- `/api/tareas-ejecutadas` - Error de estructura de tabla (en corrección)
+
+### 🎯 **Funcionalidades Completas**
+- ✅ Gestión completa de personal
+- ✅ Sistema de cursos y certificaciones
+- ✅ Estructura jerárquica industrial (Faenas → Plantas → Líneas → Equipos → Componentes)
+- ✅ Sistema de lubricación
+- ✅ Gestión de tareas proyectadas y programadas
+- ✅ Upload y descarga de documentos
+- ✅ Filtros y búsquedas avanzadas
+- ✅ Paginación en todos los endpoints
 
 ## 🌐 Configuración de Red
 
 El sistema está configurado para funcionar tanto en desarrollo local como en red:
 
 - **URL Local**: `http://localhost:3000`
-- **URL Red**: `http://[IP-LOCAL]:3000` (se detecta automáticamente)
+- **URL Red**: `http://192.168.10.198:3000` (IP actual detectada)
+- **Health Check**: `http://localhost:3000/api/health`
 - **CORS**: Configurado para IPs de red local (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
 
 ### Scripts de Red
@@ -279,8 +328,11 @@ El sistema está configurado para funcionar tanto en desarrollo local como en re
 
 ## 📊 Características de Performance
 
-- **Query promedio**: 140-150ms
-- **Paginación**: Configurada en todos los listados
+- **Query promedio**: 140-200ms (optimizado con PostgreSQL directo)
+- **Paginación**: Configurada en todos los listados (20 registros por defecto)
+- **Base de datos**: PostgreSQL con Supabase (conexión estable)
+- **Esquemas**: Separación lógica entre `mantenimiento` y `lubricacion`
+- **Endpoints activos**: 12/14 funcionando (85.7% operativo)
 - **Caché**: Respuestas 304 para recursos sin cambios
 - **Logging**: Monitoreo completo de requests y queries
 - **Optimización**: JOINs optimizados y consultas eficientes
@@ -417,3 +469,10 @@ Para soporte técnico o dudas, revisar la documentación en la carpeta `docs/` o
 ---
 
 **🏭 Sistema de Gestión de Personal y Mantenimiento Industrial - v1.0.0**
+
+
+
+
+
+
+

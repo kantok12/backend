@@ -1,83 +1,69 @@
 const express = require('express');
 const router = express.Router();
-const { getSupabaseAdminClient } = require('../config/database');
+const { query } = require('../config/postgresql');
 
-// GET /lineas - listar todas las líneas (con paginación opcional)
+// GET /lineas - obtener todas las líneas
 router.get('/', async (req, res) => {
   try {
-    const supabase = getSupabaseAdminClient();
     const limit = Number(req.query.limit) || 20;
     const offset = Number(req.query.offset) || 0;
     const search = req.query.search;
+    const estado = req.query.estado;
     const plantaId = req.query.planta_id;
 
-    let query = supabase
-      .from('lineas')
-      .select('*, plantas!inner(id, nombre, faenas!inner(id, nombre))')
-      .range(offset, offset + limit - 1);
+    let sqlQuery = `
+      SELECT * FROM lubricacion.lineas
+      WHERE 1=1
+    `;
+    const params = [];
+    let paramCount = 0;
 
     if (search) {
-      query = query.ilike('nombre', `%${search}%`);
+      paramCount++;
+      sqlQuery += ` AND (nombre ILIKE $${paramCount} OR descripcion ILIKE $${paramCount})`;
+      params.push(`%${search}%`);
+    }
+
+    if (estado) {
+      paramCount++;
+      sqlQuery += ` AND estado = $${paramCount}`;
+      params.push(estado);
     }
 
     if (plantaId) {
-      query = query.eq('planta_id', plantaId);
+      paramCount++;
+      sqlQuery += ` AND planta_id = $${paramCount}`;
+      params.push(plantaId);
     }
 
-    const { data, error } = await query;
+    sqlQuery += ` ORDER BY id LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`;
+    params.push(limit, offset);
 
-    if (error) {
-      return res.status(500).json({ 
-        error: 'Error al obtener líneas',
-        details: error.message 
-      });
-    }
-
-    res.json({
-      success: true,
-      data: data,
-      pagination: {
-        offset,
-        limit,
-        count: data.length
-      }
-    });
-
+    const result = await query(sqlQuery, params);
+    res.json(result.rows);
   } catch (error) {
-    console.error('Error en GET /lineas:', error);
     res.status(500).json({ 
-      error: 'Error interno del servidor',
+      error: 'Error al obtener líneas',
       details: error.message 
     });
   }
 });
 
-// GET /lineas/:id - obtener una línea por ID
+// GET /lineas/:id - obtener línea por ID
 router.get('/:id', async (req, res) => {
   try {
-    const supabase = getSupabaseAdminClient();
     const { id } = req.params;
-
-    const { data, error } = await supabase
-      .from('lineas')
-      .select('*, plantas!inner(id, nombre, faenas!inner(id, nombre))')
-      .eq('id', id)
-      .single();
-
-    if (error) {
+    const result = await query('SELECT * FROM lubricacion.lineas WHERE id = $1', [id]);
+    
+    if (result.rows.length === 0) {
       return res.status(404).json({ 
         error: 'Línea no encontrada',
-        details: error.message 
+        message: `No se encontró una línea con ID: ${id}`
       });
     }
-
-    res.json({
-      success: true,
-      data: data
-    });
-
+    
+    res.json(result.rows[0]);
   } catch (error) {
-    console.error('Error en GET /lineas/:id:', error);
     res.status(500).json({ 
       error: 'Error interno del servidor',
       details: error.message 
@@ -88,183 +74,115 @@ router.get('/:id', async (req, res) => {
 // GET /lineas/:id/equipos - obtener equipos de una línea
 router.get('/:id/equipos', async (req, res) => {
   try {
-    const supabase = getSupabaseAdminClient();
     const { id } = req.params;
     const limit = Number(req.query.limit) || 20;
     const offset = Number(req.query.offset) || 0;
 
-    const { data, error } = await supabase
-      .from('equipos')
-      .select('*')
-      .eq('linea_id', id)
-      .range(offset, offset + limit - 1);
+    const result = await query(`
+      SELECT * FROM lubricacion.equipos 
+      WHERE linea_id = $1 
+      ORDER BY id 
+      LIMIT $2 OFFSET $3
+    `, [id, limit, offset]);
 
-    if (error) {
-      return res.status(500).json({ 
-        error: 'Error al obtener equipos de la línea',
-        details: error.message 
-      });
-    }
-
-    res.json({
-      success: true,
-      data: data,
-      pagination: {
-        offset,
-        limit,
-        count: data.length
-      }
-    });
-
+    res.json(result.rows);
   } catch (error) {
-    console.error('Error en GET /lineas/:id/equipos:', error);
     res.status(500).json({ 
-      error: 'Error interno del servidor',
+      error: 'Error al obtener equipos',
       details: error.message 
     });
   }
 });
 
-// POST /lineas - crear una nueva línea
+// POST /lineas - crear nueva línea
 router.post('/', async (req, res) => {
   try {
-    const supabase = getSupabaseAdminClient();
-    const payload = req.body;
+    const { nombre, descripcion, estado, planta_id } = req.body;
 
-    if (!payload || Object.keys(payload).length === 0) {
+    if (!req.body || Object.keys(req.body).length === 0) {
       return res.status(400).json({
         error: 'Datos requeridos',
         message: 'El cuerpo de la petición no puede estar vacío'
       });
     }
 
-    if (!payload.planta_id) {
-      return res.status(400).json({
-        error: 'planta_id es requerido',
-        message: 'Debe especificar el ID de la planta'
-      });
-    }
+    const result = await query(`
+      INSERT INTO lubricacion.lineas (nombre, descripcion, estado, planta_id)
+      VALUES ($1, $2, $3, $4)
+      RETURNING *
+    `, [nombre, descripcion, estado, planta_id]);
 
-    const { data, error } = await supabase
-      .from('lineas')
-      .insert([payload])
-      .select('*, plantas!inner(id, nombre, faenas!inner(id, nombre))');
-
-    if (error) {
-      return res.status(400).json({ 
-        error: 'Error al crear línea',
-        details: error.message 
-      });
-    }
-
-    res.status(201).json({
-      success: true,
-      data: data[0],
-      message: 'Línea creada exitosamente'
-    });
-
+    res.status(201).json(result.rows[0]);
   } catch (error) {
-    console.error('Error en POST /lineas:', error);
-    res.status(500).json({ 
-      error: 'Error interno del servidor',
+    res.status(400).json({ 
+      error: 'Error al crear línea',
       details: error.message 
     });
   }
 });
 
-// PUT /lineas/:id - actualizar una línea
+// PUT /lineas/:id - actualizar línea
 router.put('/:id', async (req, res) => {
   try {
-    const supabase = getSupabaseAdminClient();
     const { id } = req.params;
-    const payload = req.body;
+    const { nombre, descripcion, estado, planta_id } = req.body;
 
-    if (!payload || Object.keys(payload).length === 0) {
+    if (!req.body || Object.keys(req.body).length === 0) {
       return res.status(400).json({
         error: 'Datos requeridos',
         message: 'El cuerpo de la petición no puede estar vacío'
       });
     }
 
-    const { data, error } = await supabase
-      .from('lineas')
-      .update(payload)
-      .eq('id', id)
-      .select('*, plantas!inner(id, nombre, faenas!inner(id, nombre))');
+    const result = await query(`
+      UPDATE lubricacion.lineas 
+      SET nombre = $1, descripcion = $2, estado = $3, planta_id = $4, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $5
+      RETURNING *
+    `, [nombre, descripcion, estado, planta_id, id]);
 
-    if (error) {
-      return res.status(400).json({ 
-        error: 'Error al actualizar línea',
-        details: error.message 
-      });
-    }
-
-    if (!data || data.length === 0) {
+    if (result.rows.length === 0) {
       return res.status(404).json({
         error: 'Línea no encontrada',
         message: `No se encontró una línea con ID: ${id}`
       });
     }
 
-    res.json({
-      success: true,
-      data: data[0],
-      message: 'Línea actualizada exitosamente'
-    });
-
+    res.json(result.rows[0]);
   } catch (error) {
-    console.error('Error en PUT /lineas/:id:', error);
-    res.status(500).json({ 
-      error: 'Error interno del servidor',
+    res.status(400).json({ 
+      error: 'Error al actualizar línea',
       details: error.message 
     });
   }
 });
 
-// DELETE /lineas/:id - eliminar una línea
+// DELETE /lineas/:id - eliminar línea
 router.delete('/:id', async (req, res) => {
   try {
-    const supabase = getSupabaseAdminClient();
     const { id } = req.params;
 
-    const { data: existingLinea, error: selectError } = await supabase
-      .from('lineas')
-      .select('id')
-      .eq('id', id)
-      .single();
+    const checkResult = await query('SELECT id FROM lubricacion.lineas WHERE id = $1', [id]);
 
-    if (selectError || !existingLinea) {
+    if (checkResult.rows.length === 0) {
       return res.status(404).json({
         error: 'Línea no encontrada',
         message: `No se encontró una línea con ID: ${id}`
       });
     }
 
-    const { error } = await supabase
-      .from('lineas')
-      .delete()
-      .eq('id', id);
+    await query('DELETE FROM lubricacion.lineas WHERE id = $1', [id]);
 
-    if (error) {
-      return res.status(400).json({ 
-        error: 'Error al eliminar línea',
-        details: error.message 
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'Línea eliminada exitosamente'
+    res.json({ 
+      message: 'Línea eliminada exitosamente',
+      id: id 
     });
-
   } catch (error) {
-    console.error('Error en DELETE /lineas/:id:', error);
-    res.status(500).json({ 
-      error: 'Error interno del servidor',
+    res.status(400).json({ 
+      error: 'Error al eliminar línea',
       details: error.message 
     });
   }
 });
 
 module.exports = router;
-

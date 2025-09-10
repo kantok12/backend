@@ -2,17 +2,16 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../config/postgresql');
 
-// GET /componentes - obtener todos los componentes
+// GET /faenas - obtener todas las faenas
 router.get('/', async (req, res) => {
   try {
     const limit = Number(req.query.limit) || 20;
     const offset = Number(req.query.offset) || 0;
     const search = req.query.search;
     const estado = req.query.estado;
-    const equipoId = req.query.equipo_id;
 
     let sqlQuery = `
-      SELECT * FROM lubricacion.componentes
+      SELECT * FROM lubricacion.faenas
       WHERE 1=1
     `;
     const params = [];
@@ -20,7 +19,7 @@ router.get('/', async (req, res) => {
 
     if (search) {
       paramCount++;
-      sqlQuery += ` AND (nombre ILIKE $${paramCount} OR descripcion ILIKE $${paramCount})`;
+      sqlQuery += ` AND (nombre ILIKE $${paramCount} OR descripcion ILIKE $${paramCount} OR ubicacion ILIKE $${paramCount})`;
       params.push(`%${search}%`);
     }
 
@@ -30,38 +29,37 @@ router.get('/', async (req, res) => {
       params.push(estado);
     }
 
-    if (equipoId) {
-      paramCount++;
-      sqlQuery += ` AND equipo_id = $${paramCount}`;
-      params.push(equipoId);
-    }
-
     sqlQuery += ` ORDER BY id LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`;
     params.push(limit, offset);
 
     const result = await query(sqlQuery, params);
+
     res.json(result.rows);
   } catch (error) {
     res.status(500).json({ 
-      error: 'Error al obtener componentes',
+      error: 'Error al obtener faenas',
       details: error.message 
     });
   }
 });
 
-// GET /componentes/:id - obtener componente por ID
+// GET /faenas/:id - obtener faena por ID
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await query('SELECT * FROM lubricacion.componentes WHERE id = $1', [id]);
-    
+
+    const result = await query(
+      'SELECT * FROM lubricacion.faenas WHERE id = $1',
+      [id]
+    );
+
     if (result.rows.length === 0) {
       return res.status(404).json({ 
-        error: 'Componente no encontrado',
-        message: `No se encontró un componente con ID: ${id}`
+        error: 'Faena no encontrada',
+        message: `No se encontró una faena con ID: ${id}`
       });
     }
-    
+
     res.json(result.rows[0]);
   } catch (error) {
     res.status(500).json({ 
@@ -71,38 +69,33 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// GET /componentes/:id/puntos-lubricacion - obtener puntos de lubricación de un componente
-router.get('/:id/puntos-lubricacion', async (req, res) => {
+// GET /faenas/:id/plantas - obtener plantas de una faena
+router.get('/:id/plantas', async (req, res) => {
   try {
     const { id } = req.params;
     const limit = Number(req.query.limit) || 20;
     const offset = Number(req.query.offset) || 0;
 
     const result = await query(`
-      SELECT 
-        pl.*,
-        lub.marca as lubricante_marca,
-        lub.tipo as lubricante_tipo
-      FROM lubricacion.punto_lubricacion pl
-      JOIN lubricacion.lubricantes lub ON pl.lubricante_id = lub.id
-      WHERE pl.componente_id = $1 
-      ORDER BY pl.id 
+      SELECT * FROM lubricacion.plantas 
+      WHERE faena_id = $1 
+      ORDER BY id 
       LIMIT $2 OFFSET $3
     `, [id, limit, offset]);
 
     res.json(result.rows);
   } catch (error) {
     res.status(500).json({ 
-      error: 'Error al obtener puntos de lubricación',
+      error: 'Error al obtener plantas',
       details: error.message 
     });
   }
 });
 
-// POST /componentes - crear nuevo componente
+// POST /faenas - crear nueva faena
 router.post('/', async (req, res) => {
   try {
-    const { nombre, descripcion, tipo, estado, equipo_id } = req.body;
+    const { nombre, descripcion, ubicacion, estado } = req.body;
 
     if (!req.body || Object.keys(req.body).length === 0) {
       return res.status(400).json({
@@ -112,25 +105,25 @@ router.post('/', async (req, res) => {
     }
 
     const result = await query(`
-      INSERT INTO lubricacion.componentes (nombre, descripcion, tipo, estado, equipo_id)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO lubricacion.faenas (nombre, descripcion, ubicacion, estado)
+      VALUES ($1, $2, $3, $4)
       RETURNING *
-    `, [nombre, descripcion, tipo, estado, equipo_id]);
+    `, [nombre, descripcion, ubicacion, estado]);
 
     res.status(201).json(result.rows[0]);
   } catch (error) {
     res.status(400).json({ 
-      error: 'Error al crear componente',
+      error: 'Error al crear faena',
       details: error.message 
     });
   }
 });
 
-// PUT /componentes/:id - actualizar componente
+// PUT /faenas/:id - actualizar faena
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, descripcion, tipo, estado, equipo_id } = req.body;
+    const { nombre, descripcion, ubicacion, estado } = req.body;
 
     if (!req.body || Object.keys(req.body).length === 0) {
       return res.status(400).json({
@@ -140,51 +133,56 @@ router.put('/:id', async (req, res) => {
     }
 
     const result = await query(`
-      UPDATE lubricacion.componentes 
-      SET nombre = $1, descripcion = $2, tipo = $3, estado = $4, equipo_id = $5, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $6
+      UPDATE lubricacion.faenas 
+      SET nombre = $1, descripcion = $2, ubicacion = $3, estado = $4, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $5
       RETURNING *
-    `, [nombre, descripcion, tipo, estado, equipo_id, id]);
+    `, [nombre, descripcion, ubicacion, estado, id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({
-        error: 'Componente no encontrado',
-        message: `No se encontró un componente con ID: ${id}`
+        error: 'Faena no encontrada',
+        message: `No se encontró una faena con ID: ${id}`
       });
     }
 
     res.json(result.rows[0]);
   } catch (error) {
     res.status(400).json({ 
-      error: 'Error al actualizar componente',
+      error: 'Error al actualizar faena',
       details: error.message 
     });
   }
 });
 
-// DELETE /componentes/:id - eliminar componente
+// DELETE /faenas/:id - eliminar faena
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
-    const checkResult = await query('SELECT id FROM lubricacion.componentes WHERE id = $1', [id]);
+    // Verificar que la faena existe
+    const checkResult = await query(
+      'SELECT id FROM lubricacion.faenas WHERE id = $1',
+      [id]
+    );
 
     if (checkResult.rows.length === 0) {
       return res.status(404).json({
-        error: 'Componente no encontrado',
-        message: `No se encontró un componente con ID: ${id}`
+        error: 'Faena no encontrada',
+        message: `No se encontró una faena con ID: ${id}`
       });
     }
 
-    await query('DELETE FROM lubricacion.componentes WHERE id = $1', [id]);
+    // Eliminar la faena
+    await query('DELETE FROM lubricacion.faenas WHERE id = $1', [id]);
 
     res.json({ 
-      message: 'Componente eliminado exitosamente',
+      message: 'Faena eliminada exitosamente',
       id: id 
     });
   } catch (error) {
     res.status(400).json({ 
-      error: 'Error al eliminar componente',
+      error: 'Error al eliminar faena',
       details: error.message 
     });
   }
