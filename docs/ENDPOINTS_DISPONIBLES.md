@@ -74,7 +74,51 @@
 | `POST` | `/:id/documentos` | Subir documentos a curso |
 | `GET` | `/:id/documentos` | Ver documentos de curso |
 
+---
+
+## 🏢 Área de Servicio
+
+### `/api/area-servicio`
+- **Descripción**: Gestión especializada del área de servicio y personal disponible
+- **Métodos**: `GET`
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| `GET` | `/` | Listar personal del área de servicio (con filtros) |
+| `GET` | `/stats` | Estadísticas del área de servicio |
+| `GET` | `/cargos` | Listar cargos disponibles |
+| `GET` | `/zonas` | Listar zonas geográficas |
+| `GET` | `/cargo/:cargo` | Personal por cargo específico |
+| `GET` | `/zona/:zona` | Personal por zona geográfica |
+| `GET` | `/disponibles` | Personal disponible para servicio |
+
 #### Ejemplos de Uso:
+```bash
+# Listar personal del área de servicio
+GET /api/area-servicio?cargo=operador&estado_id=1
+
+# Estadísticas del área de servicio
+GET /api/area-servicio/stats
+
+# Personal por cargo específico
+GET /api/area-servicio/cargo/operador
+
+# Personal por zona geográfica
+GET /api/area-servicio/zona/norte
+
+# Personal disponible para servicio
+GET /api/area-servicio/disponibles?cargo=supervisor
+
+# Listar cargos disponibles
+GET /api/area-servicio/cargos
+
+# Listar zonas geográficas
+GET /api/area-servicio/zonas
+```
+
+---
+
+#### Ejemplos de Uso - Cursos:
 ```bash
 # Listar cursos
 GET /api/cursos?rut=12345678-9&curso=seguridad

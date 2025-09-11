@@ -17,6 +17,9 @@ const nombresRoutes = require('./routes/nombres');
 const cursosRoutes = require('./routes/cursos-new');
 const documentosRoutes = require('./routes/documentos');
 const migrationRoutes = require('./routes/migration');
+const areaServicioRoutes = require('./routes/area-servicio');
+const servicioRoutes = require('./routes/servicio');
+const backupRoutes = require('./routes/backup');
 
 // Importar middleware
 const { errorHandler } = require('./middleware/errorHandler');
@@ -107,6 +110,9 @@ app.use('/api/nombres', nombresRoutes);
 app.use('/api/cursos', cursosRoutes);
 app.use('/api/documentos', documentosRoutes);
 app.use('/api/migration', migrationRoutes);
+app.use('/api/area-servicio', areaServicioRoutes);
+app.use('/api/servicio', servicioRoutes);
+app.use('/api/backup', backupRoutes);
 
 // Ruta de salud
 app.get('/api/health', (req, res) => {
@@ -183,6 +189,49 @@ app.get('/', (req, res) => {
             'GET /estados-status': 'Verificar estado actual de estados',
             'POST /update-estados': 'Actualizar estados del sistema'
           }
+        },
+        areaServicio: {
+          base: '/api/area-servicio',
+          methods: ['GET'],
+          description: 'Gestión del área de servicio y personal disponible',
+          subEndpoints: {
+            'GET /': 'Listar personal del área de servicio (con filtros)',
+            'GET /stats': 'Estadísticas del área de servicio',
+            'GET /cargos': 'Listar cargos disponibles',
+            'GET /zonas': 'Listar zonas geográficas',
+            'GET /cargo/:cargo': 'Personal por cargo específico',
+            'GET /zona/:zona': 'Personal por zona geográfica',
+            'GET /disponibles': 'Personal disponible para servicio'
+          }
+        },
+        servicio: {
+          base: '/api/servicio',
+          methods: ['GET', 'POST'],
+          description: 'Gestión de servicios con estructura jerárquica: Cartera → Ingeniería → Nodos',
+          subEndpoints: {
+            'GET /carteras': 'Listar carteras de servicios',
+            'GET /carteras/:id': 'Obtener cartera por ID',
+            'POST /carteras': 'Crear nueva cartera',
+            'GET /ingenieros': 'Listar ingenieros de servicios',
+            'GET /ingenieros/:id': 'Obtener ingeniero por ID',
+            'POST /ingenieros': 'Crear nuevo ingeniero',
+            'GET /nodos': 'Listar nodos de servicio',
+            'GET /estructura': 'Estructura jerárquica completa',
+            'GET /servicios-vencer': 'Servicios próximos a vencer',
+            'GET /estadisticas': 'Estadísticas generales del sistema'
+          }
+        },
+        backup: {
+          base: '/api/backup',
+          methods: ['GET', 'POST', 'DELETE'],
+          description: 'Sistema de backup y restauración de la base de datos',
+          subEndpoints: {
+            'GET /': 'Listar backups existentes',
+            'POST /': 'Crear nuevo backup de la base de datos',
+            'GET /:filename': 'Descargar backup específico',
+            'DELETE /:filename': 'Eliminar backup específico',
+            'GET /info': 'Información del sistema de backups'
+          }
         }
       },
       health: {
@@ -207,6 +256,25 @@ app.get('/', (req, res) => {
           'Migración segura de datos existentes',
           'Verificación de estado de migración',
           'Rollback automático en caso de error'
+        ]
+      },
+      areaServicio: {
+        description: 'Gestión especializada del área de servicio',
+        benefits: [
+          'Filtros avanzados por cargo y zona geográfica',
+          'Estadísticas detalladas del personal',
+          'Identificación de personal disponible para servicio',
+          'Gestión organizada por áreas de trabajo'
+        ]
+      },
+      servicio: {
+        description: 'Sistema de gestión de servicios con estructura jerárquica',
+        benefits: [
+          'Estructura en cascada: Cartera → Ingeniería → Nodos',
+          'Gestión completa de servicios programados',
+          'Seguimiento de servicios próximos a vencer',
+          'Estadísticas detalladas por cartera y tipo de nodo',
+          'Control de cumplimiento de servicios por programación'
         ]
       }
     }

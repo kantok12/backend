@@ -346,7 +346,7 @@ router.post('/', uploadMultiple, handleUploadError, async (req, res) => {
     for (const archivo of archivos) {
       try {
         const insertDocumentQuery = `
-          INSERT INTO mantenimiento.documentos (
+        INSERT INTO mantenimiento.documentos (
             rut_persona,
             nombre_documento,
             tipo_documento,
@@ -357,20 +357,20 @@ router.post('/', uploadMultiple, handleUploadError, async (req, res) => {
             ruta_archivo,
             descripcion,
             subido_por
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
           RETURNING id, fecha_subida
-        `;
-        
+      `;
+      
         const documentData = [
           rut_persona,
-          nombre_documento,
-          tipo_documento,
+        nombre_documento,
+        tipo_documento,
           archivo.filename,
           archivo.originalname,
           archivo.mimetype,
           archivo.size,
           archivo.path,
-          descripcion || null,
+        descripcion || null,
           req.user?.username || 'sistema'
         ];
         
@@ -663,7 +663,7 @@ router.get('/tipos', async (req, res) => {
   } catch (error) {
     console.error('❌ Error obteniendo tipos de documento:', error);
     res.status(500).json({
-      success: false,
+        success: false,
       message: 'Error interno del servidor',
       error: error.message
     });

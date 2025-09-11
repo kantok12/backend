@@ -1,11 +1,11 @@
-# 📋 Resumen de Endpoints - Sistema de Mantenimiento v1.1.0
+# 📋 Resumen de Endpoints - Sistema de Mantenimiento v1.2.0
 
 ## 🎯 Resumen Ejecutivo
 
-**Total de Endpoints**: 25+  
-**Módulos Activos**: 5  
+**Total de Endpoints**: 32+  
+**Módulos Activos**: 6  
 **Estado**: 100% Funcional  
-**Versión**: 1.1.0  
+**Versión**: 1.2.0  
 
 ---
 
@@ -17,6 +17,7 @@
 | **Estados** | 5 | ✅ | Gestión de estados del personal |
 | **Cursos** | 5 | ✅ | Cursos y certificaciones |
 | **Documentos** | 7 | ✅ | Gestión independiente de documentos |
+| **Área de Servicio** | 7 | ✅ | Gestión especializada del área de servicio |
 | **Migración** | 2 | ✅ | Herramientas de migración |
 | **Sistema** | 2 | ✅ | Health check y información general |
 
@@ -62,6 +63,17 @@ GET    /persona/:rut               # Documentos por persona
 GET    /:id/descargar              # Descargar documento
 DELETE /:id                        # Eliminar documento
 GET    /tipos                      # Tipos disponibles
+```
+
+### 🏢 Área de Servicio (`/api/area-servicio`) - NUEVO
+```
+GET    /                           # Listar personal (con filtros)
+GET    /stats                      # Estadísticas del área
+GET    /cargos                     # Listar cargos disponibles
+GET    /zonas                      # Listar zonas geográficas
+GET    /cargo/:cargo               # Personal por cargo
+GET    /zona/:zona                 # Personal por zona
+GET    /disponibles                # Personal disponible para servicio
 ```
 
 ### 🔧 Migración (`/api/migration`) - NUEVO
@@ -150,5 +162,5 @@ GET    /                           # Información general
 ---
 
 **Última actualización**: 10 de enero de 2025  
-**Versión**: 1.1.0  
+**Versión**: 1.2.0  
 **Estado**: ✅ Listo para producción
