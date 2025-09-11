@@ -1,36 +1,133 @@
 const express = require('express');
-const router = express.Router();
-const { query } = require('../config/postgresql');
-const { uploadMultiple, uploadSingle, handleUploadError, deleteFile, getFileInfo, fileExists } = require('../middleware/upload');
+const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { query } = require('../config/postgresql');
 
-/**
- * RUTAS PARA DOCUMENTOS
- * Maneja la tabla mantenimiento.documentos
- * 
- * Estructura de la tabla:
- * - id: integer (PK, auto-increment)
- * - rut_persona: text (RUT del personal)
- * - nombre_documento: varchar (Nombre descriptivo del documento)
- * - tipo_documento: varchar (certificado_curso, diploma, certificado_laboral, etc.)
- * - nombre_archivo: varchar (Nombre del archivo en el sistema)
- * - nombre_original: varchar (Nombre original del archivo)
- * - tipo_mime: varchar (Tipo MIME del archivo)
- * - tamaño_bytes: bigint (Tamaño en bytes)
- * - ruta_archivo: text (Ruta completa del archivo)
- * - descripcion: text (Descripción opcional)
- * - fecha_subida: timestamp
- * - subido_por: varchar (Usuario que subió)
- * - activo: boolean
- */
+const router = express.Router();
+
+// =====================================================
+// CONFIGURACIÓN DE MULTER PARA SUBIDA DE ARCHIVOS
+// =====================================================
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(__dirname, '../uploads/documentos');
+    
+    // Crear directorio si no existe
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    // Generar nombre único con timestamp
+    const timestamp = Date.now();
+    const ext = path.extname(file.originalname);
+    const name = path.basename(file.originalname, ext);
+    const safeName = name.replace(/[^a-zA-Z0-9]/g, '_');
+    
+    cb(null, `${safeName}_${timestamp}${ext}`);
+  }
+});
+
+const uploadMultiple = multer({
+  storage: storage,
+  limits: {
+    fileSize: 50 * 1024 * 1024, // 50MB por archivo (para PDFs grandes)
+    files: 5 // Máximo 5 archivos por request
+  },
+  fileFilter: (req, file, cb) => {
+    // Tipos de archivo permitidos - Enfocado en documentos
+    const allowedTypes = [
+      // PDF - Principal formato de documentos
+      'application/pdf',
+      // Imágenes para documentos escaneados
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/tiff',
+      'image/bmp',
+      // Documentos de Office
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      // Otros formatos de documentos
+      'text/plain',
+      'application/rtf'
+    ];
+    
+    // Validar extensión también
+    const allowedExtensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.rtf', '.jpg', '.jpeg', '.png', '.tiff', '.bmp'];
+    const fileExtension = path.extname(file.originalname).toLowerCase();
+    
+    if (allowedTypes.includes(file.mimetype) && allowedExtensions.includes(fileExtension)) {
+      cb(null, true);
+    } else {
+      cb(new Error(`Tipo de archivo no permitido: ${file.mimetype} (${fileExtension}). Tipos permitidos: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, RTF, JPG, PNG, TIFF, BMP`), false);
+    }
+  }
+}).array('archivos', 5);
+
+// Middleware para manejar errores de multer
+const handleUploadError = (error, req, res, next) => {
+  if (error instanceof multer.MulterError) {
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({
+        success: false,
+        message: 'El archivo es demasiado grande. Máximo 50MB por archivo.'
+      });
+    }
+    if (error.code === 'LIMIT_FILE_COUNT') {
+      return res.status(400).json({
+        success: false,
+        message: 'Demasiados archivos. Máximo 5 archivos por request.'
+      });
+    }
+  }
+  
+  if (error.message.includes('Tipo de archivo no permitido')) {
+    return res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+  
+  next(error);
+};
+
+// Función para eliminar archivo
+const deleteFile = (filePath) => {
+  try {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+      console.log(`🗑️ Archivo eliminado: ${filePath}`);
+    }
+  } catch (error) {
+    console.error(`❌ Error eliminando archivo ${filePath}:`, error);
+  }
+};
+
+// =====================================================
+// ENDPOINTS PARA GESTIÓN DE DOCUMENTOS
+// =====================================================
 
 // GET /api/documentos - Obtener todos los documentos
 router.get('/', async (req, res) => {
   try {
-    const { limit = 50, offset = 0, rut, tipo_documento } = req.query;
+    const { 
+      limit = 50, 
+      offset = 0, 
+      rut, 
+      tipo_documento, 
+      nombre_documento 
+    } = req.query;
     
-    console.log('📋 GET /api/documentos - Obteniendo documentos');
+    console.log('📄 GET /api/documentos - Obteniendo documentos');
     
     // Construir query con filtros opcionales
     let whereConditions = ['d.activo = true'];
@@ -47,12 +144,15 @@ router.get('/', async (req, res) => {
       queryParams.push(tipo_documento);
     }
     
-    const whereClause = whereConditions.length > 0 
-      ? `WHERE ${whereConditions.join(' AND ')}`
-      : '';
+    if (nombre_documento) {
+      whereConditions.push(`d.nombre_documento ILIKE $${paramIndex++}`);
+      queryParams.push(`%${nombre_documento}%`);
+    }
+    
+    const whereClause = `WHERE ${whereConditions.join(' AND ')}`;
     
     // Query principal con JOIN al personal_disponible
-    const mainQuery = `
+    const getAllQuery = `
       SELECT 
         d.id,
         d.rut_persona,
@@ -65,40 +165,40 @@ router.get('/', async (req, res) => {
         d.descripcion,
         d.fecha_subida,
         d.subido_por,
-        p.nombre as nombre_persona,
-        p.cargo,
-        p.zona_geografica
+        pd.nombre as nombre_persona,
+        pd.cargo,
+        pd.zona_geografica
       FROM mantenimiento.documentos d
-      LEFT JOIN mantenimiento.personal_disponible p ON d.rut_persona = p.rut
+      LEFT JOIN mantenimiento.personal_disponible pd ON d.rut_persona = pd.rut
       ${whereClause}
-      ORDER BY d.fecha_subida DESC
+      ORDER BY d.fecha_subida DESC, d.nombre_documento
       LIMIT $${paramIndex++} OFFSET $${paramIndex++}
     `;
     
     queryParams.push(parseInt(limit), parseInt(offset));
     
-    const result = await query(mainQuery, queryParams);
+    const result = await query(getAllQuery, queryParams);
     
-    // Query para contar total
+    // Query para contar total de registros
     const countQuery = `
       SELECT COUNT(*) as total
       FROM mantenimiento.documentos d
-      LEFT JOIN mantenimiento.personal_disponible p ON d.rut_persona = p.rut
       ${whereClause}
     `;
     
-    const countResult = await query(countQuery, queryParams.slice(0, -2));
+    const countResult = await query(countQuery, queryParams.slice(0, -2)); // Remover limit y offset
+    const total = parseInt(countResult.rows[0].total);
     
-    console.log(`✅ ${result.rows.length} documentos obtenidos`);
+    console.log(`✅ Encontrados ${result.rows.length} documentos de ${total} total`);
     
     res.json({
       success: true,
       data: result.rows,
       pagination: {
-        total: parseInt(countResult.rows[0].total),
+        total,
         limit: parseInt(limit),
         offset: parseInt(offset),
-        hasMore: (parseInt(offset) + parseInt(limit)) < parseInt(countResult.rows[0].total)
+        hasMore: (parseInt(offset) + parseInt(limit)) < total
       }
     });
     
@@ -112,62 +212,304 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /api/documentos/persona/:rut - Obtener documentos de una persona específica
+// GET /api/documentos/:id - Obtener documento por ID
+router.get('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    console.log(`📄 GET /api/documentos/${id} - Obteniendo documento`);
+    
+    const getDocumentQuery = `
+      SELECT 
+        d.id,
+        d.rut_persona,
+        d.nombre_documento,
+        d.tipo_documento,
+        d.nombre_archivo,
+        d.nombre_original,
+        d.tipo_mime,
+        d.tamaño_bytes,
+        d.ruta_archivo,
+        d.descripcion,
+        d.fecha_subida,
+        d.subido_por,
+        pd.nombre as nombre_persona,
+        pd.cargo,
+        pd.zona_geografica
+      FROM mantenimiento.documentos d
+      LEFT JOIN mantenimiento.personal_disponible pd ON d.rut_persona = pd.rut
+      WHERE d.id = $1 AND d.activo = true
+    `;
+    
+    const result = await query(getDocumentQuery, [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: `No se encontró documento con ID: ${id}`
+      });
+    }
+    
+    console.log(`✅ Documento encontrado: ${result.rows[0].nombre_documento}`);
+    
+    res.json({
+      success: true,
+      data: result.rows[0]
+    });
+    
+  } catch (error) {
+    console.error(`❌ Error obteniendo documento ${req.params.id}:`, error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
+// POST /api/documentos - Subir documentos
+router.post('/', uploadMultiple, handleUploadError, async (req, res) => {
+  try {
+    const { 
+      rut_persona, 
+      nombre_documento, 
+      tipo_documento, 
+      descripcion 
+    } = req.body;
+    const archivos = req.files;
+    
+    console.log('📄 POST /api/documentos - Subiendo documentos');
+    console.log('🔍 Datos recibidos:', { 
+      rut_persona, 
+      nombre_documento, 
+      tipo_documento, 
+      descripcion, 
+      archivos: archivos?.length || 0 
+    });
+    
+    // Validaciones
+    if (!rut_persona) {
+      return res.status(400).json({
+        success: false,
+        message: 'El RUT de la persona es requerido'
+      });
+    }
+    
+    if (!nombre_documento) {
+      return res.status(400).json({
+        success: false,
+        message: 'El nombre del documento es requerido'
+      });
+    }
+    
+    if (!tipo_documento) {
+      return res.status(400).json({
+        success: false,
+        message: 'El tipo de documento es requerido'
+      });
+    }
+    
+    if (!archivos || archivos.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No se proporcionaron archivos para subir'
+      });
+    }
+    
+    // Verificar que la persona existe
+    const checkPersonQuery = `
+      SELECT rut, nombre, cargo, zona_geografica 
+      FROM mantenimiento.personal_disponible 
+      WHERE rut = $1
+    `;
+    
+    const personResult = await query(checkPersonQuery, [rut_persona]);
+    
+    if (personResult.rows.length === 0) {
+      // Eliminar archivos subidos si la persona no existe
+      if (archivos && archivos.length > 0) {
+        archivos.forEach(archivo => {
+          deleteFile(archivo.path);
+        });
+      }
+      
+      return res.status(404).json({
+        success: false,
+        message: `No se encontró personal con RUT: ${rut_persona}`
+      });
+    }
+    
+    const persona = personResult.rows[0];
+    const documentosSubidos = [];
+    
+    // Procesar cada archivo
+    for (const archivo of archivos) {
+      try {
+        const insertDocumentQuery = `
+          INSERT INTO mantenimiento.documentos (
+            rut_persona,
+            nombre_documento,
+            tipo_documento,
+            nombre_archivo,
+            nombre_original,
+            tipo_mime,
+            tamaño_bytes,
+            ruta_archivo,
+            descripcion,
+            subido_por
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          RETURNING id, fecha_subida
+        `;
+        
+        const documentData = [
+          rut_persona,
+          nombre_documento,
+          tipo_documento,
+          archivo.filename,
+          archivo.originalname,
+          archivo.mimetype,
+          archivo.size,
+          archivo.path,
+          descripcion || null,
+          req.user?.username || 'sistema'
+        ];
+        
+        const documentResult = await query(insertDocumentQuery, documentData);
+        const documento = documentResult.rows[0];
+        
+        documentosSubidos.push({
+          id: documento.id,
+          nombre_archivo: archivo.filename,
+          nombre_original: archivo.originalname,
+          tipo_mime: archivo.mimetype,
+          tamaño_bytes: archivo.size,
+          fecha_subida: documento.fecha_subida
+        });
+        
+        console.log(`✅ Documento subido: ${archivo.originalname} (ID: ${documento.id})`);
+        
+      } catch (error) {
+        console.error(`❌ Error subiendo archivo ${archivo.originalname}:`, error);
+        // Eliminar archivo si falló la inserción en BD
+        deleteFile(archivo.path);
+        throw error;
+      }
+    }
+    
+    console.log(`✅ ${documentosSubidos.length} documentos subidos exitosamente`);
+    
+    res.status(201).json({
+      success: true,
+      message: `${documentosSubidos.length} documento(s) subido(s) exitosamente`,
+      data: {
+        persona: {
+          rut: persona.rut,
+          nombre: persona.nombre,
+          cargo: persona.cargo
+        },
+        documentos: documentosSubidos
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error subiendo documentos:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/documentos/persona/:rut - Obtener documentos por RUT
 router.get('/persona/:rut', async (req, res) => {
   try {
     const { rut } = req.params;
+    const { limit = 50, offset = 0, tipo_documento } = req.query;
     
-    console.log(`📋 GET /api/documentos/persona/${rut} - Obteniendo documentos de persona`);
+    console.log(`📄 GET /api/documentos/persona/${rut} - Obteniendo documentos por RUT`);
     
-    const query = `
+    // Verificar que la persona existe
+    const checkPersonQuery = `
+      SELECT rut, nombre, cargo, zona_geografica 
+      FROM mantenimiento.personal_disponible 
+      WHERE rut = $1
+    `;
+    
+    const personResult = await query(checkPersonQuery, [rut]);
+    
+    if (personResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: `No se encontró personal con RUT: ${rut}`
+      });
+    }
+    
+    const persona = personResult.rows[0];
+    
+    // Construir filtros
+    let whereConditions = ['d.rut_persona = $1', 'd.activo = true'];
+    let queryParams = [rut];
+    let paramIndex = 2;
+    
+    if (tipo_documento) {
+      whereConditions.push(`d.tipo_documento = $${paramIndex++}`);
+      queryParams.push(tipo_documento);
+    }
+    
+    const whereClause = `WHERE ${whereConditions.join(' AND ')}`;
+    
+    // Query principal
+    const getDocumentosQuery = `
       SELECT 
         d.id,
         d.nombre_documento,
         d.tipo_documento,
+        d.nombre_archivo,
         d.nombre_original,
         d.tipo_mime,
         d.tamaño_bytes,
         d.descripcion,
         d.fecha_subida,
-        p.nombre as nombre_persona,
-        p.cargo,
-        p.zona_geografica
+        d.subido_por
       FROM mantenimiento.documentos d
-      LEFT JOIN mantenimiento.personal_disponible p ON d.rut_persona = p.rut
-      WHERE d.rut_persona = $1 AND d.activo = true
-      ORDER BY d.fecha_subida DESC
+      ${whereClause}
+      ORDER BY d.fecha_subida DESC, d.nombre_documento
+      LIMIT $${paramIndex++} OFFSET $${paramIndex++}
     `;
     
-    const result = await query(query, [rut]);
+    queryParams.push(parseInt(limit), parseInt(offset));
     
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: `No se encontraron documentos para el RUT: ${rut}`
-      });
-    }
+    const result = await query(getDocumentosQuery, queryParams);
     
-    console.log(`✅ ${result.rows.length} documentos encontrados para RUT: ${rut}`);
+    // Query para contar total
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM mantenimiento.documentos d
+      ${whereClause}
+    `;
+    
+    const countResult = await query(countQuery, queryParams.slice(0, -2));
+    const total = parseInt(countResult.rows[0].total);
+    
+    console.log(`✅ Encontrados ${result.rows.length} documentos para ${persona.nombre}`);
     
     res.json({
       success: true,
       data: {
         persona: {
-          rut: rut,
-          nombre: result.rows[0].nombre_persona,
-          cargo: result.rows[0].cargo,
-          zona_geografica: result.rows[0].zona_geografica
+          rut: persona.rut,
+          nombre: persona.nombre,
+          cargo: persona.cargo,
+          zona_geografica: persona.zona_geografica
         },
-        documentos: result.rows.map(row => ({
-          id: row.id,
-          nombre_documento: row.nombre_documento,
-          tipo_documento: row.tipo_documento,
-          nombre_original: row.nombre_original,
-          tipo_mime: row.tipo_mime,
-          tamaño_bytes: row.tamaño_bytes,
-          descripcion: row.descripcion,
-          fecha_subida: row.fecha_subida
-        }))
+        documentos: result.rows,
+        pagination: {
+          total,
+          limit: parseInt(limit),
+          offset: parseInt(offset),
+          hasMore: (parseInt(offset) + parseInt(limit)) < total
+        }
       }
     });
     
@@ -181,277 +523,58 @@ router.get('/persona/:rut', async (req, res) => {
   }
 });
 
-// POST /api/documentos/persona/:rut - Subir documentos para una persona
-router.post('/persona/:rut', uploadMultiple, handleUploadError, async (req, res) => {
-  try {
-    const { rut } = req.params;
-    const { nombre_documento, tipo_documento, descripcion } = req.body;
-    
-    console.log(`📤 POST /api/documentos/persona/${rut} - Subiendo documentos`);
-    
-    // Verificar que la persona existe
-    const checkPersonQuery = `
-      SELECT rut, nombre FROM mantenimiento.personal_disponible WHERE rut = $1
-    `;
-    
-    const personExists = await query(checkPersonQuery, [rut]);
-    
-    if (personExists.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: `No se encontró personal con RUT: ${rut}`
-      });
-    }
-    
-    // Validar que se subieron archivos
-    if (!req.files || req.files.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'No se subieron archivos'
-      });
-    }
-    
-    // Validar campos requeridos
-    if (!nombre_documento || !tipo_documento) {
-      return res.status(400).json({
-        success: false,
-        message: 'nombre_documento y tipo_documento son requeridos'
-      });
-    }
-    
-    const documentosSubidos = [];
-    
-    // Procesar cada archivo
-    for (const file of req.files) {
-      const fileInfo = getFileInfo(file);
-      
-      const insertQuery = `
-        INSERT INTO mantenimiento.documentos (
-          rut_persona, nombre_documento, tipo_documento,
-          nombre_archivo, nombre_original, tipo_mime, tamaño_bytes,
-          ruta_archivo, descripcion, subido_por
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-        RETURNING *
-      `;
-      
-      const values = [
-        rut,
-        nombre_documento,
-        tipo_documento,
-        fileInfo.nombre_archivo,
-        fileInfo.nombre_original,
-        fileInfo.tipo_mime,
-        fileInfo.tamaño_bytes,
-        fileInfo.ruta_archivo,
-        descripcion || null,
-        'sistema'
-      ];
-      
-      const result = await query(insertQuery, values);
-      documentosSubidos.push(result.rows[0]);
-    }
-    
-    console.log(`✅ ${documentosSubidos.length} documento(s) subido(s) para RUT: ${rut}`);
-    
-    res.status(201).json({
-      success: true,
-      message: `${documentosSubidos.length} documento(s) subido(s) exitosamente`,
-      data: {
-        persona: {
-          rut: rut,
-          nombre: personExists.rows[0].nombre
-        },
-        documentos: documentosSubidos
-      }
-    });
-    
-  } catch (error) {
-    console.error(`❌ Error subiendo documentos para RUT ${req.params.rut}:`, error);
-    res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor',
-      error: error.message
-    });
-  }
-});
-
-// GET /api/documentos/:id/descargar - Descargar documento específico
+// GET /api/documentos/:id/descargar - Descargar documento
 router.get('/:id/descargar', async (req, res) => {
   try {
     const { id } = req.params;
     
     console.log(`📥 GET /api/documentos/${id}/descargar - Descargando documento`);
     
-    const query = `
-      SELECT nombre_archivo, nombre_original, ruta_archivo, tipo_mime
-      FROM mantenimiento.documentos 
-      WHERE id = $1 AND activo = true
+    // Obtener información del documento
+    const getDocumentQuery = `
+      SELECT 
+        d.nombre_archivo,
+        d.nombre_original,
+        d.tipo_mime,
+        d.ruta_archivo,
+        d.tamaño_bytes,
+        pd.nombre as nombre_persona
+      FROM mantenimiento.documentos d
+      LEFT JOIN mantenimiento.personal_disponible pd ON d.rut_persona = pd.rut
+      WHERE d.id = $1 AND d.activo = true
     `;
     
-    const result = await query(query, [id]);
+    const result = await query(getDocumentQuery, [id]);
     
     if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Documento no encontrado'
-      });
-    }
-    
-    const documento = result.rows[0];
-    
-    // Verificar que el archivo existe
-    if (!fileExists(documento.ruta_archivo)) {
-      return res.status(404).json({
-        success: false,
-        message: 'Archivo no encontrado en el servidor'
-      });
-    }
-    
-    // Configurar headers para descarga
-    res.setHeader('Content-Disposition', `attachment; filename="${documento.nombre_original}"`);
-    res.setHeader('Content-Type', documento.tipo_mime);
-    
-    // Enviar archivo
-    res.sendFile(path.resolve(documento.ruta_archivo));
-    
-    console.log(`✅ Documento descargado: ${documento.nombre_original}`);
-    
-  } catch (error) {
-    console.error(`❌ Error descargando documento ID ${req.params.id}:`, error);
-    res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor',
-      error: error.message
-    });
-  }
-});
-
-// GET /api/documentos/:id/vista - Ver documento en el navegador
-router.get('/:id/vista', async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    console.log(`👁️ GET /api/documentos/${id}/vista - Visualizando documento`);
-    
-    const query = `
-      SELECT nombre_archivo, nombre_original, ruta_archivo, tipo_mime
-      FROM mantenimiento.documentos 
-      WHERE id = $1 AND activo = true
-    `;
-    
-    const result = await query(query, [id]);
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Documento no encontrado'
-      });
-    }
-    
-    const documento = result.rows[0];
-    
-    // Verificar que el archivo existe
-    if (!fileExists(documento.ruta_archivo)) {
-      return res.status(404).json({
-        success: false,
-        message: 'Archivo no encontrado en el servidor'
-      });
-    }
-    
-    // Configurar headers para visualización
-    res.setHeader('Content-Type', documento.tipo_mime);
-    res.setHeader('Content-Disposition', `inline; filename="${documento.nombre_original}"`);
-    
-    // Enviar archivo
-    res.sendFile(path.resolve(documento.ruta_archivo));
-    
-    console.log(`✅ Documento visualizado: ${documento.nombre_original}`);
-    
-  } catch (error) {
-    console.error(`❌ Error visualizando documento ID ${req.params.id}:`, error);
-    res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor',
-      error: error.message
-    });
-  }
-});
-
-// PUT /api/documentos/:id - Actualizar información del documento
-router.put('/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { nombre_documento, tipo_documento, descripcion, activo } = req.body;
-    
-    console.log(`📝 PUT /api/documentos/${id} - Actualizando documento`);
-    
-    // Verificar que el registro existe
-    const checkExistsQuery = `
-      SELECT id FROM mantenimiento.documentos WHERE id = $1
-    `;
-    
-    const existsResult = await query(checkExistsQuery, [id]);
-    
-    if (existsResult.rows.length === 0) {
       return res.status(404).json({
         success: false,
         message: `No se encontró documento con ID: ${id}`
       });
     }
     
-    // Construir query de actualización dinámicamente
-    const updateFields = [];
-    const updateValues = [];
-    let paramIndex = 1;
+    const documento = result.rows[0];
     
-    if (nombre_documento) {
-      updateFields.push(`nombre_documento = $${paramIndex++}`);
-      updateValues.push(nombre_documento.trim());
-    }
-    
-    if (tipo_documento) {
-      updateFields.push(`tipo_documento = $${paramIndex++}`);
-      updateValues.push(tipo_documento);
-    }
-    
-    if (descripcion !== undefined) {
-      updateFields.push(`descripcion = $${paramIndex++}`);
-      updateValues.push(descripcion);
-    }
-    
-    if (activo !== undefined) {
-      updateFields.push(`activo = $${paramIndex++}`);
-      updateValues.push(activo);
-    }
-    
-    if (updateFields.length === 0) {
-      return res.status(400).json({
+    // Verificar que el archivo existe
+    if (!fs.existsSync(documento.ruta_archivo)) {
+      return res.status(404).json({
         success: false,
-        message: 'Debe proporcionar al menos un campo para actualizar'
+        message: 'El archivo no existe en el servidor'
       });
     }
     
-    updateValues.push(id); // Para el WHERE
+    // Configurar headers para descarga
+    res.setHeader('Content-Type', documento.tipo_mime);
+    res.setHeader('Content-Disposition', `attachment; filename="${documento.nombre_original}"`);
+    res.setHeader('Content-Length', documento.tamaño_bytes);
     
-    const updateQuery = `
-      UPDATE mantenimiento.documentos 
-      SET ${updateFields.join(', ')}
-      WHERE id = $${paramIndex}
-      RETURNING *
-    `;
+    console.log(`✅ Descargando: ${documento.nombre_original} (${documento.tamaño_bytes} bytes)`);
     
-    const result = await query(updateQuery, updateValues);
-    
-    console.log(`✅ Documento actualizado para ID: ${id}`);
-    
-    res.json({
-      success: true,
-      message: 'Documento actualizado exitosamente',
-      data: result.rows[0]
-    });
+    // Enviar archivo
+    res.sendFile(path.resolve(documento.ruta_archivo));
     
   } catch (error) {
-    console.error(`❌ Error actualizando documento para ID ${req.params.id}:`, error);
+    console.error(`❌ Error descargando documento ${req.params.id}:`, error);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
@@ -460,51 +583,131 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/documentos/:id - Eliminar documento (eliminación lógica)
+// DELETE /api/documentos/:id - Eliminar documento (soft delete)
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
     console.log(`🗑️ DELETE /api/documentos/${id} - Eliminando documento`);
     
-    // Verificar que el registro existe
-    const checkExistsQuery = `
-      SELECT id, ruta_archivo FROM mantenimiento.documentos WHERE id = $1 AND activo = true
+    // Verificar que el documento existe
+    const checkDocumentQuery = `
+      SELECT id, nombre_documento, ruta_archivo, rut_persona
+      FROM mantenimiento.documentos 
+      WHERE id = $1 AND activo = true
     `;
     
-    const existsResult = await query(checkExistsQuery, [id]);
+    const documentResult = await query(checkDocumentQuery, [id]);
     
-    if (existsResult.rows.length === 0) {
+    if (documentResult.rows.length === 0) {
       return res.status(404).json({
         success: false,
         message: `No se encontró documento con ID: ${id}`
       });
     }
     
-    // Eliminación lógica
+    const documento = documentResult.rows[0];
+    
+    // Soft delete - marcar como inactivo
     const deleteQuery = `
       UPDATE mantenimiento.documentos 
-      SET activo = false
+      SET activo = false, fecha_actualizacion = CURRENT_TIMESTAMP
       WHERE id = $1
-      RETURNING *
+      RETURNING id, nombre_documento
     `;
     
-    const result = await query(deleteQuery, [id]);
+    const deleteResult = await query(deleteQuery, [id]);
     
-    console.log(`✅ Documento eliminado (lógico) para ID: ${id}`);
+    console.log(`✅ Documento eliminado: ${deleteResult.rows[0].nombre_documento}`);
     
     res.json({
       success: true,
       message: 'Documento eliminado exitosamente',
       data: {
-        id: result.rows[0].id,
-        activo: false,
-        fecha_eliminacion: new Date().toISOString()
+        id: deleteResult.rows[0].id,
+        nombre_documento: deleteResult.rows[0].nombre_documento
       }
     });
     
   } catch (error) {
-    console.error(`❌ Error eliminando documento para ID ${req.params.id}:`, error);
+    console.error(`❌ Error eliminando documento ${req.params.id}:`, error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/documentos/tipos - Obtener tipos de documento disponibles
+router.get('/tipos', async (req, res) => {
+  try {
+    console.log('📋 GET /api/documentos/tipos - Obteniendo tipos de documento');
+    
+    const tipos = [
+      { value: 'certificado_curso', label: 'Certificado de Curso' },
+      { value: 'diploma', label: 'Diploma' },
+      { value: 'certificado_laboral', label: 'Certificado Laboral' },
+      { value: 'certificado_medico', label: 'Certificado Médico' },
+      { value: 'licencia_conducir', label: 'Licencia de Conducir' },
+      { value: 'certificado_seguridad', label: 'Certificado de Seguridad' },
+      { value: 'certificado_vencimiento', label: 'Certificado de Vencimiento' },
+      { value: 'otro', label: 'Otro' }
+    ];
+    
+    res.json({
+      success: true,
+      data: tipos
+    });
+    
+  } catch (error) {
+    console.error('❌ Error obteniendo tipos de documento:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/documentos/formatos - Obtener formatos de archivo soportados
+router.get('/formatos', async (req, res) => {
+  try {
+    console.log('📋 GET /api/documentos/formatos - Obteniendo formatos soportados');
+    
+    const formatos = {
+      documentos: [
+        { extension: '.pdf', mime: 'application/pdf', descripcion: 'Documento PDF' },
+        { extension: '.doc', mime: 'application/msword', descripcion: 'Documento Word 97-2003' },
+        { extension: '.docx', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', descripcion: 'Documento Word' },
+        { extension: '.xls', mime: 'application/vnd.ms-excel', descripcion: 'Hoja de cálculo Excel 97-2003' },
+        { extension: '.xlsx', mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', descripcion: 'Hoja de cálculo Excel' },
+        { extension: '.ppt', mime: 'application/vnd.ms-powerpoint', descripcion: 'Presentación PowerPoint 97-2003' },
+        { extension: '.pptx', mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', descripcion: 'Presentación PowerPoint' },
+        { extension: '.txt', mime: 'text/plain', descripcion: 'Archivo de texto' },
+        { extension: '.rtf', mime: 'application/rtf', descripcion: 'Documento RTF' }
+      ],
+      imagenes: [
+        { extension: '.jpg', mime: 'image/jpeg', descripcion: 'Imagen JPEG' },
+        { extension: '.jpeg', mime: 'image/jpeg', descripcion: 'Imagen JPEG' },
+        { extension: '.png', mime: 'image/png', descripcion: 'Imagen PNG' },
+        { extension: '.tiff', mime: 'image/tiff', descripcion: 'Imagen TIFF' },
+        { extension: '.bmp', mime: 'image/bmp', descripcion: 'Imagen BMP' }
+      ],
+      limites: {
+        tamañoMaximo: '50MB por archivo',
+        archivosMaximos: '5 archivos por request',
+        recomendado: 'PDF para documentos oficiales'
+      }
+    };
+    
+    res.json({
+      success: true,
+      data: formatos
+    });
+    
+  } catch (error) {
+    console.error('❌ Error obteniendo formatos soportados:', error);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',

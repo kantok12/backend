@@ -14,7 +14,8 @@ Faenas → Plantas → Líneas → Equipos → Componentes → Puntos de Lubrica
 
 - **🔐 Autenticación JWT**: Sistema completo de autenticación y autorización
 - **👥 Gestión de Personal**: CRUD completo para personal disponible con estados y validaciones
-- **🎓 Cursos y Certificaciones**: Sistema de seguimiento de capacitaciones y certificaciones con gestión de documentos
+- **🎓 Cursos y Certificaciones**: Sistema de seguimiento de capacitaciones y certificaciones
+- **📄 Gestión de Documentos**: Sistema independiente de documentos con tipos específicos y filtros avanzados
 - **🏭 Gestión de Equipos**: Manejo jerárquico de faenas, plantas, líneas y equipos
 - **🔧 Mantenimiento**: Sistema completo de lubricación y tareas de mantenimiento
 - **📊 Estadísticas**: Reportes y análisis de datos en tiempo real
@@ -22,6 +23,7 @@ Faenas → Plantas → Líneas → Equipos → Componentes → Puntos de Lubrica
 - **🛡️ Seguridad**: Middleware de seguridad con Helmet y CORS configurado
 - **📈 Monitoreo**: Sistema de logging avanzado con Morgan y tracking de performance
 - **🔍 Búsqueda Avanzada**: Filtros y búsquedas en todos los módulos
+- **🔄 Migración Automática**: Herramientas de migración segura de datos
 
 ## 💻 Tecnologías y Lenguajes Utilizados
 
@@ -173,18 +175,12 @@ backend/
 ├── 📁 scripts/
 │   └── [múltiples scripts utilitarios]
 ├── 📁 docs/                     # 📚 Documentación completa
-│   ├── API_ENDPOINTS.md         # Documentación completa de endpoints
-│   ├── CURSOS_ENDPOINTS.md      # Endpoints específicos de cursos
-│   ├── NOMBRES_ENDPOINTS.md     # Endpoints de gestión de nombres
-│   ├── MANTENIMIENTO_ENDPOINTS.md # Endpoints de mantenimiento
-│   ├── FRONTEND_API_INTEGRATION.md # Guía de integración frontend
-│   ├── CORS_SETUP.md            # Configuración de CORS
-│   ├── NETWORK_SETUP.md         # Configuración de red
-│   ├── PRESENTACION_BACKEND.md  # Resumen ejecutivo
-│   ├── RESUMEN_ENDPOINTS.md     # Resumen de todos los endpoints
-│   ├── GESTION_DOCUMENTOS_CURSOS.md # **NUEVO**: Gestión de documentos
-│   ├── ENDPOINTS_DOCUMENTOS_CURSOS.md # **NUEVO**: Documentación completa para frontend
-│   └── ESTRUCTURA_COMPLETA_PROYECTO.md # Estructura completa del proyecto
+│   ├── LISTA_DE_ENDPOINTS.md    # Lista completa de endpoints para Postman
+│   └── archivos-csv/            # Archivos de datos CSV y Excel
+│       ├── README.md            # Documentación de archivos de datos
+│       ├── personal_disponible_data.csv # Datos de personal disponible
+│       ├── nombres_data.csv     # Datos de nombres y apellidos
+│       └── Personal Servicios.xlsx # Archivo Excel de personal y servicios
 ├── server.js                    # Servidor principal
 ├── package.json                 # Dependencias y scripts
 └── README.md                   # Esta documentación
@@ -200,6 +196,19 @@ backend/
 - **DELETE** `/:rut` - Eliminar personal
 - **GET** `/stats/cargos` - Estadísticas por cargo
 - **GET** `/verify-import` - Verificación de importación
+
+### 📄 Gestión de Documentos (`/api/documentos`) - NUEVO
+- **GET** `/` - Listar documentos (con filtros avanzados)
+- **POST** `/` - Subir documentos múltiples
+- **GET** `/:id` - Obtener documento por ID
+- **GET** `/persona/:rut` - Documentos por persona
+- **GET** `/:id/descargar` - Descargar documento
+- **DELETE** `/:id` - Eliminar documento (soft delete)
+- **GET** `/tipos` - Tipos de documento disponibles
+
+### 🔧 Herramientas de Migración (`/api/migration`) - NUEVO
+- **GET** `/status` - Verificar estado de migración
+- **POST** `/run` - Ejecutar migración de documentos
 
 ### 🎓 Cursos y Certificaciones (`/api/cursos`)
 - **GET** `/` - Listado de cursos con paginación y conteo de documentos
@@ -246,21 +255,6 @@ backend/
 - **Estados del Sistema** (`/api/estados`) - ✅ **FUNCIONANDO**
   - `GET /api/estados` - Listar estados disponibles
 
-#### 🏗️ **Esquema Lubricación - Estructura Jerárquica**
-- **Faenas** (`/api/faenas`) - ✅ **FUNCIONANDO**
-- **Plantas** (`/api/plantas`) - ✅ **FUNCIONANDO**
-- **Líneas** (`/api/lineas`) - ✅ **FUNCIONANDO**
-- **Equipos** (`/api/equipos`) - ✅ **FUNCIONANDO**
-- **Componentes** (`/api/componentes`) - ✅ **FUNCIONANDO**
-
-#### 🔧 **Esquema Lubricación - Sistema de Lubricación**
-- **Lubricantes** (`/api/lubricantes`) - ✅ **FUNCIONANDO**
-- **Puntos de Lubricación** (`/api/punto-lubricacion`) - ✅ **FUNCIONANDO**
-
-#### 📋 **Esquema Lubricación - Gestión de Tareas**
-- **Tareas Proyectadas** (`/api/tareas-proyectadas`) - ✅ **FUNCIONANDO**
-- **Tareas Programadas** (`/api/tareas-programadas`) - ✅ **FUNCIONANDO**
-- **Tareas Ejecutadas** (`/api/tareas-ejecutadas`) - ⚠️ **EN CORRECCIÓN**
 
 ### 🏥 Utilidades
 - **GET** `/api/health` - Health check del servidor
@@ -268,25 +262,26 @@ backend/
 
 ## 📊 Estado Actual del Sistema
 
-### ✅ **Endpoints Funcionando (12/14)**
-- **Tasa de éxito: 85.7%**
+### ✅ **Endpoints Funcionando (5/5)**
+- **Tasa de éxito: 100%**
 - **Base de datos**: PostgreSQL conectada correctamente
-- **Esquemas**: `mantenimiento` y `lubricacion` operativos
+- **Esquemas**: Solo `mantenimiento` operativo
 - **Conexión**: Supabase configurada y funcionando
 
-### ⚠️ **Endpoints en Corrección (2/14)**
-- `/api/cursos/stats` - Endpoint de estadísticas (pendiente implementación)
-- `/api/tareas-ejecutadas` - Error de estructura de tabla (en corrección)
+### 🆕 **Nuevos Endpoints v1.1.0**
+- `/api/documentos` - Gestión independiente de documentos
+- `/api/migration` - Herramientas de migración automática
 
 ### 🎯 **Funcionalidades Completas**
 - ✅ Gestión completa de personal
 - ✅ Sistema de cursos y certificaciones
-- ✅ Estructura jerárquica industrial (Faenas → Plantas → Líneas → Equipos → Componentes)
-- ✅ Sistema de lubricación
-- ✅ Gestión de tareas proyectadas y programadas
+- ✅ Gestión independiente de documentos (NUEVO)
+- ✅ Herramientas de migración automática (NUEVO)
 - ✅ Upload y descarga de documentos
 - ✅ Filtros y búsquedas avanzadas
 - ✅ Paginación en todos los endpoints
+- ✅ Tipos de documento específicos
+- ✅ Soft delete para eliminación segura
 
 ## 🌐 Configuración de Red
 
@@ -331,8 +326,8 @@ El sistema está configurado para funcionar tanto en desarrollo local como en re
 - **Query promedio**: 140-200ms (optimizado con PostgreSQL directo)
 - **Paginación**: Configurada en todos los listados (20 registros por defecto)
 - **Base de datos**: PostgreSQL con Supabase (conexión estable)
-- **Esquemas**: Separación lógica entre `mantenimiento` y `lubricacion`
-- **Endpoints activos**: 12/14 funcionando (85.7% operativo)
+- **Esquemas**: Solo `mantenimiento` operativo
+- **Endpoints activos**: 5/5 funcionando (100% operativo)
 - **Caché**: Respuestas 304 para recursos sin cambios
 - **Logging**: Monitoreo completo de requests y queries
 - **Optimización**: JOINs optimizados y consultas eficientes
@@ -384,14 +379,11 @@ curl "http://localhost:3000/api/cursos/persona/12345678-9"
 
 Toda la documentación técnica detallada se encuentra en la carpeta `docs/`:
 
-- **[API_ENDPOINTS.md](docs/API_ENDPOINTS.md)** - Documentación completa de todos los endpoints
-- **[FRONTEND_API_INTEGRATION.md](docs/FRONTEND_API_INTEGRATION.md)** - Guía completa para integración con frontend
-- **[MANTENIMIENTO_ENDPOINTS.md](docs/MANTENIMIENTO_ENDPOINTS.md)** - Endpoints específicos del sistema de mantenimiento
-- **[CURSOS_ENDPOINTS.md](docs/CURSOS_ENDPOINTS.md)** - Documentación detallada de cursos y certificaciones
-- **[CORS_SETUP.md](docs/CORS_SETUP.md)** - Configuración de CORS para diferentes entornos
-- **[NETWORK_SETUP.md](docs/NETWORK_SETUP.md)** - Configuración para acceso en red local
-- **[RESUMEN_ENDPOINTS.md](docs/RESUMEN_ENDPOINTS.md)** - Resumen ejecutivo de todos los endpoints
-- **[ENDPOINTS_DOCUMENTOS_CURSOS.md](docs/ENDPOINTS_DOCUMENTOS_CURSOS.md)** - **NUEVO**: Documentación completa de endpoints de documentos para frontend
+- **[LISTA_DE_ENDPOINTS.md](docs/LISTA_DE_ENDPOINTS.md)** - Lista completa de endpoints listos para Postman
+- **[archivos-csv/README.md](docs/archivos-csv/README.md)** - Documentación de archivos de datos CSV y Excel
+- **[archivos-csv/personal_disponible_data.csv](docs/archivos-csv/personal_disponible_data.csv)** - Datos de personal disponible
+- **[archivos-csv/nombres_data.csv](docs/archivos-csv/nombres_data.csv)** - Datos de nombres y apellidos
+- **[archivos-csv/Personal Servicios.xlsx](docs/archivos-csv/Personal%20Servicios.xlsx)** - Archivo Excel de personal y servicios
 
 ## 🧪 Testing y Desarrollo
 

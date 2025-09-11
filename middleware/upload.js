@@ -24,14 +24,16 @@ const storage = multer.diskStorage({
 
 // Función para validar tipos de archivo
 const fileFilter = (req, file, cb) => {
-  // Tipos de archivo permitidos
+  // Tipos de archivo permitidos - Enfocado en documentos de cursos
   const allowedMimes = [
-    // Documentos PDF
+    // PDF - Principal formato para certificados y documentos
     'application/pdf',
-    // Imágenes
+    // Imágenes para documentos escaneados
     'image/jpeg',
     'image/jpg', 
     'image/png',
+    'image/tiff',
+    'image/bmp',
     'image/gif',
     'image/webp',
     // Documentos de Office
@@ -40,14 +42,21 @@ const fileFilter = (req, file, cb) => {
     'application/vnd.ms-excel',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     'application/vnd.ms-powerpoint',
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    // Otros formatos de documentos
+    'text/plain',
+    'application/rtf'
   ];
 
-  // Verificar tipo MIME
-  if (allowedMimes.includes(file.mimetype)) {
+  // Validar extensión también para mayor seguridad
+  const allowedExtensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.rtf', '.jpg', '.jpeg', '.png', '.tiff', '.bmp', '.gif', '.webp'];
+  const fileExtension = path.extname(file.originalname).toLowerCase();
+
+  // Verificar tipo MIME y extensión
+  if (allowedMimes.includes(file.mimetype) && allowedExtensions.includes(fileExtension)) {
     cb(null, true);
   } else {
-    cb(new Error(`Tipo de archivo no permitido: ${file.mimetype}. Tipos permitidos: PDF, imágenes (JPEG, PNG, GIF, WebP), documentos de Office`), false);
+    cb(new Error(`Tipo de archivo no permitido: ${file.mimetype} (${fileExtension}). Tipos permitidos: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, RTF, JPG, PNG, TIFF, BMP, GIF, WebP`), false);
   }
 };
 

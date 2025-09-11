@@ -12,20 +12,11 @@ const authTempRoutes = require('./routes/auth-temp');
 
 // Importar rutas del esquema mantenimiento
 const estadosRoutes = require('./routes/estados');
-const faenasRoutes = require('./routes/faenas');
-const plantasRoutes = require('./routes/plantas');
-const lineasRoutes = require('./routes/lineas');
-const equiposRoutes = require('./routes/equipos');
-const componentesRoutes = require('./routes/componentes');
-const lubricantesRoutes = require('./routes/lubricantes');
-const puntoLubricacionRoutes = require('./routes/punto-lubricacion');
-const tareasProyectadasRoutes = require('./routes/tareas-proyectadas');
-const tareasProgramadasRoutes = require('./routes/tareas-programadas');
-const tareasEjecutadasRoutes = require('./routes/tareas-ejecutadas');
 const personalDisponibleRoutes = require('./routes/personal-disponible');
 const nombresRoutes = require('./routes/nombres');
 const cursosRoutes = require('./routes/cursos-new');
 const documentosRoutes = require('./routes/documentos');
+const migrationRoutes = require('./routes/migration');
 
 // Importar middleware
 const { errorHandler } = require('./middleware/errorHandler');
@@ -111,20 +102,11 @@ app.use('/api/auth-temp', authTempRoutes);
 
 // Rutas del esquema mantenimiento (sin autenticación)
 app.use('/api/estados', estadosRoutes);
-app.use('/api/faenas', faenasRoutes);
-app.use('/api/plantas', plantasRoutes);
-app.use('/api/lineas', lineasRoutes);
-app.use('/api/equipos', equiposRoutes);
-app.use('/api/componentes', componentesRoutes);
-app.use('/api/lubricantes', lubricantesRoutes);
-app.use('/api/punto-lubricacion', puntoLubricacionRoutes);
-app.use('/api/tareas-proyectadas', tareasProyectadasRoutes);
-app.use('/api/tareas-programadas', tareasProgramadasRoutes);
-app.use('/api/tareas-ejecutadas', tareasEjecutadasRoutes);
 app.use('/api/personal-disponible', personalDisponibleRoutes);
 app.use('/api/nombres', nombresRoutes);
 app.use('/api/cursos', cursosRoutes);
 app.use('/api/documentos', documentosRoutes);
+app.use('/api/migration', migrationRoutes);
 
 // Ruta de salud
 app.get('/api/health', (req, res) => {
@@ -140,31 +122,93 @@ app.get('/api/health', (req, res) => {
 app.get('/', (req, res) => {
   res.json({
     message: 'API de Sistema de Mantenimiento',
-    version: '1.0.0',
+    version: '1.1.0',
     status: 'Endpoints sin autenticación (desarrollo)',
+    description: 'Sistema de gestión de personal, cursos y documentos',
     endpoints: {
       auth: {
         temp: '/api/auth-temp',
         main: '/api/auth'
       },
       mantenimiento: {
-        estados: '/api/estados',
-        faenas: '/api/faenas',
-        plantas: '/api/plantas',
-        lineas: '/api/lineas',
-        equipos: '/api/equipos',
-        componentes: '/api/componentes',
-        lubricantes: '/api/lubricantes',
-        puntoLubricacion: '/api/punto-lubricacion',
-        tareasProyectadas: '/api/tareas-proyectadas',
-        tareasProgramadas: '/api/tareas-programadas',
-        tareasEjecutadas: '/api/tareas-ejecutadas',
-        personalDisponible: '/api/personal-disponible',
-        nombres: '/api/nombres',
-        cursos: '/api/cursos',
-        documentos: '/api/documentos'
+        estados: {
+          base: '/api/estados',
+          methods: ['GET', 'POST', 'PUT', 'DELETE'],
+          description: 'Gestión de estados del personal'
+        },
+        personalDisponible: {
+          base: '/api/personal-disponible',
+          methods: ['GET', 'POST', 'PUT', 'DELETE'],
+          description: 'Gestión del personal disponible'
+        },
+        nombres: {
+          base: '/api/nombres',
+          methods: ['GET', 'POST', 'PUT'],
+          description: 'Gestión de nombres del personal'
+        },
+        cursos: {
+          base: '/api/cursos',
+          methods: ['GET', 'POST'],
+          description: 'Gestión de cursos y certificaciones',
+          subEndpoints: {
+            'GET /persona/:rut': 'Cursos por persona',
+            'POST /:id/documentos': 'Subir documentos a curso',
+            'GET /:id/documentos': 'Ver documentos de curso'
+          }
+        },
+        documentos: {
+          base: '/api/documentos',
+          methods: ['GET', 'POST', 'DELETE'],
+          description: 'Gestión independiente de documentos',
+          subEndpoints: {
+            'GET /': 'Listar documentos (con filtros)',
+            'POST /': 'Subir documentos',
+            'GET /:id': 'Obtener documento por ID',
+            'GET /persona/:rut': 'Documentos por persona',
+            'GET /:id/descargar': 'Descargar documento',
+            'DELETE /:id': 'Eliminar documento',
+            'GET /tipos': 'Tipos de documento disponibles',
+            'GET /formatos': 'Formatos de archivo soportados'
+          }
+        },
+        migration: {
+          base: '/api/migration',
+          methods: ['GET', 'POST'],
+          description: 'Herramientas de migración y limpieza de base de datos',
+          subEndpoints: {
+            'GET /status': 'Verificar estado de migración',
+            'POST /run': 'Ejecutar migración de documentos',
+            'GET /cleanup-status': 'Verificar estado de limpieza',
+            'POST /cleanup': 'Eliminar tablas obsoletas',
+            'GET /estados-status': 'Verificar estado actual de estados',
+            'POST /update-estados': 'Actualizar estados del sistema'
+          }
+        }
       },
-      health: '/api/health'
+      health: {
+        base: '/api/health',
+        methods: ['GET'],
+        description: 'Estado del servidor'
+      }
+    },
+    newFeatures: {
+      documentos: {
+        description: 'Nueva estructura de documentos independientes',
+        benefits: [
+          'Documentos no limitados a cursos específicos',
+          'Gestión independiente de documentos',
+          'Tipos de documento claramente definidos',
+          'Filtros avanzados de búsqueda'
+        ]
+      },
+      migration: {
+        description: 'Herramientas de migración automática',
+        benefits: [
+          'Migración segura de datos existentes',
+          'Verificación de estado de migración',
+          'Rollback automático en caso de error'
+        ]
+      }
     }
   });
 });
