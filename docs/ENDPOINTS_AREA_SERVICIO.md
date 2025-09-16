@@ -346,3 +346,6 @@ Los endpoints del área de servicio se integran con:
 **Fecha de creación**: 10 de enero de 2025  
 **Versión**: 1.2.0  
 **Estado**: ✅ Funcional y documentado
+
+
+

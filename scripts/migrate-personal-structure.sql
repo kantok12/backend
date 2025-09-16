@@ -201,3 +201,6 @@ WHERE p.activo = true;
 -- 5. Probar en ambiente de desarrollo primero
 -- =====================================================
 
+
+
+

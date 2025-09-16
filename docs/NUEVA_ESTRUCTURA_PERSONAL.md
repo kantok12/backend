@@ -214,3 +214,6 @@ estados (id) ←──┐
 **Versión**: 1.0.0  
 **Estado**: Listo para implementación
 
+
+
+

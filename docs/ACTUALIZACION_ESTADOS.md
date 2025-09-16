@@ -242,3 +242,6 @@ WHERE nombre = 'Estado a desactivar';
 **Fecha de actualización**: 10 de enero de 2025  
 **Versión**: 1.1.0  
 **Estado**: ✅ Listo para ejecutar
+
+
+

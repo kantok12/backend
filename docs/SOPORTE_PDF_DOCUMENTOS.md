@@ -257,3 +257,6 @@ El sistema está completamente preparado para manejar PDFs y documentos en ambas
 **Última actualización**: 10 de enero de 2025  
 **Versión**: 1.1.0  
 **Estado**: ✅ Completamente funcional
+
+
+

@@ -317,3 +317,6 @@ BEGIN
     RAISE NOTICE 'Datos de ejemplo insertados';
     RAISE NOTICE '=====================================================';
 END $$;
+
+
+

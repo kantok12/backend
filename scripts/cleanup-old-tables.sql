@@ -93,3 +93,6 @@ SELECT
 -- 3. No hay aplicaciones que dependan de estas tablas
 -- 
 -- Si necesitas recuperar los datos, tendrás que restaurar desde backup.
+
+
+

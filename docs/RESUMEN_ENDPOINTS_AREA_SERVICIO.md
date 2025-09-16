@@ -215,3 +215,6 @@ GET /api/area-servicio?cargo=operador&estado_id=1&zona_geografica=norte
 **Estado**: ✅ **COMPLETADO Y FUNCIONAL**
 
 Los endpoints del área de servicio están **listos para producción** y proporcionan una gestión especializada y eficiente del personal del área de servicio.
+
+
+

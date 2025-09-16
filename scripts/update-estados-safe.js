@@ -240,3 +240,6 @@ module.exports = {
   verifyEstadosUpdate,
   checkPersonalEstados
 };
+
+
+

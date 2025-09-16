@@ -122,3 +122,6 @@ FROM mantenimiento.cursos_documentos;
 -- 
 -- Pero hazlo solo después de confirmar que todo funciona correctamente
 -- y que has actualizado todos los endpoints y aplicaciones.
+
+
+
