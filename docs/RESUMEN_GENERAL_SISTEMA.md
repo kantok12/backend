@@ -230,7 +230,7 @@
 ### **Scripts de Base de Datos:**
 - `scripts/create-new-schema.sql` - Script de creación del nuevo esquema
 - `scripts/setup-new-schema.js` - Script de configuración
-- `scripts/migrate-documentos-structure.js` - Migración de documentos
+- `scripts/migrate-documentos-structure.js` - ~~Migración de documentos~~ (ELIMINADO - Ya completada)
 - `scripts/cleanup-old-tables.js` - Limpieza de tablas obsoletas
 - `scripts/update-estados-safe.js` - Actualización segura de estados
 - `scripts/backup-database.js` - Sistema de backup

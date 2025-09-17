@@ -1,30 +1,18 @@
 const express = require('express');
-const { checkMigrationStatus } = require('../scripts/migrate-documentos-structure');
 const { cleanupOldTables, checkCleanupStatus } = require('../scripts/cleanup-old-tables');
 const { runEstadosUpdateSafe, checkCurrentEstados } = require('../scripts/update-estados-safe');
 
 const router = express.Router();
 
-// GET /api/migration/status - Verificar estado de la migración
+// GET /api/migration/status - Verificar estado de la migración (DESHABILITADO - Ya completada)
 router.get('/status', async (req, res) => {
-  try {
-    console.log('🔍 Verificando estado de migración...');
-    await checkMigrationStatus();
-    
-    res.json({
-      success: true,
-      message: 'Estado de migración verificado',
-      timestamp: new Date().toISOString()
-    });
-    
-  } catch (error) {
-    console.error('❌ Error verificando migración:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error verificando migración',
-      error: error.message
-    });
-  }
+  res.json({
+    success: true,
+    message: 'Migración de documentos ya completada exitosamente',
+    info: 'La migración de documentos se ejecutó y las tablas obsoletas fueron eliminadas',
+    timestamp: new Date().toISOString(),
+    status: 'completed'
+  });
 });
 
 // POST /api/migration/run - Ejecutar migración (DESHABILITADO - Ya completada)
