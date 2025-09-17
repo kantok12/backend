@@ -1,4 +1,4 @@
-const { query } = require('../config/postgresql');
+const { query } = require('../config/database');
 
 /**
  * Script para verificar la estructura de la tabla nombre

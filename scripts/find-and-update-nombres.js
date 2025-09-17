@@ -1,5 +1,5 @@
 const XLSX = require('xlsx');
-const { query } = require('../config/postgresql');
+const { query } = require('../config/database');
 const path = require('path');
 
 /**

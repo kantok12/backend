@@ -35,7 +35,7 @@ const { errorHandler } = require('./middleware/errorHandler');
 const { authenticateToken } = require('./middleware/auth');
 
 // Importar configuración de PostgreSQL
-const { testConnection } = require('./config/postgresql');
+const { testConnection } = require('./config/database');
 
 const app = express();
 const PORT = process.env.PORT || 3000;

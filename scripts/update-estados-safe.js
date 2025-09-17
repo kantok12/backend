@@ -1,4 +1,4 @@
-const { query } = require('../config/postgresql');
+const { query } = require('../config/database');
 
 /**
  * Script seguro para actualizar los estados

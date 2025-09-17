@@ -1,4 +1,4 @@
-const { query } = require('../config/postgresql');
+const { query } = require('../config/database');
 
 async function redesignPersonalStructure() {
   console.log('🔍 ANÁLISIS Y REDISEÑO DE ESTRUCTURA DE PERSONAL');

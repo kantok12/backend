@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { query } = require('../config/postgresql');
+const { query } = require('../config/database');
 
 // GET / - Listar historial de estados del personal
 router.get('/', async (req, res) => {

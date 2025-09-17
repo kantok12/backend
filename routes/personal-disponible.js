@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { query } = require('../config/postgresql');
+const { query } = require('../config/database');
 
 // GET /personal-disponible - listar todo el personal disponible (con paginación opcional)
 router.get('/', async (req, res) => {

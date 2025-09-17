@@ -1,4 +1,4 @@
-const { query } = require('../config/postgresql');
+const { query } = require('../config/database');
 
 /**
  * Verificar si existe la tabla cursos_certificaciones

@@ -1,4 +1,4 @@
-const { query, testConnection } = require('../config/postgresql');
+const { query, testConnection } = require('../config/database');
 
 async function inspectDatabase() {
   console.log('🔍 Inspeccionando base de datos PostgreSQL...\n');

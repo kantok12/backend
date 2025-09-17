@@ -1,5 +1,4 @@
 const express = require('express');
-const { runMigration } = require('../scripts/simple-migration');
 const { checkMigrationStatus } = require('../scripts/migrate-documentos-structure');
 const { cleanupOldTables, checkCleanupStatus } = require('../scripts/cleanup-old-tables');
 const { runEstadosUpdateSafe, checkCurrentEstados } = require('../scripts/update-estados-safe');
@@ -28,27 +27,14 @@ router.get('/status', async (req, res) => {
   }
 });
 
-// POST /api/migration/run - Ejecutar migración
+// POST /api/migration/run - Ejecutar migración (DESHABILITADO - Ya completada)
 router.post('/run', async (req, res) => {
-  try {
-    console.log('🚀 Ejecutando migración de documentos...');
-    
-    await runMigration();
-    
-    res.json({
-      success: true,
-      message: 'Migración completada exitosamente',
-      timestamp: new Date().toISOString()
-    });
-    
-  } catch (error) {
-    console.error('❌ Error ejecutando migración:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error ejecutando migración',
-      error: error.message
-    });
-  }
+  res.status(410).json({
+    success: false,
+    message: 'Migración de documentos ya completada',
+    info: 'La migración de documentos se ejecutó exitosamente y ya no es necesaria',
+    timestamp: new Date().toISOString()
+  });
 });
 
 // GET /api/migration/cleanup-status - Verificar estado de limpieza

@@ -1,4 +1,4 @@
-const { query } = require('../config/postgresql');
+const { query } = require('../config/database');
 
 /**
  * Script para agregar campo fecha_vencimiento a la tabla cursos

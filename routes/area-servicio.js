@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { query } = require('../config/postgresql');
+const { query } = require('../config/database');
 
 // GET /area-servicio - listar personal por área de servicio
 router.get('/', async (req, res) => {

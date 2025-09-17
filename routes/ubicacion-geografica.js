@@ -1,5 +1,5 @@
 const express = require('express');
-const { query, getClient } = require('../config/database-new');
+const { query, getClient } = require('../config/database');
 const { body, validationResult } = require('express-validator');
 
 const router = express.Router();

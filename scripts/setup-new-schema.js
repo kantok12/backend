@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { query, testConnection } = require('../config/database-new');
+const { query, testConnection } = require('../config/database');
 
 /**
  * Script para configurar el nuevo esquema de base de datos

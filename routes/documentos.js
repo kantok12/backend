@@ -2,7 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { query } = require('../config/postgresql');
+const { query } = require('../config/database');
 
 const router = express.Router();
 
