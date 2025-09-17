@@ -20,6 +20,15 @@ const migrationRoutes = require('./routes/migration');
 const areaServicioRoutes = require('./routes/area-servicio');
 const servicioRoutes = require('./routes/servicio');
 const backupRoutes = require('./routes/backup');
+const personalEstadosRoutes = require('./routes/personal-estados');
+const estadoUnificadoRoutes = require('./routes/estado-unificado');
+
+// Importar rutas del nuevo esquema de base de datos
+const carterasRoutes = require('./routes/carteras');
+const clientesRoutes = require('./routes/clientes');
+const ubicacionGeograficaRoutes = require('./routes/ubicacion-geografica');
+const nodosRoutes = require('./routes/nodos');
+const estructuraRoutes = require('./routes/estructura');
 
 // Importar middleware
 const { errorHandler } = require('./middleware/errorHandler');
@@ -113,6 +122,15 @@ app.use('/api/migration', migrationRoutes);
 app.use('/api/area-servicio', areaServicioRoutes);
 app.use('/api/servicio', servicioRoutes);
 app.use('/api/backup', backupRoutes);
+app.use('/api/personal-estados', personalEstadosRoutes);
+app.use('/api/estado-unificado', estadoUnificadoRoutes);
+
+// Rutas del nuevo esquema de base de datos (sin autenticación)
+app.use('/api/carteras', carterasRoutes);
+app.use('/api/clientes', clientesRoutes);
+app.use('/api/ubicacion-geografica', ubicacionGeograficaRoutes);
+app.use('/api/nodos', nodosRoutes);
+app.use('/api/estructura', estructuraRoutes);
 
 // Ruta de salud
 app.get('/api/health', (req, res) => {
@@ -231,6 +249,73 @@ app.get('/', (req, res) => {
             'GET /:filename': 'Descargar backup específico',
             'DELETE /:filename': 'Eliminar backup específico',
             'GET /info': 'Información del sistema de backups'
+          }
+        },
+        nuevoEsquema: {
+          carteras: {
+            base: '/api/carteras',
+            methods: ['GET', 'POST', 'PUT', 'DELETE'],
+            description: 'Gestión de carteras',
+            subEndpoints: {
+              'GET /': 'Listar todas las carteras',
+              'GET /:id': 'Obtener cartera específica',
+              'POST /': 'Crear nueva cartera',
+              'PUT /:id': 'Actualizar cartera',
+              'DELETE /:id': 'Eliminar cartera',
+              'GET /:id/estadisticas': 'Estadísticas de una cartera'
+            }
+          },
+          clientes: {
+            base: '/api/clientes',
+            methods: ['GET', 'POST', 'PUT', 'DELETE'],
+            description: 'Gestión de clientes',
+            subEndpoints: {
+              'GET /': 'Listar clientes (con filtros)',
+              'GET /:id': 'Obtener cliente específico',
+              'POST /': 'Crear nuevo cliente',
+              'PUT /:id': 'Actualizar cliente',
+              'DELETE /:id': 'Eliminar cliente',
+              'GET /:id/estadisticas': 'Estadísticas de un cliente'
+            }
+          },
+          ubicacionGeografica: {
+            base: '/api/ubicacion-geografica',
+            methods: ['GET', 'POST', 'PUT', 'DELETE'],
+            description: 'Gestión de ubicaciones geográficas',
+            subEndpoints: {
+              'GET /': 'Listar ubicaciones geográficas',
+              'GET /:id': 'Obtener ubicación específica',
+              'POST /': 'Crear nueva ubicación',
+              'PUT /:id': 'Actualizar ubicación',
+              'DELETE /:id': 'Eliminar ubicación',
+              'GET /:id/estadisticas': 'Estadísticas de una ubicación',
+              'GET /:id/clientes': 'Clientes de una ubicación'
+            }
+          },
+          nodos: {
+            base: '/api/nodos',
+            methods: ['GET', 'POST', 'PUT', 'DELETE'],
+            description: 'Gestión de nodos',
+            subEndpoints: {
+              'GET /': 'Listar nodos (con filtros)',
+              'GET /:id': 'Obtener nodo específico',
+              'POST /': 'Crear nuevo nodo',
+              'PUT /:id': 'Actualizar nodo',
+              'DELETE /:id': 'Eliminar nodo',
+              'GET /cliente/:cliente_id': 'Nodos de un cliente',
+              'GET /estadisticas': 'Estadísticas generales de nodos'
+            }
+          },
+          estructura: {
+            base: '/api/estructura',
+            methods: ['GET'],
+            description: 'Consultas de estructura jerárquica',
+            subEndpoints: {
+              'GET /': 'Estructura jerárquica completa',
+              'GET /cartera/:id': 'Estructura de una cartera',
+              'GET /cliente/:id': 'Estructura de un cliente',
+              'GET /estadisticas': 'Estadísticas de la estructura'
+            }
           }
         }
       },

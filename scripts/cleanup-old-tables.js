@@ -1,250 +1,169 @@
-const { query } = require('../config/postgresql');
+const fs = require('fs');
+const path = require('path');
+const { Pool } = require('pg');
+
+// Configuración de la base de datos
+const pool = new Pool({
+  user: process.env.DB_USER || 'postgres',
+  host: process.env.DB_HOST || 'localhost',
+  database: process.env.DB_NAME || 'mantenimiento_db',
+  password: process.env.DB_PASSWORD || 'password',
+  port: process.env.DB_PORT || 5432,
+});
 
 /**
- * Script para eliminar tablas obsoletas después de la migración
- * Elimina: cursos_documentos y cursos_certificaciones
+ * Ejecuta la limpieza de tablas obsoletas
+ * Elimina las tablas cursos_documentos y cursos_certificaciones
  */
-
-async function verifyDataBeforeCleanup() {
-  console.log('🔍 Verificando datos antes de la limpieza...');
+async function cleanupOldTables() {
+  const client = await pool.connect();
   
   try {
-    // Verificar cursos_documentos
-    const cursosDocsResult = await query(`
-      SELECT 
-        COUNT(*) as total,
-        COUNT(CASE WHEN activo = true THEN 1 END) as activos
-      FROM mantenimiento.cursos_documentos
-    `);
+    console.log('🧹 Iniciando limpieza de tablas obsoletas...');
     
-    console.log('📚 cursos_documentos:');
-    console.log(`   Total: ${cursosDocsResult.rows[0].total}`);
-    console.log(`   Activos: ${cursosDocsResult.rows[0].activos}`);
+    // Leer el script SQL
+    const sqlPath = path.join(__dirname, 'cleanup-old-tables.sql');
+    const sqlScript = fs.readFileSync(sqlPath, 'utf8');
     
-    // Verificar cursos_certificaciones
-    const cursosCertResult = await query(`
-      SELECT COUNT(*) as total
-      FROM mantenimiento.cursos_certificaciones
-    `);
+    // Ejecutar el script SQL
+    await client.query(sqlScript);
     
-    console.log('🎓 cursos_certificaciones:');
-    console.log(`   Total: ${cursosCertResult.rows[0].total}`);
-    
-    // Verificar documentos migrados
-    const documentosResult = await query(`
-      SELECT 
-        COUNT(*) as total,
-        COUNT(CASE WHEN activo = true THEN 1 END) as activos
-      FROM mantenimiento.documentos
-    `);
-    
-    console.log('📄 documentos (nueva tabla):');
-    console.log(`   Total: ${documentosResult.rows[0].total}`);
-    console.log(`   Activos: ${documentosResult.rows[0].activos}`);
+    console.log('✅ Limpieza de tablas obsoletas completada exitosamente');
     
     return {
-      cursosDocs: cursosDocsResult.rows[0],
-      cursosCert: cursosCertResult.rows[0],
-      documentos: documentosResult.rows[0]
+      success: true,
+      message: 'Limpieza completada exitosamente',
+      timestamp: new Date().toISOString()
     };
     
   } catch (error) {
-    console.error('❌ Error verificando datos:', error);
+    console.error('❌ Error durante la limpieza:', error);
     throw error;
+  } finally {
+    client.release();
   }
 }
 
-async function dropCursosDocumentos() {
-  console.log('\n🗑️ Eliminando tabla cursos_documentos...');
+/**
+ * Verifica el estado de la limpieza
+ * Comprueba si las tablas obsoletas aún existen
+ */
+async function checkCleanupStatus() {
+  const client = await pool.connect();
   
   try {
-    // Eliminar índices
-    const indexes = [
-      'DROP INDEX IF EXISTS mantenimiento.idx_cursos_documentos_curso_id',
-      'DROP INDEX IF EXISTS mantenimiento.idx_cursos_documentos_activo',
-      'DROP INDEX IF EXISTS mantenimiento.idx_cursos_documentos_fecha'
-    ];
+    console.log('🔍 Verificando estado de limpieza...');
     
-    for (const indexQuery of indexes) {
-      await query(indexQuery);
-    }
-    console.log('✅ Índices eliminados');
-    
-    // Eliminar tabla
-    await query('DROP TABLE IF EXISTS mantenimiento.cursos_documentos');
-    console.log('✅ Tabla cursos_documentos eliminada');
-    
-  } catch (error) {
-    console.error('❌ Error eliminando cursos_documentos:', error);
-    throw error;
-  }
-}
-
-async function dropCursosCertificaciones() {
-  console.log('\n🗑️ Eliminando tabla cursos_certificaciones...');
-  
-  try {
-    // Eliminar índices
-    await query('DROP INDEX IF EXISTS mantenimiento.idx_cursos_rut');
-    console.log('✅ Índices eliminados');
-    
-    // Eliminar tabla
-    await query('DROP TABLE IF EXISTS mantenimiento.cursos_certificaciones');
-    console.log('✅ Tabla cursos_certificaciones eliminada');
-    
-  } catch (error) {
-    console.error('❌ Error eliminando cursos_certificaciones:', error);
-    throw error;
-  }
-}
-
-async function verifyCleanup() {
-  console.log('\n🔍 Verificando limpieza...');
-  
-  try {
-    // Verificar que las tablas fueron eliminadas
-    const deletedTables = await query(`
-      SELECT table_name
+    // Verificar si las tablas obsoletas aún existen
+    const checkQuery = `
+      SELECT 
+        table_name,
+        CASE 
+          WHEN table_name IS NULL THEN 'ELIMINADA'
+          ELSE 'EXISTE'
+        END as estado
       FROM information_schema.tables 
       WHERE table_schema = 'mantenimiento' 
       AND table_name IN ('cursos_documentos', 'cursos_certificaciones')
-    `);
+      ORDER BY table_name;
+    `;
     
-    if (deletedTables.rows.length === 0) {
-      console.log('✅ Tablas eliminadas correctamente');
-    } else {
-      console.log('⚠️ Algunas tablas no fueron eliminadas:', deletedTables.rows);
-    }
+    const result = await client.query(checkQuery);
     
-    // Mostrar tablas restantes
-    const remainingTables = await query(`
-      SELECT table_name
+    // Verificar tablas restantes en el esquema
+    const remainingTablesQuery = `
+      SELECT 
+        table_name,
+        'ACTIVA' as estado
       FROM information_schema.tables 
       WHERE table_schema = 'mantenimiento'
-      ORDER BY table_name
-    `);
+      ORDER BY table_name;
+    `;
     
-    console.log('\n📋 Tablas restantes en esquema mantenimiento:');
-    remainingTables.rows.forEach(row => {
-      console.log(`   - ${row.table_name}`);
-    });
+    const remainingResult = await client.query(remainingTablesQuery);
+    
+    const cleanupStatus = {
+      obsoleteTables: result.rows,
+      remainingTables: remainingResult.rows,
+      isCleanupComplete: result.rows.length === 0,
+      timestamp: new Date().toISOString()
+    };
+    
+    console.log('📊 Estado de limpieza:', cleanupStatus);
+    
+    return cleanupStatus;
     
   } catch (error) {
-    console.error('❌ Error verificando limpieza:', error);
+    console.error('❌ Error verificando estado de limpieza:', error);
     throw error;
+  } finally {
+    client.release();
   }
 }
 
-async function cleanupOldTables() {
-  try {
-    console.log('🧹 INICIANDO LIMPIEZA DE TABLAS OBSOLETAS');
-    console.log('=' .repeat(60));
-    
-    // Verificar datos antes de eliminar
-    const dataStats = await verifyDataBeforeCleanup();
-    
-    // Confirmar eliminación
-    console.log('\n⚠️ ADVERTENCIA: Se eliminarán las siguientes tablas:');
-    console.log('   - cursos_documentos');
-    console.log('   - cursos_certificaciones');
-    console.log('\n📊 Datos que serán eliminados:');
-    console.log(`   - ${dataStats.cursosDocs.total} registros en cursos_documentos`);
-    console.log(`   - ${dataStats.cursosCert.total} registros en cursos_certificaciones`);
-    console.log(`   - ${dataStats.documentos.total} registros migrados a documentos`);
-    
-    // Eliminar tablas
-    await dropCursosDocumentos();
-    await dropCursosCertificaciones();
-    
-    // Verificar limpieza
-    await verifyCleanup();
-    
-    console.log('\n🎉 LIMPIEZA COMPLETADA EXITOSAMENTE');
-    console.log('=' .repeat(60));
-    console.log('✅ Tablas obsoletas eliminadas');
-    console.log('✅ Índices eliminados');
-    console.log('✅ Estructura simplificada');
-    console.log('✅ Solo tabla documentos activa');
-    
-    console.log('\n📋 Próximos pasos:');
-    console.log('   1. Verificar que todos los endpoints funcionan');
-    console.log('   2. Probar la funcionalidad de documentos');
-    console.log('   3. Actualizar documentación si es necesario');
-    
-  } catch (error) {
-    console.error('\n❌ ERROR EN LA LIMPIEZA:', error);
-    console.error('\n🔧 Posibles soluciones:');
-    console.error('   1. Verificar que la migración fue exitosa');
-    console.error('   2. Verificar permisos de usuario');
-    console.error('   3. Verificar que no hay dependencias activas');
-    throw error;
-  }
-}
-
-// Función para verificar estado sin eliminar
-async function checkCleanupStatus() {
-  console.log('🔍 VERIFICANDO ESTADO DE LIMPIEZA');
-  console.log('=' .repeat(50));
+/**
+ * Verifica si es seguro ejecutar la limpieza
+ * Comprueba que los datos fueron migrados correctamente
+ */
+async function isCleanupSafe() {
+  const client = await pool.connect();
   
   try {
-    // Verificar tablas existentes
-    const tablesResult = await query(`
-      SELECT table_name
-      FROM information_schema.tables 
-      WHERE table_schema = 'mantenimiento'
-      ORDER BY table_name
-    `);
+    console.log('🔒 Verificando si es seguro ejecutar limpieza...');
     
-    console.log('📋 Tablas en esquema mantenimiento:');
-    tablesResult.rows.forEach(row => {
-      console.log(`   - ${row.table_name}`);
-    });
+    // Verificar que existe la tabla documentos
+    const checkDocumentosQuery = `
+      SELECT EXISTS (
+        SELECT 1 
+        FROM information_schema.tables 
+        WHERE table_schema = 'mantenimiento' 
+        AND table_name = 'documentos'
+      ) as documentos_exists;
+    `;
     
-    // Verificar si las tablas obsoletas existen
-    const obsoleteTables = tablesResult.rows.filter(row => 
-      ['cursos_documentos', 'cursos_certificaciones'].includes(row.table_name)
-    );
+    const documentosResult = await client.query(checkDocumentosQuery);
     
-    if (obsoleteTables.length === 0) {
-      console.log('\n✅ Limpieza completada - No hay tablas obsoletas');
-    } else {
-      console.log('\n⚠️ Tablas obsoletas encontradas:');
-      obsoleteTables.forEach(row => {
-        console.log(`   - ${row.table_name}`);
-      });
+    if (!documentosResult.rows[0].documentos_exists) {
+      throw new Error('La tabla documentos no existe. No es seguro ejecutar la limpieza.');
     }
     
+    // Verificar que hay datos en la tabla documentos
+    const countDocumentosQuery = `
+      SELECT COUNT(*) as total_documentos
+      FROM mantenimiento.documentos;
+    `;
+    
+    const countResult = await client.query(countDocumentosQuery);
+    const totalDocumentos = parseInt(countResult.rows[0].total_documentos);
+    
+    if (totalDocumentos === 0) {
+      throw new Error('No hay datos en la tabla documentos. No es seguro ejecutar la limpieza.');
+    }
+    
+    console.log(`✅ Verificación de seguridad completada. Documentos encontrados: ${totalDocumentos}`);
+    
+    return {
+      isSafe: true,
+      totalDocumentos: totalDocumentos,
+      message: 'Es seguro ejecutar la limpieza',
+      timestamp: new Date().toISOString()
+    };
+    
   } catch (error) {
-    console.error('❌ Error verificando estado:', error);
-    throw error;
-  }
-}
-
-// Ejecutar si se llama directamente
-if (require.main === module) {
-  const command = process.argv[2];
-  
-  if (command === 'check') {
-    checkCleanupStatus()
-      .then(() => process.exit(0))
-      .catch(error => {
-        console.error('Error:', error);
-        process.exit(1);
-      });
-  } else {
-    cleanupOldTables()
-      .then(() => process.exit(0))
-      .catch(error => {
-        console.error('Error:', error);
-        process.exit(1);
-      });
+    console.error('❌ Error en verificación de seguridad:', error);
+    return {
+      isSafe: false,
+      error: error.message,
+      message: 'NO es seguro ejecutar la limpieza',
+      timestamp: new Date().toISOString()
+    };
+  } finally {
+    client.release();
   }
 }
 
 module.exports = {
   cleanupOldTables,
-  checkCleanupStatus
+  checkCleanupStatus,
+  isCleanupSafe
 };
-
-
-

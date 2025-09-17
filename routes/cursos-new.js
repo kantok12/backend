@@ -23,7 +23,7 @@ const { query } = require('../config/postgresql');
 // GET /api/cursos - Obtener todos los cursos
 router.get('/', async (req, res) => {
   try {
-    const { limit = 50, offset = 0, rut, curso, estado } = req.query;
+    const { limit = 50, offset = 0, rut, curso, estado, fecha_vencimiento } = req.query;
     
     console.log('📋 GET /api/cursos - Obteniendo cursos');
     
@@ -45,6 +45,11 @@ router.get('/', async (req, res) => {
     if (estado) {
       whereConditions.push(`c.estado = $${paramIndex++}`);
       queryParams.push(estado);
+    }
+    
+    if (fecha_vencimiento) {
+      whereConditions.push(`c.fecha_vencimiento = $${paramIndex++}`);
+      queryParams.push(fecha_vencimiento);
     }
     
     const whereClause = whereConditions.length > 0 
@@ -606,6 +611,211 @@ router.get('/alertas', async (req, res) => {
     
   } catch (error) {
     console.error('❌ Error obteniendo alertas:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/cursos/vencer - Cursos próximos a vencer
+router.get('/vencer', async (req, res) => {
+  try {
+    const { dias = 30, limit = 50, offset = 0 } = req.query;
+    
+    console.log(`📅 GET /api/cursos/vencer - Cursos próximos a vencer en ${dias} días`);
+    
+    const result = await query(`
+      SELECT 
+        c.id,
+        c.rut_persona,
+        pd.nombre as nombre_persona,
+        c.nombre_curso,
+        c.fecha_inicio,
+        c.fecha_fin,
+        c.fecha_vencimiento,
+        c.estado,
+        c.institucion,
+        c.descripcion,
+        c.fecha_creacion,
+        c.fecha_actualizacion,
+        c.activo,
+        CASE 
+          WHEN c.fecha_vencimiento < CURRENT_DATE THEN 'vencido'
+          WHEN c.fecha_vencimiento <= CURRENT_DATE + INTERVAL '7 days' THEN 'vencer_7_dias'
+          WHEN c.fecha_vencimiento <= CURRENT_DATE + INTERVAL '30 days' THEN 'vencer_30_dias'
+          ELSE 'vigente'
+        END as estado_vencimiento,
+        (c.fecha_vencimiento - CURRENT_DATE) as dias_restantes
+      FROM mantenimiento.cursos c
+      LEFT JOIN mantenimiento.personal_disponible pd ON c.rut_persona = pd.rut
+      WHERE c.activo = true 
+        AND c.fecha_vencimiento IS NOT NULL
+        AND c.fecha_vencimiento <= CURRENT_DATE + INTERVAL '${parseInt(dias)} days'
+      ORDER BY c.fecha_vencimiento ASC
+      LIMIT $1 OFFSET $2
+    `, [parseInt(limit), parseInt(offset)]);
+
+    // Contar total
+    const countResult = await query(`
+      SELECT COUNT(*) as total
+      FROM mantenimiento.cursos c
+      WHERE c.activo = true 
+        AND c.fecha_vencimiento IS NOT NULL
+        AND c.fecha_vencimiento <= CURRENT_DATE + INTERVAL '${parseInt(dias)} days'
+    `);
+
+    const total = parseInt(countResult.rows[0].total);
+
+    res.json({
+      success: true,
+      message: `Cursos próximos a vencer en ${dias} días obtenidos exitosamente`,
+      data: result.rows,
+      pagination: {
+        total,
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        pages: Math.ceil(total / limit)
+      },
+      filtros: {
+        dias_consulta: parseInt(dias)
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error obteniendo cursos próximos a vencer:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/cursos/vencidos - Cursos vencidos
+router.get('/vencidos', async (req, res) => {
+  try {
+    const { limit = 50, offset = 0 } = req.query;
+    
+    console.log('📅 GET /api/cursos/vencidos - Cursos vencidos');
+    
+    const result = await query(`
+      SELECT 
+        c.id,
+        c.rut_persona,
+        pd.nombre as nombre_persona,
+        c.nombre_curso,
+        c.fecha_inicio,
+        c.fecha_fin,
+        c.fecha_vencimiento,
+        c.estado,
+        c.institucion,
+        c.descripcion,
+        c.fecha_creacion,
+        c.fecha_actualizacion,
+        c.activo,
+        (CURRENT_DATE - c.fecha_vencimiento) as dias_vencido
+      FROM mantenimiento.cursos c
+      LEFT JOIN mantenimiento.personal_disponible pd ON c.rut_persona = pd.rut
+      WHERE c.activo = true 
+        AND c.fecha_vencimiento IS NOT NULL
+        AND c.fecha_vencimiento < CURRENT_DATE
+      ORDER BY c.fecha_vencimiento DESC
+      LIMIT $1 OFFSET $2
+    `, [parseInt(limit), parseInt(offset)]);
+
+    // Contar total
+    const countResult = await query(`
+      SELECT COUNT(*) as total
+      FROM mantenimiento.cursos c
+      WHERE c.activo = true 
+        AND c.fecha_vencimiento IS NOT NULL
+        AND c.fecha_vencimiento < CURRENT_DATE
+    `);
+
+    const total = parseInt(countResult.rows[0].total);
+
+    res.json({
+      success: true,
+      message: 'Cursos vencidos obtenidos exitosamente',
+      data: result.rows,
+      pagination: {
+        total,
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        pages: Math.ceil(total / limit)
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error obteniendo cursos vencidos:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/cursos/estadisticas-vencimiento - Estadísticas de vencimiento
+router.get('/estadisticas-vencimiento', async (req, res) => {
+  try {
+    console.log('📊 GET /api/cursos/estadisticas-vencimiento - Estadísticas de vencimiento');
+    
+    const result = await query(`
+      SELECT 
+        COUNT(*) as total_cursos,
+        COUNT(CASE WHEN fecha_vencimiento IS NOT NULL THEN 1 END) as cursos_con_vencimiento,
+        COUNT(CASE WHEN fecha_vencimiento < CURRENT_DATE THEN 1 END) as cursos_vencidos,
+        COUNT(CASE WHEN fecha_vencimiento BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days' THEN 1 END) as cursos_vencer_7_dias,
+        COUNT(CASE WHEN fecha_vencimiento BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '30 days' THEN 1 END) as cursos_vencer_30_dias,
+        COUNT(CASE WHEN fecha_vencimiento BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '90 days' THEN 1 END) as cursos_vencer_90_dias,
+        COUNT(CASE WHEN fecha_vencimiento > CURRENT_DATE + INTERVAL '90 days' THEN 1 END) as cursos_vigentes_largo_plazo,
+        AVG(CASE WHEN fecha_vencimiento IS NOT NULL THEN (fecha_vencimiento - CURRENT_DATE) END) as promedio_dias_restantes
+      FROM mantenimiento.cursos
+      WHERE activo = true
+    `);
+
+    // Estadísticas por institución
+    const porInstitucion = await query(`
+      SELECT 
+        institucion,
+        COUNT(*) as total_cursos,
+        COUNT(CASE WHEN fecha_vencimiento < CURRENT_DATE THEN 1 END) as cursos_vencidos,
+        COUNT(CASE WHEN fecha_vencimiento BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '30 days' THEN 1 END) as cursos_vencer_30_dias
+      FROM mantenimiento.cursos
+      WHERE activo = true AND institucion IS NOT NULL
+      GROUP BY institucion
+      ORDER BY total_cursos DESC
+    `);
+
+    // Estadísticas por estado
+    const porEstado = await query(`
+      SELECT 
+        estado,
+        COUNT(*) as total_cursos,
+        COUNT(CASE WHEN fecha_vencimiento < CURRENT_DATE THEN 1 END) as cursos_vencidos,
+        COUNT(CASE WHEN fecha_vencimiento BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '30 days' THEN 1 END) as cursos_vencer_30_dias
+      FROM mantenimiento.cursos
+      WHERE activo = true
+      GROUP BY estado
+      ORDER BY total_cursos DESC
+    `);
+
+    res.json({
+      success: true,
+      message: 'Estadísticas de vencimiento obtenidas exitosamente',
+      data: {
+        general: result.rows[0],
+        por_institucion: porInstitucion.rows,
+        por_estado: porEstado.rows,
+        fecha_consulta: new Date().toISOString()
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error obteniendo estadísticas de vencimiento:', error);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
