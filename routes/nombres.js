@@ -15,13 +15,9 @@ router.get('/', async (req, res) => {
     const getAllQuery = `
       SELECT 
         rut,
-        nombre,
-        sexo,
-        fecha_nacimiento,
-        licencia_conducir,
-        created_at,
-        updated_at
+        nombre
       FROM mantenimiento.personal_disponible 
+      WHERE nombre IS NOT NULL
       ORDER BY nombre, rut
     `;
     
@@ -53,13 +49,7 @@ router.get('/stats', async (req, res) => {
     const statsQuery = `
       SELECT 
         COUNT(*) as total_registros,
-        COUNT(CASE WHEN nombre IS NOT NULL THEN 1 END) as nombres_llenos,
-        COUNT(CASE WHEN nombre IS NULL THEN 1 END) as nombres_vacios,
-        COUNT(CASE WHEN sexo = 'M' THEN 1 END) as masculinos,
-        COUNT(CASE WHEN sexo = 'F' THEN 1 END) as femeninos,
-        COUNT(DISTINCT licencia_conducir) as tipos_licencia,
-        MIN(fecha_nacimiento) as fecha_nacimiento_min,
-        MAX(fecha_nacimiento) as fecha_nacimiento_max
+        COUNT(nombre) as nombres_llenos
       FROM mantenimiento.personal_disponible
     `;
     
@@ -76,17 +66,8 @@ router.get('/stats', async (req, res) => {
       data: {
         total_registros: parseInt(stats.total_registros),
         nombres_llenos: parseInt(stats.nombres_llenos),
-        nombres_vacios: parseInt(stats.nombres_vacios),
-        porcentaje_nombres_llenos: parseFloat(porcentajeNombresLlenos),
-        distribucion_sexo: {
-          masculinos: parseInt(stats.masculinos),
-          femeninos: parseInt(stats.femeninos)
-        },
-        tipos_licencia: parseInt(stats.tipos_licencia),
-        rango_fechas: {
-          fecha_minima: stats.fecha_nacimiento_min,
-          fecha_maxima: stats.fecha_nacimiento_max
-        }
+        nombres_vacios: parseInt(stats.total_registros) - parseInt(stats.nombres_llenos),
+        porcentaje_nombres_llenos: parseFloat(porcentajeNombresLlenos)
       }
     };
     
@@ -120,10 +101,7 @@ router.get('/search', async (req, res) => {
     const searchQuery = `
       SELECT 
         rut,
-        nombre,
-        sexo,
-        fecha_nacimiento,
-        licencia_conducir
+        nombre
       FROM mantenimiento.personal_disponible 
       WHERE 
         nombre ILIKE $1 OR 
@@ -168,12 +146,7 @@ router.get('/:rut', async (req, res) => {
     const getByRutQuery = `
       SELECT 
         rut,
-        nombre,
-        sexo,
-        fecha_nacimiento,
-        licencia_conducir,
-        created_at,
-        updated_at
+        nombre
       FROM mantenimiento.personal_disponible 
       WHERE rut = $1
     `;

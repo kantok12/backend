@@ -1,6 +1,7 @@
 const express = require('express');
-const { cleanupOldTables, checkCleanupStatus } = require('../scripts/cleanup-old-tables');
-const { runEstadosUpdateSafe, checkCurrentEstados } = require('../scripts/update-estados-safe');
+// Scripts comentados temporalmente para despliegue en Cloud Run
+// const { cleanupOldTables, checkCleanupStatus } = require('../scripts/cleanup-old-tables');
+// const { runEstadosUpdateSafe, checkCurrentEstados } = require('../scripts/update-estados-safe');
 
 const router = express.Router();
 
@@ -25,95 +26,44 @@ router.post('/run', async (req, res) => {
   });
 });
 
-// GET /api/migration/cleanup-status - Verificar estado de limpieza
+// GET /api/migration/cleanup-status - Verificar estado de limpieza (DESHABILITADO para Cloud Run)
 router.get('/cleanup-status', async (req, res) => {
-  try {
-    console.log('🔍 Verificando estado de limpieza...');
-    await checkCleanupStatus();
-    
-    res.json({
-      success: true,
-      message: 'Estado de limpieza verificado',
-      timestamp: new Date().toISOString()
-    });
-    
-  } catch (error) {
-    console.error('❌ Error verificando limpieza:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error verificando limpieza',
-      error: error.message
-    });
-  }
+  res.status(503).json({
+    success: false,
+    message: 'Funcionalidad de limpieza no disponible en Cloud Run',
+    info: 'Esta funcionalidad requiere scripts locales que no están disponibles en el entorno de producción',
+    timestamp: new Date().toISOString()
+  });
 });
 
-// POST /api/migration/cleanup - Ejecutar limpieza de tablas obsoletas
+// POST /api/migration/cleanup - Ejecutar limpieza de tablas obsoletas (DESHABILITADO para Cloud Run)
 router.post('/cleanup', async (req, res) => {
-  try {
-    console.log('🧹 Ejecutando limpieza de tablas obsoletas...');
-    
-    await cleanupOldTables();
-    
-    res.json({
-      success: true,
-      message: 'Limpieza de tablas obsoletas completada exitosamente',
-      timestamp: new Date().toISOString()
-    });
-    
-  } catch (error) {
-    console.error('❌ Error ejecutando limpieza:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error ejecutando limpieza',
-      error: error.message
-    });
-  }
+  res.status(503).json({
+    success: false,
+    message: 'Funcionalidad de limpieza no disponible en Cloud Run',
+    info: 'Esta funcionalidad requiere scripts locales que no están disponibles en el entorno de producción',
+    timestamp: new Date().toISOString()
+  });
 });
 
-// GET /api/migration/estados-status - Verificar estado actual de estados
+// GET /api/migration/estados-status - Verificar estado actual de estados (DESHABILITADO para Cloud Run)
 router.get('/estados-status', async (req, res) => {
-  try {
-    console.log('🔍 Verificando estado actual de estados...');
-    const estados = await checkCurrentEstados();
-    
-    res.json({
-      success: true,
-      message: 'Estado de estados verificado',
-      data: estados,
-      timestamp: new Date().toISOString()
-    });
-    
-  } catch (error) {
-    console.error('❌ Error verificando estados:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error verificando estados',
-      error: error.message
-    });
-  }
+  res.status(503).json({
+    success: false,
+    message: 'Funcionalidad de verificación de estados no disponible en Cloud Run',
+    info: 'Esta funcionalidad requiere scripts locales que no están disponibles en el entorno de producción',
+    timestamp: new Date().toISOString()
+  });
 });
 
-// POST /api/migration/update-estados - Actualizar estados del sistema
+// POST /api/migration/update-estados - Actualizar estados del sistema (DESHABILITADO para Cloud Run)
 router.post('/update-estados', async (req, res) => {
-  try {
-    console.log('🔄 Ejecutando actualización de estados...');
-    
-    await runEstadosUpdateSafe();
-    
-    res.json({
-      success: true,
-      message: 'Actualización de estados completada exitosamente',
-      timestamp: new Date().toISOString()
-    });
-    
-  } catch (error) {
-    console.error('❌ Error actualizando estados:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error actualizando estados',
-      error: error.message
-    });
-  }
+  res.status(503).json({
+    success: false,
+    message: 'Funcionalidad de actualización de estados no disponible en Cloud Run',
+    info: 'Esta funcionalidad requiere scripts locales que no están disponibles en el entorno de producción',
+    timestamp: new Date().toISOString()
+  });
 });
 
 module.exports = router;

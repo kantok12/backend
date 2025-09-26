@@ -11,7 +11,8 @@ router.get('/', async (req, res) => {
 
     // Construir consulta SQL
     let queryText = `
-      SELECT * FROM mantenimiento.estados 
+      SELECT id, nombre, descripcion, activo
+      FROM mantenimiento.estados 
       WHERE 1=1
     `;
     const queryParams = [];

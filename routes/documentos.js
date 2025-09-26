@@ -212,6 +212,83 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET /api/documentos/tipos - Obtener tipos de documento disponibles
+router.get('/tipos', async (req, res) => {
+  try {
+    console.log('📋 GET /api/documentos/tipos - Obteniendo tipos de documento');
+    
+    const tipos = [
+      { value: 'certificado_curso', label: 'Certificado de Curso' },
+      { value: 'diploma', label: 'Diploma' },
+      { value: 'certificado_laboral', label: 'Certificado Laboral' },
+      { value: 'certificado_medico', label: 'Certificado Médico' },
+      { value: 'licencia_conducir', label: 'Licencia de Conducir' },
+      { value: 'certificado_seguridad', label: 'Certificado de Seguridad' },
+      { value: 'certificado_vencimiento', label: 'Certificado de Vencimiento' },
+      { value: 'otro', label: 'Otro' }
+    ];
+    
+    res.json({
+      success: true,
+      data: tipos
+    });
+    
+  } catch (error) {
+    console.error('❌ Error obteniendo tipos de documento:', error);
+    res.status(500).json({
+        success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/documentos/formatos - Obtener formatos de archivo soportados
+router.get('/formatos', async (req, res) => {
+  try {
+    console.log('📋 GET /api/documentos/formatos - Obteniendo formatos soportados');
+    
+    const formatos = {
+      documentos: [
+        { extension: '.pdf', mime: 'application/pdf', descripcion: 'Documento PDF' },
+        { extension: '.doc', mime: 'application/msword', descripcion: 'Documento Word 97-2003' },
+        { extension: '.docx', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', descripcion: 'Documento Word' },
+        { extension: '.xls', mime: 'application/vnd.ms-excel', descripcion: 'Hoja de cálculo Excel 97-2003' },
+        { extension: '.xlsx', mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', descripcion: 'Hoja de cálculo Excel' },
+        { extension: '.ppt', mime: 'application/vnd.ms-powerpoint', descripcion: 'Presentación PowerPoint 97-2003' },
+        { extension: '.pptx', mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', descripcion: 'Presentación PowerPoint' },
+        { extension: '.txt', mime: 'text/plain', descripcion: 'Archivo de texto' },
+        { extension: '.rtf', mime: 'application/rtf', descripcion: 'Documento RTF' }
+      ],
+      imagenes: [
+        { extension: '.jpg', mime: 'image/jpeg', descripcion: 'Imagen JPEG' },
+        { extension: '.jpeg', mime: 'image/jpeg', descripcion: 'Imagen JPEG' },
+        { extension: '.png', mime: 'image/png', descripcion: 'Imagen PNG' },
+        { extension: '.tiff', mime: 'image/tiff', descripcion: 'Imagen TIFF' },
+        { extension: '.bmp', mime: 'image/bmp', descripcion: 'Imagen BMP' }
+      ],
+      limites: {
+        tamañoMaximo: '50MB por archivo',
+        archivosMaximos: '5 archivos por request',
+        recomendado: 'PDF para documentos oficiales'
+      }
+    };
+    
+    res.json({
+      success: true,
+      data: formatos
+    });
+    
+  } catch (error) {
+    console.error('❌ Error obteniendo formatos soportados:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
 // GET /api/documentos/:id - Obtener documento por ID
 router.get('/:id', async (req, res) => {
   try {
@@ -664,52 +741,6 @@ router.get('/tipos', async (req, res) => {
     console.error('❌ Error obteniendo tipos de documento:', error);
     res.status(500).json({
         success: false,
-      message: 'Error interno del servidor',
-      error: error.message
-    });
-  }
-});
-
-// GET /api/documentos/formatos - Obtener formatos de archivo soportados
-router.get('/formatos', async (req, res) => {
-  try {
-    console.log('📋 GET /api/documentos/formatos - Obteniendo formatos soportados');
-    
-    const formatos = {
-      documentos: [
-        { extension: '.pdf', mime: 'application/pdf', descripcion: 'Documento PDF' },
-        { extension: '.doc', mime: 'application/msword', descripcion: 'Documento Word 97-2003' },
-        { extension: '.docx', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', descripcion: 'Documento Word' },
-        { extension: '.xls', mime: 'application/vnd.ms-excel', descripcion: 'Hoja de cálculo Excel 97-2003' },
-        { extension: '.xlsx', mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', descripcion: 'Hoja de cálculo Excel' },
-        { extension: '.ppt', mime: 'application/vnd.ms-powerpoint', descripcion: 'Presentación PowerPoint 97-2003' },
-        { extension: '.pptx', mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', descripcion: 'Presentación PowerPoint' },
-        { extension: '.txt', mime: 'text/plain', descripcion: 'Archivo de texto' },
-        { extension: '.rtf', mime: 'application/rtf', descripcion: 'Documento RTF' }
-      ],
-      imagenes: [
-        { extension: '.jpg', mime: 'image/jpeg', descripcion: 'Imagen JPEG' },
-        { extension: '.jpeg', mime: 'image/jpeg', descripcion: 'Imagen JPEG' },
-        { extension: '.png', mime: 'image/png', descripcion: 'Imagen PNG' },
-        { extension: '.tiff', mime: 'image/tiff', descripcion: 'Imagen TIFF' },
-        { extension: '.bmp', mime: 'image/bmp', descripcion: 'Imagen BMP' }
-      ],
-      limites: {
-        tamañoMaximo: '50MB por archivo',
-        archivosMaximos: '5 archivos por request',
-        recomendado: 'PDF para documentos oficiales'
-      }
-    };
-    
-    res.json({
-      success: true,
-      data: formatos
-    });
-    
-  } catch (error) {
-    console.error('❌ Error obteniendo formatos soportados:', error);
-    res.status(500).json({
-      success: false,
       message: 'Error interno del servidor',
       error: error.message
     });

@@ -758,6 +758,78 @@ router.get('/vencidos', async (req, res) => {
   }
 });
 
+// GET /api/cursos/stats - Estadísticas generales de cursos
+router.get('/stats', async (req, res) => {
+  try {
+    console.log('📊 GET /api/cursos/stats - Estadísticas generales de cursos');
+    
+    // Estadísticas generales
+    const totalCursos = await query(`
+      SELECT COUNT(*) as total
+      FROM mantenimiento.cursos 
+      WHERE activo = true
+    `);
+
+    const cursosPorEstado = await query(`
+      SELECT 
+        estado,
+        COUNT(*) as cantidad
+      FROM mantenimiento.cursos 
+      WHERE activo = true
+      GROUP BY estado
+      ORDER BY cantidad DESC
+    `);
+
+    const cursosPorInstitucion = await query(`
+      SELECT 
+        institucion,
+        COUNT(*) as cantidad
+      FROM mantenimiento.cursos 
+      WHERE activo = true AND institucion IS NOT NULL
+      GROUP BY institucion
+      ORDER BY cantidad DESC
+      LIMIT 10
+    `);
+
+    const cursosPorMes = await query(`
+      SELECT 
+        DATE_TRUNC('month', fecha_creacion) as mes,
+        COUNT(*) as cantidad
+      FROM mantenimiento.cursos 
+      WHERE activo = true
+      AND fecha_creacion >= CURRENT_DATE - INTERVAL '12 months'
+      GROUP BY DATE_TRUNC('month', fecha_creacion)
+      ORDER BY mes DESC
+    `);
+
+    const cursosVencidos = await query(`
+      SELECT COUNT(*) as cantidad
+      FROM mantenimiento.cursos 
+      WHERE activo = true 
+      AND fecha_vencimiento < CURRENT_DATE
+    `);
+
+    res.json({
+      success: true,
+      data: {
+        total: parseInt(totalCursos.rows[0].total),
+        porEstado: cursosPorEstado.rows,
+        porInstitucion: cursosPorInstitucion.rows,
+        porMes: cursosPorMes.rows,
+        vencidos: parseInt(cursosVencidos.rows[0].cantidad)
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error obteniendo estadísticas de cursos:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
 // GET /api/cursos/estadisticas-vencimiento - Estadísticas de vencimiento
 router.get('/estadisticas-vencimiento', async (req, res) => {
   try {

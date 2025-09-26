@@ -28,8 +28,8 @@ router.get('/', async (req, res) => {
         c.name,
         c.created_at,
         COUNT(cl.id) as total_clientes
-      FROM carteras c
-      LEFT JOIN clientes cl ON c.id = cl.cartera_id
+      FROM "Servicios".carteras c
+      LEFT JOIN "Servicios".clientes cl ON c.id = cl.cartera_id
       GROUP BY c.id, c.name, c.created_at
       ORDER BY c.created_at DESC
     `);
@@ -65,7 +65,7 @@ router.get('/:id', async (req, res) => {
         c.created_at,
         COUNT(cl.id) as total_clientes,
         COUNT(n.id) as total_nodos
-      FROM carteras c
+      FROM "Servicios".carteras c
       LEFT JOIN clientes cl ON c.id = cl.cartera_id
       LEFT JOIN nodos n ON cl.id = n.cliente_id
       WHERE c.id = $1
@@ -87,7 +87,7 @@ router.get('/:id', async (req, res) => {
         cl.created_at,
         ug.nombre as region_nombre,
         COUNT(n.id) as total_nodos
-      FROM clientes cl
+      FROM "Servicios".clientes cl
       LEFT JOIN ubicacion_geografica ug ON cl.region_id = ug.id
       LEFT JOIN nodos n ON cl.id = n.cliente_id
       WHERE cl.cartera_id = $1
@@ -224,7 +224,7 @@ router.delete('/:id', async (req, res) => {
     // Verificar si la cartera tiene clientes asociados
     const clientesResult = await query(`
       SELECT COUNT(*) as total_clientes
-      FROM clientes
+      FROM "Servicios".clientes
       WHERE cartera_id = $1
     `, [id]);
     
@@ -236,7 +236,7 @@ router.delete('/:id', async (req, res) => {
     }
     
     const result = await query(`
-      DELETE FROM carteras 
+      DELETE FROM "Servicios".carteras 
       WHERE id = $1
       RETURNING id, name
     `, [id]);
@@ -279,7 +279,7 @@ router.get('/:id/estadisticas', async (req, res) => {
         COUNT(DISTINCT cl.region_id) as regiones_unicas,
         MIN(cl.created_at) as primer_cliente,
         MAX(cl.created_at) as ultimo_cliente
-      FROM carteras c
+      FROM "Servicios".carteras c
       LEFT JOIN clientes cl ON c.id = cl.cartera_id
       LEFT JOIN nodos n ON cl.id = n.cliente_id
       WHERE c.id = $1

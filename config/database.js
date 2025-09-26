@@ -18,9 +18,11 @@ const pool = new Pool({
   ssl: {
     rejectUnauthorized: false // Requerido para Supabase
   },
-  max: 20, // Máximo número de conexiones en el pool
-  idleTimeoutMillis: 30000, // Tiempo antes de cerrar conexión inactiva
-  connectionTimeoutMillis: 2000, // Tiempo de espera para nueva conexión
+  max: parseInt(process.env.DB_MAX_CONNECTIONS) || 5, // Máximo número de conexiones en el pool
+  idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT) || 10000, // Tiempo antes de cerrar conexión inactiva
+  connectionTimeoutMillis: parseInt(process.env.DB_CONNECTION_TIMEOUT) || 5000, // Tiempo de espera para nueva conexión
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 0,
 });
 
 // ============================================================================
