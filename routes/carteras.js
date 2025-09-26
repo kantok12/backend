@@ -25,13 +25,13 @@ router.get('/', async (req, res) => {
     const result = await query(`
       SELECT 
         c.id,
-        c.name,
-        c.created_at,
+        c.nombre,
+        c.fecha_creacion,
         COUNT(cl.id) as total_clientes
-      FROM carteras c
-      LEFT JOIN clientes cl ON c.id = cl.cartera_id
-      GROUP BY c.id, c.name, c.created_at
-      ORDER BY c.created_at DESC
+      FROM mantenimiento.carteras c
+      LEFT JOIN mantenimiento.clientes cl ON c.id = cl.cartera_id
+      GROUP BY c.id, c.nombre, c.fecha_creacion
+      ORDER BY c.fecha_creacion DESC
     `);
     
     res.json({
@@ -61,15 +61,15 @@ router.get('/:id', async (req, res) => {
     const result = await query(`
       SELECT 
         c.id,
-        c.name,
-        c.created_at,
+        c.nombre,
+        c.fecha_creacion,
         COUNT(cl.id) as total_clientes,
         COUNT(n.id) as total_nodos
-      FROM carteras c
-      LEFT JOIN clientes cl ON c.id = cl.cartera_id
-      LEFT JOIN nodos n ON cl.id = n.cliente_id
+      FROM mantenimiento.carteras c
+      LEFT JOIN mantenimiento.clientes cl ON c.id = cl.cartera_id
+      LEFT JOIN mantenimiento.nodos n ON cl.id = n.cliente_id
       WHERE c.id = $1
-      GROUP BY c.id, c.name, c.created_at
+      GROUP BY c.id, c.nombre, c.fecha_creacion
     `, [id]);
     
     if (result.rows.length === 0) {
@@ -84,15 +84,15 @@ router.get('/:id', async (req, res) => {
       SELECT 
         cl.id,
         cl.nombre,
-        cl.created_at,
+        cl.fecha_creacion,
         ug.nombre as region_nombre,
         COUNT(n.id) as total_nodos
-      FROM clientes cl
+      FROM mantenimiento.clientes cl
       LEFT JOIN ubicacion_geografica ug ON cl.region_id = ug.id
-      LEFT JOIN nodos n ON cl.id = n.cliente_id
+      LEFT JOIN mantenimiento.nodos n ON cl.id = n.cliente_id
       WHERE cl.cartera_id = $1
-      GROUP BY cl.id, cl.nombre, cl.created_at, ug.nombre
-      ORDER BY cl.created_at DESC
+      GROUP BY cl.id, cl.nombre, cl.fecha_creacion, ug.nombre
+      ORDER BY cl.fecha_creacion DESC
     `, [id]);
     
     const cartera = result.rows[0];
@@ -117,7 +117,7 @@ router.get('/:id', async (req, res) => {
 
 // POST /api/carteras - Crear nueva cartera
 router.post('/', [
-  body('name')
+  body('nombre')
     .notEmpty()
     .withMessage('El nombre es requerido')
     .isLength({ min: 2, max: 100 })
@@ -126,14 +126,14 @@ router.post('/', [
   handleValidationErrors
 ], async (req, res) => {
   try {
-    const { name } = req.body;
-    console.log(`➕ Creando nueva cartera: ${name}`);
+    const { nombre } = req.body;
+    console.log(`➕ Creando nueva cartera: ${nombre}`);
     
     const result = await query(`
-      INSERT INTO carteras (name, created_at)
+      INSERT INTO mantenimiento.carteras (nombre, fecha_creacion)
       VALUES ($1, NOW())
-      RETURNING id, name, created_at
-    `, [name]);
+      RETURNING id, nombre, fecha_creacion
+    `, [nombre]);
     
     res.status(201).json({
       success: true,
@@ -163,7 +163,7 @@ router.post('/', [
 
 // PUT /api/carteras/:id - Actualizar cartera
 router.put('/:id', [
-  body('name')
+  body('nombre')
     .notEmpty()
     .withMessage('El nombre es requerido')
     .isLength({ min: 2, max: 100 })
@@ -173,15 +173,15 @@ router.put('/:id', [
 ], async (req, res) => {
   try {
     const { id } = req.params;
-    const { name } = req.body;
-    console.log(`✏️ Actualizando cartera ID: ${id} con nombre: ${name}`);
+    const { nombre } = req.body;
+    console.log(`✏️ Actualizando cartera ID: ${id} con nombre: ${nombre}`);
     
     const result = await query(`
-      UPDATE carteras 
-      SET name = $1
+      UPDATE mantenimiento.carteras 
+      SET nombre = $1
       WHERE id = $2
-      RETURNING id, name, created_at
-    `, [name, id]);
+      RETURNING id, nombre, fecha_creacion
+    `, [nombre, id]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -236,9 +236,9 @@ router.delete('/:id', async (req, res) => {
     }
     
     const result = await query(`
-      DELETE FROM carteras 
+      DELETE FROM mantenimiento.carteras 
       WHERE id = $1
-      RETURNING id, name
+      RETURNING id, nombre
     `, [id]);
     
     if (result.rows.length === 0) {
@@ -273,17 +273,17 @@ router.get('/:id/estadisticas', async (req, res) => {
     
     const result = await query(`
       SELECT 
-        c.name as cartera_nombre,
+        c.nombre as cartera_nombre,
         COUNT(DISTINCT cl.id) as total_clientes,
         COUNT(DISTINCT n.id) as total_nodos,
         COUNT(DISTINCT cl.region_id) as regiones_unicas,
-        MIN(cl.created_at) as primer_cliente,
-        MAX(cl.created_at) as ultimo_cliente
-      FROM carteras c
-      LEFT JOIN clientes cl ON c.id = cl.cartera_id
-      LEFT JOIN nodos n ON cl.id = n.cliente_id
+        MIN(cl.fecha_creacion) as primer_cliente,
+        MAX(cl.fecha_creacion) as ultimo_cliente
+      FROM mantenimiento.carteras c
+      LEFT JOIN mantenimiento.clientes cl ON c.id = cl.cartera_id
+      LEFT JOIN mantenimiento.nodos n ON cl.id = n.cliente_id
       WHERE c.id = $1
-      GROUP BY c.id, c.name
+      GROUP BY c.id, c.nombre
     `, [id]);
     
     if (result.rows.length === 0) {

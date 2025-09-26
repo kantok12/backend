@@ -71,7 +71,7 @@ const uploadMultiple = multer({
       cb(new Error(`Tipo de archivo no permitido: ${file.mimetype} (${fileExtension}). Tipos permitidos: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, RTF, JPG, PNG, TIFF, BMP`), false);
     }
   }
-}).array('archivos', 5);
+}).array('archivo', 5);
 
 // Middleware para manejar errores de multer
 const handleUploadError = (error, req, res, next) => {
@@ -213,6 +213,189 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/documentos/:id - Obtener documento por ID
+router.get('/tipos', async (req, res) => {
+  try {
+    console.log('📋 GET /api/documentos/tipos - Obteniendo tipos de documento');
+    
+    const tipos = [
+      { value: 'certificado_curso', label: 'Certificado de Curso' },
+      { value: 'diploma', label: 'Diploma' },
+      { value: 'certificado_laboral', label: 'Certificado Laboral' },
+      { value: 'certificado_medico', label: 'Certificado Médico' },
+      { value: 'licencia_conducir', label: 'Licencia de Conducir' },
+      { value: 'certificado_seguridad', label: 'Certificado de Seguridad' },
+      { value: 'certificado_vencimiento', label: 'Certificado de Vencimiento' },
+      { value: 'otro', label: 'Otro' }
+    ];
+    
+    res.json({
+      success: true,
+      data: tipos.map(t => t.value)
+    });
+    
+  } catch (error) {
+    console.error('❌ Error obteniendo tipos de documento:', error);
+    res.status(500).json({
+        success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/documentos/formatos - Obtener formatos de archivo soportados
+
+router.get('/formatos', async (req, res) => {
+  try {
+    console.log('📋 GET /api/documentos/formatos - Obteniendo formatos soportados');
+    
+    const formatos = {
+      documentos: [
+        { extension: '.pdf', mime: 'application/pdf', descripcion: 'Documento PDF' },
+        { extension: '.doc', mime: 'application/msword', descripcion: 'Documento Word 97-2003' },
+        { extension: '.docx', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', descripcion: 'Documento Word' },
+        { extension: '.xls', mime: 'application/vnd.ms-excel', descripcion: 'Hoja de cálculo Excel 97-2003' },
+        { extension: '.xlsx', mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', descripcion: 'Hoja de cálculo Excel' },
+        { extension: '.ppt', mime: 'application/vnd.ms-powerpoint', descripcion: 'Presentación PowerPoint 97-2003' },
+        { extension: '.pptx', mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', descripcion: 'Presentación PowerPoint' },
+        { extension: '.txt', mime: 'text/plain', descripcion: 'Archivo de texto' },
+        { extension: '.rtf', mime: 'application/rtf', descripcion: 'Documento RTF' }
+      ],
+      imagenes: [
+        { extension: '.jpg', mime: 'image/jpeg', descripcion: 'Imagen JPEG' },
+        { extension: '.jpeg', mime: 'image/jpeg', descripcion: 'Imagen JPEG' },
+        { extension: '.png', mime: 'image/png', descripcion: 'Imagen PNG' },
+        { extension: '.tiff', mime: 'image/tiff', descripcion: 'Imagen TIFF' },
+        { extension: '.bmp', mime: 'image/bmp', descripcion: 'Imagen BMP' }
+      ],
+      limites: {
+        tamañoMaximo: '50MB por archivo',
+        archivosMaximos: '5 archivos por request',
+        recomendado: 'PDF para documentos oficiales'
+      }
+    };
+    
+    res.json({
+      success: true,
+      data: formatos
+    });
+    
+  } catch (error) {
+    console.error('❌ Error obteniendo formatos soportados:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
+module.exports = router;
+
+
+router.get('/persona/:rut', async (req, res) => {
+  try {
+    const { rut } = req.params;
+    const { limit = 50, offset = 0, tipo_documento } = req.query;
+    
+    console.log(`📄 GET /api/documentos/persona/${rut} - Obteniendo documentos por RUT`);
+    
+    // Verificar que la persona existe
+    const checkPersonQuery = `
+      SELECT rut, nombre, cargo, zona_geografica 
+      FROM mantenimiento.personal_disponible 
+      WHERE rut = $1
+    `;
+    
+    const personResult = await query(checkPersonQuery, [rut]);
+    
+    if (personResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: `No se encontró personal con RUT: ${rut}`
+      });
+    }
+    
+    const persona = personResult.rows[0];
+    
+    // Construir filtros
+    let whereConditions = ['d.rut_persona = $1', 'd.activo = true'];
+    let queryParams = [rut];
+    let paramIndex = 2;
+    
+    if (tipo_documento) {
+      whereConditions.push(`d.tipo_documento = $${paramIndex++}`);
+      queryParams.push(tipo_documento);
+    }
+    
+    const whereClause = `WHERE ${whereConditions.join(' AND ')}`;
+    
+    // Query principal
+    const getDocumentosQuery = `
+      SELECT 
+        d.id,
+        d.nombre_documento,
+        d.tipo_documento,
+        d.nombre_archivo,
+        d.nombre_original,
+        d.tipo_mime,
+        d.tamaño_bytes,
+        d.descripcion,
+        d.fecha_subida,
+        d.subido_por
+      FROM mantenimiento.documentos d
+      ${whereClause}
+      ORDER BY d.fecha_subida DESC, d.nombre_documento
+      LIMIT $${paramIndex++} OFFSET $${paramIndex++}
+    `;
+    
+    queryParams.push(parseInt(limit), parseInt(offset));
+    
+    const result = await query(getDocumentosQuery, queryParams);
+    
+    // Query para contar total
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM mantenimiento.documentos d
+      ${whereClause}
+    `;
+    
+    const countResult = await query(countQuery, queryParams.slice(0, -2));
+    const total = parseInt(countResult.rows[0].total);
+    
+    console.log(`✅ Encontrados ${result.rows.length} documentos para ${persona.nombre}`);
+    
+    res.json({
+      success: true,
+      data: {
+        persona: {
+          rut: persona.rut,
+          nombre: persona.nombre,
+          cargo: persona.cargo,
+          zona_geografica: persona.zona_geografica
+        },
+        documentos: result.rows,
+        pagination: {
+          total,
+          limit: parseInt(limit),
+          offset: parseInt(offset),
+          hasMore: (parseInt(offset) + parseInt(limit)) < total
+        }
+      }
+    });
+    
+  } catch (error) {
+    console.error(`❌ Error obteniendo documentos para RUT ${req.params.rut}:`, error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/documentos/:id/descargar - Descargar documento
+
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -422,108 +605,7 @@ router.post('/', uploadMultiple, handleUploadError, async (req, res) => {
 });
 
 // GET /api/documentos/persona/:rut - Obtener documentos por RUT
-router.get('/persona/:rut', async (req, res) => {
-  try {
-    const { rut } = req.params;
-    const { limit = 50, offset = 0, tipo_documento } = req.query;
-    
-    console.log(`📄 GET /api/documentos/persona/${rut} - Obteniendo documentos por RUT`);
-    
-    // Verificar que la persona existe
-    const checkPersonQuery = `
-      SELECT rut, nombre, cargo, zona_geografica 
-      FROM mantenimiento.personal_disponible 
-      WHERE rut = $1
-    `;
-    
-    const personResult = await query(checkPersonQuery, [rut]);
-    
-    if (personResult.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: `No se encontró personal con RUT: ${rut}`
-      });
-    }
-    
-    const persona = personResult.rows[0];
-    
-    // Construir filtros
-    let whereConditions = ['d.rut_persona = $1', 'd.activo = true'];
-    let queryParams = [rut];
-    let paramIndex = 2;
-    
-    if (tipo_documento) {
-      whereConditions.push(`d.tipo_documento = $${paramIndex++}`);
-      queryParams.push(tipo_documento);
-    }
-    
-    const whereClause = `WHERE ${whereConditions.join(' AND ')}`;
-    
-    // Query principal
-    const getDocumentosQuery = `
-      SELECT 
-        d.id,
-        d.nombre_documento,
-        d.tipo_documento,
-        d.nombre_archivo,
-        d.nombre_original,
-        d.tipo_mime,
-        d.tamaño_bytes,
-        d.descripcion,
-        d.fecha_subida,
-        d.subido_por
-      FROM mantenimiento.documentos d
-      ${whereClause}
-      ORDER BY d.fecha_subida DESC, d.nombre_documento
-      LIMIT $${paramIndex++} OFFSET $${paramIndex++}
-    `;
-    
-    queryParams.push(parseInt(limit), parseInt(offset));
-    
-    const result = await query(getDocumentosQuery, queryParams);
-    
-    // Query para contar total
-    const countQuery = `
-      SELECT COUNT(*) as total
-      FROM mantenimiento.documentos d
-      ${whereClause}
-    `;
-    
-    const countResult = await query(countQuery, queryParams.slice(0, -2));
-    const total = parseInt(countResult.rows[0].total);
-    
-    console.log(`✅ Encontrados ${result.rows.length} documentos para ${persona.nombre}`);
-    
-    res.json({
-      success: true,
-      data: {
-        persona: {
-          rut: persona.rut,
-          nombre: persona.nombre,
-          cargo: persona.cargo,
-          zona_geografica: persona.zona_geografica
-        },
-        documentos: result.rows,
-        pagination: {
-          total,
-          limit: parseInt(limit),
-          offset: parseInt(offset),
-          hasMore: (parseInt(offset) + parseInt(limit)) < total
-        }
-      }
-    });
-    
-  } catch (error) {
-    console.error(`❌ Error obteniendo documentos para RUT ${req.params.rut}:`, error);
-    res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor',
-      error: error.message
-    });
-  }
-});
 
-// GET /api/documentos/:id/descargar - Descargar documento
 router.get('/:id/descargar', async (req, res) => {
   try {
     const { id } = req.params;
@@ -640,80 +722,4 @@ router.delete('/:id', async (req, res) => {
 });
 
 // GET /api/documentos/tipos - Obtener tipos de documento disponibles
-router.get('/tipos', async (req, res) => {
-  try {
-    console.log('📋 GET /api/documentos/tipos - Obteniendo tipos de documento');
-    
-    const tipos = [
-      { value: 'certificado_curso', label: 'Certificado de Curso' },
-      { value: 'diploma', label: 'Diploma' },
-      { value: 'certificado_laboral', label: 'Certificado Laboral' },
-      { value: 'certificado_medico', label: 'Certificado Médico' },
-      { value: 'licencia_conducir', label: 'Licencia de Conducir' },
-      { value: 'certificado_seguridad', label: 'Certificado de Seguridad' },
-      { value: 'certificado_vencimiento', label: 'Certificado de Vencimiento' },
-      { value: 'otro', label: 'Otro' }
-    ];
-    
-    res.json({
-      success: true,
-      data: tipos
-    });
-    
-  } catch (error) {
-    console.error('❌ Error obteniendo tipos de documento:', error);
-    res.status(500).json({
-        success: false,
-      message: 'Error interno del servidor',
-      error: error.message
-    });
-  }
-});
 
-// GET /api/documentos/formatos - Obtener formatos de archivo soportados
-router.get('/formatos', async (req, res) => {
-  try {
-    console.log('📋 GET /api/documentos/formatos - Obteniendo formatos soportados');
-    
-    const formatos = {
-      documentos: [
-        { extension: '.pdf', mime: 'application/pdf', descripcion: 'Documento PDF' },
-        { extension: '.doc', mime: 'application/msword', descripcion: 'Documento Word 97-2003' },
-        { extension: '.docx', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', descripcion: 'Documento Word' },
-        { extension: '.xls', mime: 'application/vnd.ms-excel', descripcion: 'Hoja de cálculo Excel 97-2003' },
-        { extension: '.xlsx', mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', descripcion: 'Hoja de cálculo Excel' },
-        { extension: '.ppt', mime: 'application/vnd.ms-powerpoint', descripcion: 'Presentación PowerPoint 97-2003' },
-        { extension: '.pptx', mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', descripcion: 'Presentación PowerPoint' },
-        { extension: '.txt', mime: 'text/plain', descripcion: 'Archivo de texto' },
-        { extension: '.rtf', mime: 'application/rtf', descripcion: 'Documento RTF' }
-      ],
-      imagenes: [
-        { extension: '.jpg', mime: 'image/jpeg', descripcion: 'Imagen JPEG' },
-        { extension: '.jpeg', mime: 'image/jpeg', descripcion: 'Imagen JPEG' },
-        { extension: '.png', mime: 'image/png', descripcion: 'Imagen PNG' },
-        { extension: '.tiff', mime: 'image/tiff', descripcion: 'Imagen TIFF' },
-        { extension: '.bmp', mime: 'image/bmp', descripcion: 'Imagen BMP' }
-      ],
-      limites: {
-        tamañoMaximo: '50MB por archivo',
-        archivosMaximos: '5 archivos por request',
-        recomendado: 'PDF para documentos oficiales'
-      }
-    };
-    
-    res.json({
-      success: true,
-      data: formatos
-    });
-    
-  } catch (error) {
-    console.error('❌ Error obteniendo formatos soportados:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor',
-      error: error.message
-    });
-  }
-});
-
-module.exports = router;

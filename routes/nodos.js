@@ -22,7 +22,7 @@ router.get('/', async (req, res) => {
   try {
     console.log('📋 Obteniendo lista de nodos...');
     
-    const { cliente_id, cartera_id, region_id, limit = 50, offset = 0 } = req.query;
+    const { cliente_id, cartera_id, limit = 50, offset = 0 } = req.query;
     
     let whereClause = '';
     let params = [];
@@ -41,13 +41,6 @@ router.get('/', async (req, res) => {
       params.push(cartera_id);
     }
     
-    if (region_id) {
-      paramCount++;
-      whereClause += paramCount === 1 ? ' WHERE' : ' AND';
-      whereClause += ` cl.region_id = $${paramCount}`;
-      params.push(region_id);
-    }
-    
     paramCount++;
     params.push(parseInt(limit));
     paramCount++;
@@ -58,26 +51,24 @@ router.get('/', async (req, res) => {
         n.id,
         n.nombre,
         n.cliente_id,
-        n.created_at,
+        n.ubicacion,
+        n.descripcion,
+        n.activo,
+        n.fecha_creacion,
         cl.nombre as cliente_nombre,
-        cl.cartera_id,
-        c.name as cartera_nombre,
-        cl.region_id,
-        ug.nombre as region_nombre
-      FROM nodos n
-      LEFT JOIN clientes cl ON n.cliente_id = cl.id
-      LEFT JOIN carteras c ON cl.cartera_id = c.id
-      LEFT JOIN ubicacion_geografica ug ON cl.region_id = ug.id
+        c.nombre as cartera_nombre
+      FROM mantenimiento.nodos n
+      LEFT JOIN mantenimiento.clientes cl ON n.cliente_id = cl.id
+      LEFT JOIN mantenimiento.carteras c ON cl.cartera_id = c.id
       ${whereClause}
-      ORDER BY n.created_at DESC
+      ORDER BY n.fecha_creacion DESC
       LIMIT $${paramCount - 1} OFFSET $${paramCount}
     `, params);
     
-    // Obtener total de registros para paginación
     const countResult = await query(`
       SELECT COUNT(*) as total
-      FROM nodos n
-      LEFT JOIN clientes cl ON n.cliente_id = cl.id
+      FROM mantenimiento.nodos n
+      LEFT JOIN mantenimiento.clientes cl ON n.cliente_id = cl.id
       ${whereClause}
     `, params.slice(0, -2));
     
@@ -85,12 +76,9 @@ router.get('/', async (req, res) => {
       success: true,
       message: 'Nodos obtenidos exitosamente',
       data: result.rows,
-      pagination: {
-        total: parseInt(countResult.rows[0].total),
-        limit: parseInt(limit),
-        offset: parseInt(offset),
-        hasMore: (parseInt(offset) + parseInt(limit)) < parseInt(countResult.rows[0].total)
-      },
+      total: parseInt(countResult.rows[0].total),
+      limit: parseInt(limit),
+      offset: parseInt(offset),
       timestamp: new Date().toISOString()
     });
     
@@ -115,16 +103,15 @@ router.get('/:id', async (req, res) => {
         n.id,
         n.nombre,
         n.cliente_id,
-        n.created_at,
+        n.ubicacion,
+        n.descripcion,
+        n.activo,
+        n.fecha_creacion,
         cl.nombre as cliente_nombre,
-        cl.cartera_id,
-        c.name as cartera_nombre,
-        cl.region_id,
-        ug.nombre as region_nombre
-      FROM nodos n
-      LEFT JOIN clientes cl ON n.cliente_id = cl.id
-      LEFT JOIN carteras c ON cl.cartera_id = c.id
-      LEFT JOIN ubicacion_geografica ug ON cl.region_id = ug.id
+        c.nombre as cartera_nombre
+      FROM mantenimiento.nodos n
+      LEFT JOIN mantenimiento.clientes cl ON n.cliente_id = cl.id
+      LEFT JOIN mantenimiento.carteras c ON cl.cartera_id = c.id
       WHERE n.id = $1
     `, [id]);
     
@@ -157,24 +144,26 @@ router.post('/', [
   body('nombre')
     .notEmpty()
     .withMessage('El nombre es requerido')
-    .isLength({ min: 2, max: 100 })
-    .withMessage('El nombre debe tener entre 2 y 100 caracteres')
+    .isLength({ min: 2, max: 255 })
+    .withMessage('El nombre debe tener entre 2 y 255 caracteres')
     .trim(),
   body('cliente_id')
-    .isInt({ min: 1 })
-    .withMessage('El ID de cliente debe ser un número entero positivo'),
+    .notEmpty()
+    .withMessage('El cliente es requerido')
+    .isInt()
+    .withMessage('El cliente debe ser un número entero'),
   handleValidationErrors
 ], async (req, res) => {
   try {
-    const { nombre, cliente_id } = req.body;
-    console.log(`➕ Creando nuevo nodo: ${nombre} para cliente ID: ${cliente_id}`);
+    const { nombre, cliente_id, ubicacion, descripcion } = req.body;
+    console.log(`➕ Creando nuevo nodo: ${nombre}`);
     
     // Verificar que el cliente existe
-    const clienteResult = await query(`
-      SELECT id FROM clientes WHERE id = $1
+    const clienteExists = await query(`
+      SELECT id FROM mantenimiento.clientes WHERE id = $1
     `, [cliente_id]);
     
-    if (clienteResult.rows.length === 0) {
+    if (clienteExists.rows.length === 0) {
       return res.status(400).json({
         success: false,
         message: 'El cliente especificado no existe'
@@ -182,10 +171,10 @@ router.post('/', [
     }
     
     const result = await query(`
-      INSERT INTO nodos (nombre, cliente_id, created_at)
-      VALUES ($1, $2, NOW())
-      RETURNING id, nombre, cliente_id, created_at
-    `, [nombre, cliente_id]);
+      INSERT INTO mantenimiento.nodos (nombre, cliente_id, ubicacion, descripcion, activo, fecha_creacion)
+      VALUES ($1, $2, $3, $4, true, NOW())
+      RETURNING id, nombre, cliente_id, ubicacion, descripcion, activo, fecha_creacion
+    `, [nombre, cliente_id, ubicacion || null, descripcion || null]);
     
     res.status(201).json({
       success: true,
@@ -197,17 +186,11 @@ router.post('/', [
   } catch (error) {
     console.error('❌ Error creando nodo:', error);
     
+    // Verificar si es error de duplicado
     if (error.code === '23505') {
       return res.status(409).json({
         success: false,
-        message: 'Ya existe un nodo con ese nombre para ese cliente'
-      });
-    }
-    
-    if (error.code === '23503') {
-      return res.status(400).json({
-        success: false,
-        message: 'El cliente especificado no existe'
+        message: 'Ya existe un nodo con ese nombre para este cliente'
       });
     }
     
@@ -224,25 +207,27 @@ router.put('/:id', [
   body('nombre')
     .notEmpty()
     .withMessage('El nombre es requerido')
-    .isLength({ min: 2, max: 100 })
-    .withMessage('El nombre debe tener entre 2 y 100 caracteres')
+    .isLength({ min: 2, max: 255 })
+    .withMessage('El nombre debe tener entre 2 y 255 caracteres')
     .trim(),
   body('cliente_id')
-    .isInt({ min: 1 })
-    .withMessage('El ID de cliente debe ser un número entero positivo'),
+    .notEmpty()
+    .withMessage('El cliente es requerido')
+    .isInt()
+    .withMessage('El cliente debe ser un número entero'),
   handleValidationErrors
 ], async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, cliente_id } = req.body;
+    const { nombre, cliente_id, ubicacion, descripcion } = req.body;
     console.log(`✏️ Actualizando nodo ID: ${id} con nombre: ${nombre}`);
     
     // Verificar que el cliente existe
-    const clienteResult = await query(`
-      SELECT id FROM clientes WHERE id = $1
+    const clienteExists = await query(`
+      SELECT id FROM mantenimiento.clientes WHERE id = $1
     `, [cliente_id]);
     
-    if (clienteResult.rows.length === 0) {
+    if (clienteExists.rows.length === 0) {
       return res.status(400).json({
         success: false,
         message: 'El cliente especificado no existe'
@@ -250,11 +235,11 @@ router.put('/:id', [
     }
     
     const result = await query(`
-      UPDATE nodos 
-      SET nombre = $1, cliente_id = $2
-      WHERE id = $3
-      RETURNING id, nombre, cliente_id, created_at
-    `, [nombre, cliente_id, id]);
+      UPDATE mantenimiento.nodos 
+      SET nombre = $1, cliente_id = $2, ubicacion = $3, descripcion = $4, fecha_actualizacion = NOW()
+      WHERE id = $5
+      RETURNING id, nombre, cliente_id, ubicacion, descripcion, activo, fecha_creacion
+    `, [nombre, cliente_id, ubicacion || null, descripcion || null, id]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -276,14 +261,7 @@ router.put('/:id', [
     if (error.code === '23505') {
       return res.status(409).json({
         success: false,
-        message: 'Ya existe un nodo con ese nombre para ese cliente'
-      });
-    }
-    
-    if (error.code === '23503') {
-      return res.status(400).json({
-        success: false,
-        message: 'El cliente especificado no existe'
+        message: 'Ya existe un nodo con ese nombre para este cliente'
       });
     }
     
@@ -302,7 +280,7 @@ router.delete('/:id', async (req, res) => {
     console.log(`🗑️ Eliminando nodo ID: ${id}`);
     
     const result = await query(`
-      DELETE FROM nodos 
+      DELETE FROM mantenimiento.nodos 
       WHERE id = $1
       RETURNING id, nombre
     `, [id]);
@@ -331,41 +309,30 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// GET /api/nodos/cliente/:cliente_id - Obtener nodos de un cliente específico
+// GET /api/nodos/cliente/:cliente_id - Nodos por cliente
 router.get('/cliente/:cliente_id', async (req, res) => {
   try {
     const { cliente_id } = req.params;
-    const { limit = 50, offset = 0 } = req.query;
     console.log(`🔍 Obteniendo nodos del cliente ID: ${cliente_id}`);
     
     const result = await query(`
       SELECT 
         n.id,
         n.nombre,
-        n.created_at
-      FROM nodos n
+        n.ubicacion,
+        n.descripcion,
+        n.activo,
+        n.fecha_creacion
+      FROM mantenimiento.nodos n
       WHERE n.cliente_id = $1
-      ORDER BY n.created_at DESC
-      LIMIT $2 OFFSET $3
-    `, [cliente_id, parseInt(limit), parseInt(offset)]);
-    
-    // Obtener total de nodos para paginación
-    const countResult = await query(`
-      SELECT COUNT(*) as total
-      FROM nodos
-      WHERE cliente_id = $1
+      ORDER BY n.fecha_creacion DESC
     `, [cliente_id]);
     
     res.json({
       success: true,
       message: 'Nodos del cliente obtenidos exitosamente',
       data: result.rows,
-      pagination: {
-        total: parseInt(countResult.rows[0].total),
-        limit: parseInt(limit),
-        offset: parseInt(offset),
-        hasMore: (parseInt(offset) + parseInt(limit)) < parseInt(countResult.rows[0].total)
-      },
+      total: result.rows.length,
       timestamp: new Date().toISOString()
     });
     
@@ -379,21 +346,22 @@ router.get('/cliente/:cliente_id', async (req, res) => {
   }
 });
 
-// GET /api/nodos/estadisticas - Obtener estadísticas generales de nodos
+// GET /api/nodos/estadisticas - Estadísticas generales
 router.get('/estadisticas', async (req, res) => {
   try {
-    console.log('📊 Obteniendo estadísticas generales de nodos...');
+    console.log('📊 Obteniendo estadísticas de nodos...');
     
     const result = await query(`
       SELECT 
-        COUNT(n.id) as total_nodos,
-        COUNT(DISTINCT n.cliente_id) as clientes_con_nodos,
+        COUNT(*) as total_nodos,
+        COUNT(DISTINCT cliente_id) as clientes_con_nodos,
         COUNT(DISTINCT cl.cartera_id) as carteras_con_nodos,
-        COUNT(DISTINCT cl.region_id) as regiones_con_nodos,
-        MIN(n.created_at) as primer_nodo,
-        MAX(n.created_at) as ultimo_nodo
-      FROM nodos n
-      LEFT JOIN clientes cl ON n.cliente_id = cl.id
+        COUNT(CASE WHEN n.activo = true THEN 1 END) as nodos_activos,
+        COUNT(CASE WHEN n.activo = false THEN 1 END) as nodos_inactivos,
+        MIN(n.fecha_creacion) as primer_nodo,
+        MAX(n.fecha_creacion) as ultimo_nodo
+      FROM mantenimiento.nodos n
+      LEFT JOIN mantenimiento.clientes cl ON n.cliente_id = cl.id
     `);
     
     res.json({

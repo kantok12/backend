@@ -22,7 +22,7 @@ router.get('/', async (req, res) => {
   try {
     console.log('📋 Obteniendo lista de clientes...');
     
-    const { cartera_id, region_id, limit = 50, offset = 0 } = req.query;
+    const { cartera_id, limit = 50, offset = 0 } = req.query;
     
     let whereClause = '';
     let params = [];
@@ -32,13 +32,6 @@ router.get('/', async (req, res) => {
       paramCount++;
       whereClause += ` WHERE cl.cartera_id = $${paramCount}`;
       params.push(cartera_id);
-    }
-    
-    if (region_id) {
-      paramCount++;
-      whereClause += paramCount === 1 ? ' WHERE' : ' AND';
-      whereClause += ` cl.region_id = $${paramCount}`;
-      params.push(region_id);
     }
     
     paramCount++;
@@ -51,25 +44,23 @@ router.get('/', async (req, res) => {
         cl.id,
         cl.nombre,
         cl.cartera_id,
-        cl.region_id,
-        cl.created_at,
-        c.name as cartera_nombre,
-        ug.nombre as region_nombre,
+        cl.descripcion,
+        cl.activo,
+        cl.fecha_creacion,
+        c.nombre as cartera_nombre,
         COUNT(n.id) as total_nodos
-      FROM clientes cl
-      LEFT JOIN carteras c ON cl.cartera_id = c.id
-      LEFT JOIN ubicacion_geografica ug ON cl.region_id = ug.id
-      LEFT JOIN nodos n ON cl.id = n.cliente_id
+      FROM mantenimiento.clientes cl
+      LEFT JOIN mantenimiento.carteras c ON cl.cartera_id = c.id
+      LEFT JOIN mantenimiento.nodos n ON cl.id = n.cliente_id
       ${whereClause}
-      GROUP BY cl.id, cl.nombre, cl.cartera_id, cl.region_id, cl.created_at, c.name, ug.nombre
-      ORDER BY cl.created_at DESC
+      GROUP BY cl.id, cl.nombre, cl.cartera_id, cl.descripcion, cl.activo, cl.fecha_creacion, c.nombre
+      ORDER BY cl.fecha_creacion DESC
       LIMIT $${paramCount - 1} OFFSET $${paramCount}
     `, params);
     
-    // Obtener total de registros para paginación
     const countResult = await query(`
       SELECT COUNT(*) as total
-      FROM clientes cl
+      FROM mantenimiento.clientes cl
       ${whereClause}
     `, params.slice(0, -2));
     
@@ -77,12 +68,9 @@ router.get('/', async (req, res) => {
       success: true,
       message: 'Clientes obtenidos exitosamente',
       data: result.rows,
-      pagination: {
-        total: parseInt(countResult.rows[0].total),
-        limit: parseInt(limit),
-        offset: parseInt(offset),
-        hasMore: (parseInt(offset) + parseInt(limit)) < parseInt(countResult.rows[0].total)
-      },
+      total: parseInt(countResult.rows[0].total),
+      limit: parseInt(limit),
+      offset: parseInt(offset),
       timestamp: new Date().toISOString()
     });
     
@@ -107,17 +95,16 @@ router.get('/:id', async (req, res) => {
         cl.id,
         cl.nombre,
         cl.cartera_id,
-        cl.region_id,
-        cl.created_at,
-        c.name as cartera_nombre,
-        ug.nombre as region_nombre,
+        cl.descripcion,
+        cl.activo,
+        cl.fecha_creacion,
+        c.nombre as cartera_nombre,
         COUNT(n.id) as total_nodos
-      FROM clientes cl
-      LEFT JOIN carteras c ON cl.cartera_id = c.id
-      LEFT JOIN ubicacion_geografica ug ON cl.region_id = ug.id
-      LEFT JOIN nodos n ON cl.id = n.cliente_id
+      FROM mantenimiento.clientes cl
+      LEFT JOIN mantenimiento.carteras c ON cl.cartera_id = c.id
+      LEFT JOIN mantenimiento.nodos n ON cl.id = n.cliente_id
       WHERE cl.id = $1
-      GROUP BY cl.id, cl.nombre, cl.cartera_id, cl.region_id, cl.created_at, c.name, ug.nombre
+      GROUP BY cl.id, cl.nombre, cl.cartera_id, cl.descripcion, cl.activo, cl.fecha_creacion, c.nombre
     `, [id]);
     
     if (result.rows.length === 0) {
@@ -132,10 +119,13 @@ router.get('/:id', async (req, res) => {
       SELECT 
         n.id,
         n.nombre,
-        n.created_at
-      FROM nodos n
+        n.ubicacion,
+        n.descripcion,
+        n.activo,
+        n.fecha_creacion
+      FROM mantenimiento.nodos n
       WHERE n.cliente_id = $1
-      ORDER BY n.created_at DESC
+      ORDER BY n.fecha_creacion DESC
     `, [id]);
     
     const cliente = result.rows[0];
@@ -163,50 +153,37 @@ router.post('/', [
   body('nombre')
     .notEmpty()
     .withMessage('El nombre es requerido')
-    .isLength({ min: 2, max: 100 })
-    .withMessage('El nombre debe tener entre 2 y 100 caracteres')
+    .isLength({ min: 2, max: 255 })
+    .withMessage('El nombre debe tener entre 2 y 255 caracteres')
     .trim(),
   body('cartera_id')
-    .isInt({ min: 1 })
-    .withMessage('El ID de cartera debe ser un número entero positivo'),
-  body('region_id')
-    .isInt({ min: 1 })
-    .withMessage('El ID de región debe ser un número entero positivo'),
+    .notEmpty()
+    .withMessage('La cartera es requerida')
+    .isInt()
+    .withMessage('La cartera debe ser un número entero'),
   handleValidationErrors
 ], async (req, res) => {
   try {
-    const { nombre, cartera_id, region_id } = req.body;
+    const { nombre, cartera_id, descripcion } = req.body;
     console.log(`➕ Creando nuevo cliente: ${nombre}`);
     
     // Verificar que la cartera existe
-    const carteraResult = await query(`
-      SELECT id FROM carteras WHERE id = $1
+    const carteraExists = await query(`
+      SELECT id FROM mantenimiento.carteras WHERE id = $1
     `, [cartera_id]);
     
-    if (carteraResult.rows.length === 0) {
+    if (carteraExists.rows.length === 0) {
       return res.status(400).json({
         success: false,
         message: 'La cartera especificada no existe'
       });
     }
     
-    // Verificar que la región existe
-    const regionResult = await query(`
-      SELECT id FROM ubicacion_geografica WHERE id = $1
-    `, [region_id]);
-    
-    if (regionResult.rows.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'La región especificada no existe'
-      });
-    }
-    
     const result = await query(`
-      INSERT INTO clientes (nombre, cartera_id, region_id, created_at)
-      VALUES ($1, $2, $3, NOW())
-      RETURNING id, nombre, cartera_id, region_id, created_at
-    `, [nombre, cartera_id, region_id]);
+      INSERT INTO mantenimiento.clientes (nombre, cartera_id, descripcion, activo, fecha_creacion)
+      VALUES ($1, $2, $3, true, NOW())
+      RETURNING id, nombre, cartera_id, descripcion, activo, fecha_creacion
+    `, [nombre, cartera_id, descripcion || null]);
     
     res.status(201).json({
       success: true,
@@ -218,17 +195,11 @@ router.post('/', [
   } catch (error) {
     console.error('❌ Error creando cliente:', error);
     
+    // Verificar si es error de duplicado
     if (error.code === '23505') {
       return res.status(409).json({
         success: false,
-        message: 'Ya existe un cliente con ese nombre en esa cartera'
-      });
-    }
-    
-    if (error.code === '23503') {
-      return res.status(400).json({
-        success: false,
-        message: 'La cartera o región especificada no existe'
+        message: 'Ya existe un cliente con ese nombre'
       });
     }
     
@@ -245,52 +216,39 @@ router.put('/:id', [
   body('nombre')
     .notEmpty()
     .withMessage('El nombre es requerido')
-    .isLength({ min: 2, max: 100 })
-    .withMessage('El nombre debe tener entre 2 y 100 caracteres')
+    .isLength({ min: 2, max: 255 })
+    .withMessage('El nombre debe tener entre 2 y 255 caracteres')
     .trim(),
   body('cartera_id')
-    .isInt({ min: 1 })
-    .withMessage('El ID de cartera debe ser un número entero positivo'),
-  body('region_id')
-    .isInt({ min: 1 })
-    .withMessage('El ID de región debe ser un número entero positivo'),
+    .notEmpty()
+    .withMessage('La cartera es requerida')
+    .isInt()
+    .withMessage('La cartera debe ser un número entero'),
   handleValidationErrors
 ], async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, cartera_id, region_id } = req.body;
+    const { nombre, cartera_id, descripcion } = req.body;
     console.log(`✏️ Actualizando cliente ID: ${id} con nombre: ${nombre}`);
     
     // Verificar que la cartera existe
-    const carteraResult = await query(`
-      SELECT id FROM carteras WHERE id = $1
+    const carteraExists = await query(`
+      SELECT id FROM mantenimiento.carteras WHERE id = $1
     `, [cartera_id]);
     
-    if (carteraResult.rows.length === 0) {
+    if (carteraExists.rows.length === 0) {
       return res.status(400).json({
         success: false,
         message: 'La cartera especificada no existe'
       });
     }
     
-    // Verificar que la región existe
-    const regionResult = await query(`
-      SELECT id FROM ubicacion_geografica WHERE id = $1
-    `, [region_id]);
-    
-    if (regionResult.rows.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'La región especificada no existe'
-      });
-    }
-    
     const result = await query(`
-      UPDATE clientes 
-      SET nombre = $1, cartera_id = $2, region_id = $3
+      UPDATE mantenimiento.clientes 
+      SET nombre = $1, cartera_id = $2, descripcion = $3, fecha_actualizacion = NOW()
       WHERE id = $4
-      RETURNING id, nombre, cartera_id, region_id, created_at
-    `, [nombre, cartera_id, region_id, id]);
+      RETURNING id, nombre, cartera_id, descripcion, activo, fecha_creacion
+    `, [nombre, cartera_id, descripcion || null, id]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -312,14 +270,7 @@ router.put('/:id', [
     if (error.code === '23505') {
       return res.status(409).json({
         success: false,
-        message: 'Ya existe un cliente con ese nombre en esa cartera'
-      });
-    }
-    
-    if (error.code === '23503') {
-      return res.status(400).json({
-        success: false,
-        message: 'La cartera o región especificada no existe'
+        message: 'Ya existe un cliente con ese nombre'
       });
     }
     
@@ -340,7 +291,7 @@ router.delete('/:id', async (req, res) => {
     // Verificar si el cliente tiene nodos asociados
     const nodosResult = await query(`
       SELECT COUNT(*) as total_nodos
-      FROM nodos
+      FROM mantenimiento.nodos
       WHERE cliente_id = $1
     `, [id]);
     
@@ -352,7 +303,7 @@ router.delete('/:id', async (req, res) => {
     }
     
     const result = await query(`
-      DELETE FROM clientes 
+      DELETE FROM mantenimiento.clientes 
       WHERE id = $1
       RETURNING id, nombre
     `, [id]);
@@ -390,17 +341,16 @@ router.get('/:id/estadisticas', async (req, res) => {
     const result = await query(`
       SELECT 
         cl.nombre as cliente_nombre,
-        c.name as cartera_nombre,
-        ug.nombre as region_nombre,
-        COUNT(n.id) as total_nodos,
-        MIN(n.created_at) as primer_nodo,
-        MAX(n.created_at) as ultimo_nodo
-      FROM clientes cl
-      LEFT JOIN carteras c ON cl.cartera_id = c.id
-      LEFT JOIN ubicacion_geografica ug ON cl.region_id = ug.id
-      LEFT JOIN nodos n ON cl.id = n.cliente_id
+        c.nombre as cartera_nombre,
+        COUNT(DISTINCT n.id) as total_nodos,
+        COUNT(DISTINCT CASE WHEN n.activo = true THEN n.id END) as nodos_activos,
+        MIN(n.fecha_creacion) as primer_nodo,
+        MAX(n.fecha_creacion) as ultimo_nodo
+      FROM mantenimiento.clientes cl
+      LEFT JOIN mantenimiento.carteras c ON cl.cartera_id = c.id
+      LEFT JOIN mantenimiento.nodos n ON cl.id = n.cliente_id
       WHERE cl.id = $1
-      GROUP BY cl.id, cl.nombre, c.name, ug.nombre
+      GROUP BY cl.id, cl.nombre, c.nombre
     `, [id]);
     
     if (result.rows.length === 0) {

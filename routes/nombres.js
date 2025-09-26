@@ -19,8 +19,7 @@ router.get('/', async (req, res) => {
         sexo,
         fecha_nacimiento,
         licencia_conducir,
-        created_at,
-        updated_at
+        created_at
       FROM mantenimiento.personal_disponible 
       ORDER BY nombre, rut
     `;
@@ -172,8 +171,7 @@ router.get('/:rut', async (req, res) => {
         sexo,
         fecha_nacimiento,
         licencia_conducir,
-        created_at,
-        updated_at
+        created_at
       FROM mantenimiento.personal_disponible 
       WHERE rut = $1
     `;
@@ -260,7 +258,7 @@ router.put('/:rut', async (req, res) => {
       updateValues.push(licencia_conducir);
     }
     
-    updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
+    // updated_at se maneja automáticamente por la base de datos
     updateValues.push(rut); // Para el WHERE
     
     const updateQuery = `
