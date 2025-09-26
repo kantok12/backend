@@ -1,37 +1,61 @@
-const { query } = require('./config/database');
+const { Pool } = require('pg');
+require('dotenv').config({ path: './config.env' });
 
 async function checkTables() {
+  const pool = new Pool({
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
+    database: process.env.DB_NAME,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    ssl: false
+  });
+
   try {
-    console.log('🔍 Verificando tablas en esquema mantenimiento...');
+    const client = await pool.connect();
     
-    const result = await query(`
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_schema = 'mantenimiento' 
+    console.log('📋 TABLAS EN ESQUEMA MANTENIMIENTO:');
+    console.log('=====================================');
+    
+    const tables = await client.query(`
+      SELECT 
+        table_name,
+        (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = 'mantenimiento' AND table_name = t.table_name) as column_count
+      FROM information_schema.tables t
+      WHERE table_schema = 'mantenimiento'
       ORDER BY table_name
     `);
     
-    console.log('\n📋 Tablas encontradas:');
-    result.rows.forEach(row => {
-      console.log(`- ${row.table_name}`);
-    });
-    
-    // Verificar si existen las nuevas tablas del ERD
-    const newTables = ['personal_estados', 'estado_unificado'];
-    console.log('\n🔍 Verificando nuevas tablas del ERD:');
-    
-    for (const table of newTables) {
-      const exists = result.rows.some(row => row.table_name === table);
-      console.log(`${exists ? '✅' : '❌'} ${table}: ${exists ? 'EXISTE' : 'NO EXISTE'}`);
+    for (const table of tables.rows) {
+      console.log(`\n📊 Tabla: ${table.table_name} (${table.column_count} columnas)`);
+      
+      // Obtener columnas
+      const columns = await client.query(`
+        SELECT column_name, data_type, is_nullable, column_default
+        FROM information_schema.columns 
+        WHERE table_schema = 'mantenimiento' AND table_name = $1
+        ORDER BY ordinal_position
+      `, [table.table_name]);
+      
+      columns.rows.forEach(col => {
+        console.log(`   - ${col.column_name}: ${col.data_type} ${col.is_nullable === 'NO' ? '(NOT NULL)' : ''}`);
+      });
+      
+      // Contar registros
+      try {
+        const count = await client.query(`SELECT COUNT(*) as total FROM mantenimiento.${table.table_name}`);
+        console.log(`   📈 Registros: ${count.rows[0].total}`);
+      } catch (error) {
+        console.log(`   ❌ Error al contar registros: ${error.message}`);
+      }
     }
     
-    process.exit(0);
+    client.release();
+    await pool.end();
+    
   } catch (error) {
     console.error('❌ Error:', error.message);
-    process.exit(1);
   }
 }
 
 checkTables();
-
-

@@ -15,9 +15,7 @@ const pool = new Pool({
   database: process.env.DB_NAME,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
-  ssl: {
-    rejectUnauthorized: false // Requerido para Supabase
-  },
+  ssl: false, // Deshabilitado para PostgreSQL local
   max: 20, // Máximo número de conexiones en el pool
   idleTimeoutMillis: 30000, // Tiempo antes de cerrar conexión inactiva
   connectionTimeoutMillis: 2000, // Tiempo de espera para nueva conexión
