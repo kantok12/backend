@@ -1,0 +1,176 @@
+{
+  "documentos": {
+    "baseUrl": "http://localhost:3000/api/documentos",
+    "endpoints": {
+      "upload": "POST /api/documentos",
+      "list": "GET /api/documentos",
+      "getById": "GET /api/documentos/{id}",
+      "getByRut": "GET /api/documentos/persona/{rut}",
+      "download": "GET /api/documentos/{id}/descargar",
+      "delete": "DELETE /api/documentos/{id}",
+      "tipos": "GET /api/documentos/tipos",
+      "formatos": "GET /api/documentos/formatos"
+    },
+    "tiposDocumento": [
+      {
+        "value": "certificado_curso",
+        "label": "Certificado de Curso"
+      },
+      {
+        "value": "diploma",
+        "label": "Diploma"
+      },
+      {
+        "value": "certificado_laboral",
+        "label": "Certificado Laboral"
+      },
+      {
+        "value": "certificado_medico",
+        "label": "Certificado Médico"
+      },
+      {
+        "value": "licencia_conducir",
+        "label": "Licencia de Conducir"
+      },
+      {
+        "value": "certificado_seguridad",
+        "label": "Certificado de Seguridad"
+      },
+      {
+        "value": "certificado_vencimiento",
+        "label": "Certificado de Vencimiento"
+      },
+      {
+        "value": "otro",
+        "label": "Otro"
+      }
+    ],
+    "formatosSoportados": {
+      "pdf": {
+        "mimeTypes": ["application/pdf"],
+        "extensiones": [".pdf"],
+        "descripcion": "Documentos PDF"
+      },
+      "imagenes": {
+        "mimeTypes": ["image/jpeg", "image/jpg", "image/png", "image/tiff", "image/bmp"],
+        "extensiones": [".jpg", ".jpeg", ".png", ".tiff", ".bmp"],
+        "descripcion": "Imágenes (JPEG, PNG, TIFF, BMP)"
+      },
+      "office": {
+        "mimeTypes": [
+          "application/msword",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "application/vnd.ms-excel",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "application/vnd.ms-powerpoint",
+          "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        ],
+        "extensiones": [".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx"],
+        "descripcion": "Documentos de Microsoft Office"
+      },
+      "texto": {
+        "mimeTypes": ["text/plain", "application/rtf"],
+        "extensiones": [".txt", ".rtf"],
+        "descripcion": "Archivos de texto"
+      }
+    },
+    "limites": {
+      "tamañoMaximo": 52428800,
+      "tamañoMaximoMB": 50,
+      "archivosMaximos": 5,
+      "descripcion": "Máximo 50MB por archivo, hasta 5 archivos por request"
+    },
+    "paginacion": {
+      "limiteDefault": 10,
+      "limiteMaximo": 100,
+      "paginaDefault": 1
+    }
+  },
+  "estadoSistema": {
+    "documentosDisponibles": 12,
+    "ultimaActualizacion": "2025-09-29T11:52:49.453Z",
+    "estado": "OPERATIVO",
+    "version": "1.0.0"
+  },
+  "datosPrueba": {
+    "rutsConDocumentos": [
+      "20227477-3",
+      "20181372-7", 
+      "26258374-0",
+      "19887445-0",
+      "19741830-3",
+      "16924504-5",
+      "18539810-2",
+      "19228889-4",
+      "19453262-8",
+      "20804350-1",
+      "21364997-3",
+      "19838046-6"
+    ],
+    "cargosDisponibles": [
+      "Lubricador",
+      "Ingeniero de Servicios",
+      "Lubricador 2",
+      "Experto en Prevención De Riesgos",
+      "Capataz Lubricador",
+      "Lubricador 1"
+    ]
+  },
+  "ejemplos": {
+    "formularioUpload": {
+      "campos": [
+        {
+          "name": "archivo",
+          "type": "file",
+          "required": true,
+          "description": "Archivo a subir"
+        },
+        {
+          "name": "rut_persona",
+          "type": "text",
+          "required": true,
+          "description": "RUT de la persona (formato: 12345678-9)"
+        },
+        {
+          "name": "nombre_documento",
+          "type": "text",
+          "required": true,
+          "description": "Nombre descriptivo del documento"
+        },
+        {
+          "name": "tipo_documento",
+          "type": "select",
+          "required": true,
+          "description": "Tipo de documento (usar valores de tiposDocumento)"
+        },
+        {
+          "name": "descripcion",
+          "type": "textarea",
+          "required": false,
+          "description": "Descripción opcional del documento"
+        }
+      ]
+    },
+    "respuestaExitosa": {
+      "success": true,
+      "message": "1 documento(s) subido(s) exitosamente",
+      "data": {
+        "persona": {
+          "rut": "20227477-3",
+          "nombre": "Araya Garrido Carlos Daniel",
+          "cargo": "Ingeniero de Servicios"
+        },
+        "documentos": [
+          {
+            "id": 3,
+            "nombre_archivo": "certificado_20227477_3_1759146769452.txt",
+            "nombre_original": "certificado-curso-prueba.txt",
+            "tipo_mime": "text/plain",
+            "tamaño_bytes": 1069,
+            "fecha_subida": "2025-09-29T11:52:49.453Z"
+          }
+        ]
+      }
+    }
+  }
+}

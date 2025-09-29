@@ -39,3 +39,4 @@ if (content.includes(oldConfig)) {
 } else {
   console.log('❌ No se encontró la configuración de multer para corregir');
 }
+

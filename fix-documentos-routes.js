@@ -59,3 +59,4 @@ if (idRouteIndex !== -1) {
 } else {
   console.log('❌ No se encontró la ruta /:id para reorganizar');
 }
+

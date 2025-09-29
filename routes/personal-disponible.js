@@ -2,6 +2,17 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../config/database');
 
+// Función para validar formato de licencia de conducir
+function validarLicenciaConducir(licencia) {
+  if (!licencia || typeof licencia !== 'string') {
+    return false;
+  }
+  
+  // Formato: 1-2 letras seguidas de números (ej: B, A1, B2, C1, etc.)
+  const regex = /^[A-Z]{1,2}\d*$/;
+  return regex.test(licencia.toUpperCase());
+}
+
 // GET /personal-disponible - listar todo el personal disponible (con paginación opcional)
 router.get('/', async (req, res) => {
   try {
@@ -272,6 +283,15 @@ router.put('/:rut', async (req, res) => {
         success: false,
         error: 'Datos inválidos',
         message: 'Los campos sexo, fecha_nacimiento, licencia_conducir, cargo y estado_id son requeridos'
+      });
+    }
+
+    // Validar formato de licencia de conducir
+    if (!validarLicenciaConducir(licencia_conducir)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Formato de licencia inválido',
+        message: 'La licencia de conducir debe tener formato de 1-2 letras seguidas de números (ej: B, A1, B2, C1)'
       });
     }
 

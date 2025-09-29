@@ -6,6 +6,29 @@ const { query } = require('../config/database');
 
 const router = express.Router();
 
+// Función para convertir label de tipo de documento a value
+function convertirTipoDocumento(tipo) {
+  const tiposMap = {
+    'Certificado de Curso': 'certificado_curso',
+    'Diploma': 'diploma',
+    'Certificado Laboral': 'certificado_laboral',
+    'Certificado Médico': 'certificado_medico',
+    'Licencia de Conducir': 'licencia_conducir',
+    'Certificado de Seguridad': 'certificado_seguridad',
+    'Certificado de Vencimiento': 'certificado_vencimiento',
+    'Otro': 'otro'
+  };
+  
+  // Si ya es un value válido, devolverlo tal como está
+  const values = Object.values(tiposMap);
+  if (values.includes(tipo)) {
+    return tipo;
+  }
+  
+  // Si es un label, convertirlo a value
+  return tiposMap[tipo] || tipo;
+}
+
 // =====================================================
 // CONFIGURACIÓN DE MULTER PARA SUBIDA DE ARCHIVOS
 // =====================================================
@@ -394,6 +417,86 @@ router.get('/persona/:rut', async (req, res) => {
   }
 });
 
+// GET /api/documentos/curso/:nombre - Obtener documentos por nombre de curso
+router.get('/curso/:nombre', async (req, res) => {
+  try {
+    const { nombre } = req.params;
+    const limit = Number(req.query.limit) || 20;
+    const offset = Number(req.query.offset) || 0;
+    
+    console.log(`📄 GET /api/documentos/curso/${nombre} - Obteniendo documentos por curso`);
+    
+    // Buscar documentos que contengan el nombre del curso en su nombre_documento o descripción
+    const getDocumentsQuery = `
+      SELECT 
+        d.id,
+        d.rut_persona,
+        d.nombre_documento,
+        d.tipo_documento,
+        d.nombre_archivo,
+        d.nombre_original,
+        d.tipo_mime,
+        d.tamaño_bytes,
+        d.descripcion,
+        d.fecha_subida,
+        d.subido_por,
+        pd.nombre as nombre_persona,
+        pd.cargo,
+        pd.zona_geografica
+      FROM mantenimiento.documentos d
+      LEFT JOIN mantenimiento.personal_disponible pd ON d.rut_persona = pd.rut
+      WHERE d.activo = true 
+        AND (
+          LOWER(d.nombre_documento) LIKE LOWER($1) 
+          OR LOWER(d.descripcion) LIKE LOWER($1)
+        )
+      ORDER BY d.fecha_subida DESC, d.nombre_documento
+      LIMIT $2 OFFSET $3
+    `;
+    
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM mantenimiento.documentos d
+      WHERE d.activo = true 
+        AND (
+          LOWER(d.nombre_documento) LIKE LOWER($1) 
+          OR LOWER(d.descripcion) LIKE LOWER($1)
+        )
+    `;
+    
+    const searchTerm = `%${nombre}%`;
+    
+    const result = await query(getDocumentsQuery, [searchTerm, limit, offset]);
+    const countResult = await query(countQuery, [searchTerm]);
+    const total = parseInt(countResult.rows[0].total);
+    
+    console.log(`✅ Encontrados ${result.rows.length} documentos para curso "${nombre}"`);
+    
+    res.json({
+      success: true,
+      message: `Documentos encontrados para curso: ${nombre}`,
+      data: {
+        curso: nombre,
+        documentos: result.rows,
+        pagination: {
+          total,
+          limit: parseInt(limit),
+          offset: parseInt(offset),
+          hasMore: (parseInt(offset) + parseInt(limit)) < total
+        }
+      }
+    });
+    
+  } catch (error) {
+    console.error(`❌ Error obteniendo documentos para curso ${req.params.nombre}:`, error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
 // GET /api/documentos/:id/descargar - Descargar documento
 
 router.get('/:id', async (req, res) => {
@@ -492,6 +595,10 @@ router.post('/', uploadMultiple, handleUploadError, async (req, res) => {
       });
     }
     
+    // Convertir label a value si es necesario
+    const tipoDocumentoConvertido = convertirTipoDocumento(tipo_documento);
+    console.log(`🔄 Tipo convertido: "${tipo_documento}" -> "${tipoDocumentoConvertido}"`);
+    
     if (!archivos || archivos.length === 0) {
       return res.status(400).json({
         success: false,
@@ -547,7 +654,7 @@ router.post('/', uploadMultiple, handleUploadError, async (req, res) => {
         const documentData = [
           rut_persona,
         nombre_documento,
-        tipo_documento,
+        tipoDocumentoConvertido,
           archivo.filename,
           archivo.originalname,
           archivo.mimetype,
@@ -693,7 +800,7 @@ router.delete('/:id', async (req, res) => {
     // Soft delete - marcar como inactivo
     const deleteQuery = `
       UPDATE mantenimiento.documentos 
-      SET activo = false, fecha_actualizacion = CURRENT_TIMESTAMP
+      SET activo = false
       WHERE id = $1
       RETURNING id, nombre_documento
     `;

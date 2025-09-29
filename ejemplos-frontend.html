@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Documentos - Ejemplo Frontend</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .documento-item {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+        .documento-item h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        .documento-meta {
+            font-size: 0.9em;
+            color: #666;
+            margin: 5px 0;
+        }
+        .actions {
+            margin-top: 10px;
+        }
+        .actions button {
+            margin-right: 5px;
+            padding: 5px 10px;
+            font-size: 0.9em;
+        }
+        .btn-download {
+            background-color: #28a745;
+        }
+        .btn-download:hover {
+            background-color: #218838;
+        }
+        .btn-delete {
+            background-color: #dc3545;
+        }
+        .btn-delete:hover {
+            background-color: #c82333;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <h1>📁 Sistema de Documentos</h1>
+    
+    <!-- Formulario de Subida -->
+    <div class="container">
+        <h2>📤 Subir Documento</h2>
+        <form id="uploadForm">
+            <div class="form-group">
+                <label for="archivo">Archivo:</label>
+                <input type="file" id="archivo" name="archivo" required accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.tiff">
+                <small>Formatos permitidos: PDF, DOC, DOCX, XLS, XLSX, TXT, JPG, PNG, TIFF (Máximo 50MB)</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="rut_persona">RUT de la Persona:</label>
+                <input type="text" id="rut_persona" name="rut_persona" required placeholder="12345678-9">
+                <small>Formato: 12345678-9</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="nombre_documento">Nombre del Documento:</label>
+                <input type="text" id="nombre_documento" name="nombre_documento" required placeholder="Certificado de Curso">
+            </div>
+            
+            <div class="form-group">
+                <label for="tipo_documento">Tipo de Documento:</label>
+                <select id="tipo_documento" name="tipo_documento" required>
+                    <option value="">Seleccionar tipo...</option>
+                    <option value="certificado_curso">Certificado de Curso</option>
+                    <option value="diploma">Diploma</option>
+                    <option value="certificado_laboral">Certificado Laboral</option>
+                    <option value="certificado_medico">Certificado Médico</option>
+                    <option value="licencia_conducir">Licencia de Conducir</option>
+                    <option value="certificado_seguridad">Certificado de Seguridad</option>
+                    <option value="certificado_vencimiento">Certificado de Vencimiento</option>
+                    <option value="otro">Otro</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="descripcion">Descripción (Opcional):</label>
+                <textarea id="descripcion" name="descripcion" rows="3" placeholder="Descripción del documento..."></textarea>
+            </div>
+            
+            <button type="submit">📤 Subir Documento</button>
+        </form>
+        
+        <div id="uploadResult"></div>
+    </div>
+    
+    <!-- Lista de Documentos -->
+    <div class="container">
+        <h2>📋 Documentos Disponibles</h2>
+        <div class="form-group">
+            <label for="searchRut">Buscar por RUT:</label>
+            <input type="text" id="searchRut" placeholder="12345678-9">
+            <button onclick="buscarPorRut()">🔍 Buscar</button>
+            <button onclick="cargarTodos()">📋 Ver Todos</button>
+        </div>
+        
+        <div id="documentosList"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000/api/documentos';
+        
+        // Manejar envío del formulario
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            const archivo = document.getElementById('archivo').files[0];
+            const rutPersona = document.getElementById('rut_persona').value;
+            const nombreDocumento = document.getElementById('nombre_documento').value;
+            const tipoDocumento = document.getElementById('tipo_documento').value;
+            const descripcion = document.getElementById('descripcion').value;
+            
+            if (!archivo) {
+                mostrarResultado('error', 'Por favor selecciona un archivo');
+                return;
+            }
+            
+            formData.append('archivo', archivo);
+            formData.append('rut_persona', rutPersona);
+            formData.append('nombre_documento', nombreDocumento);
+            formData.append('tipo_documento', tipoDocumento);
+            formData.append('descripcion', descripcion);
+            
+            try {
+                mostrarResultado('loading', 'Subiendo documento...');
+                
+                const response = await fetch(API_BASE, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    mostrarResultado('success', `✅ Documento subido exitosamente! ID: ${result.data.documentos[0].id}`);
+                    document.getElementById('uploadForm').reset();
+                    cargarTodos(); // Recargar lista
+                } else {
+                    mostrarResultado('error', `❌ Error: ${result.message}`);
+                }
+            } catch (error) {
+                mostrarResultado('error', `❌ Error de conexión: ${error.message}`);
+            }
+        });
+        
+        // Mostrar resultado del upload
+        function mostrarResultado(tipo, mensaje) {
+            const resultDiv = document.getElementById('uploadResult');
+            resultDiv.className = tipo;
+            resultDiv.innerHTML = mensaje;
+        }
+        
+        // Cargar todos los documentos
+        async function cargarTodos() {
+            try {
+                document.getElementById('documentosList').innerHTML = '<div class="loading">Cargando documentos...</div>';
+                
+                const response = await fetch(API_BASE);
+                const result = await response.json();
+                
+                if (result.success) {
+                    mostrarDocumentos(result.data);
+                } else {
+                    document.getElementById('documentosList').innerHTML = `<div class="error">Error: ${result.message}</div>`;
+                }
+            } catch (error) {
+                document.getElementById('documentosList').innerHTML = `<div class="error">Error de conexión: ${error.message}</div>`;
+            }
+        }
+        
+        // Buscar por RUT
+        async function buscarPorRut() {
+            const rut = document.getElementById('searchRut').value.trim();
+            if (!rut) {
+                alert('Por favor ingresa un RUT');
+                return;
+            }
+            
+            try {
+                document.getElementById('documentosList').innerHTML = '<div class="loading">Buscando documentos...</div>';
+                
+                const response = await fetch(`${API_BASE}/persona/${rut}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    if (result.data && result.data.length > 0) {
+                        mostrarDocumentos(result.data);
+                    } else {
+                        document.getElementById('documentosList').innerHTML = `<div class="error">No se encontraron documentos para el RUT: ${rut}</div>`;
+                    }
+                } else {
+                    document.getElementById('documentosList').innerHTML = `<div class="error">Error: ${result.message}</div>`;
+                }
+            } catch (error) {
+                document.getElementById('documentosList').innerHTML = `<div class="error">Error de conexión: ${error.message}</div>`;
+            }
+        }
+        
+        // Mostrar documentos en la lista
+        function mostrarDocumentos(documentos) {
+            const listDiv = document.getElementById('documentosList');
+            
+            if (documentos.length === 0) {
+                listDiv.innerHTML = '<div class="error">No hay documentos disponibles</div>';
+                return;
+            }
+            
+            let html = `<p><strong>${documentos.length} documento(s) encontrado(s)</strong></p>`;
+            
+            documentos.forEach(doc => {
+                html += `
+                    <div class="documento-item">
+                        <h4>${doc.nombre_documento}</h4>
+                        <div class="documento-meta">
+                            <strong>RUT:</strong> ${doc.rut_persona}<br>
+                            <strong>Persona:</strong> ${doc.nombre_persona || 'Sin nombre'}<br>
+                            <strong>Cargo:</strong> ${doc.cargo || 'Sin cargo'}<br>
+                            <strong>Tipo:</strong> ${doc.tipo_documento}<br>
+                            <strong>Archivo:</strong> ${doc.nombre_archivo}<br>
+                            <strong>Tamaño:</strong> ${(doc.tamaño_bytes / 1024).toFixed(1)} KB<br>
+                            <strong>Fecha:</strong> ${new Date(doc.fecha_subida).toLocaleString('es-CL')}
+                        </div>
+                        <div class="actions">
+                            <button class="btn-download" onclick="descargarDocumento(${doc.id}, '${doc.nombre_archivo}')">
+                                📥 Descargar
+                            </button>
+                            <button class="btn-delete" onclick="eliminarDocumento(${doc.id})">
+                                🗑️ Eliminar
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            listDiv.innerHTML = html;
+        }
+        
+        // Descargar documento
+        async function descargarDocumento(id, nombreArchivo) {
+            try {
+                const response = await fetch(`${API_BASE}/${id}/descargar`);
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = nombreArchivo || `documento_${id}`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                } else {
+                    alert('Error al descargar el documento');
+                }
+            } catch (error) {
+                alert(`Error de conexión: ${error.message}`);
+            }
+        }
+        
+        // Eliminar documento
+        async function eliminarDocumento(id) {
+            if (!confirm('¿Estás seguro de que quieres eliminar este documento?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ Documento eliminado exitosamente');
+                    cargarTodos(); // Recargar lista
+                } else {
+                    alert(`❌ Error: ${result.message}`);
+                }
+            } catch (error) {
+                alert(`Error de conexión: ${error.message}`);
+            }
+        }
+        
+        // Cargar documentos al iniciar la página
+        window.addEventListener('load', cargarTodos);
+    </script>
+</body>
+</html>
