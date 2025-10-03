@@ -12,6 +12,7 @@ const documentosRoutes = require('./routes/documentos');
 const migrationRoutes = require('./routes/migration');
 const areaServicioRoutes = require('./routes/area-servicio');
 const servicioRoutes = require('./routes/servicio');
+const serviciosSchemaRoutes = require('./routes/servicios-schema');
 const backupRoutes = require('./routes/backup');
 const profileImagesRoutes = require('./routes/profile-images');
 
@@ -68,6 +69,7 @@ app.use('/api/documentos', documentosRoutes);
 app.use('/api/migration', migrationRoutes);
 app.use('/api/area-servicio', areaServicioRoutes);
 app.use('/api/servicio', servicioRoutes);
+app.use('/api/servicios', serviciosSchemaRoutes);
 app.use('/api/backup', backupRoutes);
 app.use('/api/personal', profileImagesRoutes);
 
@@ -91,7 +93,8 @@ app.get('/', (req, res) => {
       personal: '/api/personal-disponible',
       cursos: '/api/cursos',
       documentos: '/api/documentos',
-      estados: '/api/estados'
+      estados: '/api/estados',
+      servicios: '/api/servicios'
     }
   });
 });
