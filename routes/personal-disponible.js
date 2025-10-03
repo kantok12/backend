@@ -181,7 +181,9 @@ router.post('/', async (req, res) => {
       talla_poleras,
       cargo,
       estado_id,
-      zona_geografica
+      zona_geografica,
+      nombres,
+      comentario_estado
     } = req.body;
 
     // Validaciones
@@ -215,9 +217,9 @@ router.post('/', async (req, res) => {
       INSERT INTO mantenimiento.personal_disponible (
         rut, sexo, fecha_nacimiento, licencia_conducir, 
         talla_zapatos, talla_pantalones, talla_poleras, 
-        cargo, estado_id, zona_geografica
+        cargo, estado_id, zona_geografica, nombres, comentario_estado
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *
     `;
 
@@ -231,7 +233,9 @@ router.post('/', async (req, res) => {
       talla_poleras || '',
       cargo,
       estado_id,
-      zona_geografica || null
+      zona_geografica || null,
+      nombres || null,
+      comentario_estado || null
     ]);
 
     res.status(201).json({
@@ -263,7 +267,9 @@ router.put('/:rut', async (req, res) => {
       talla_poleras,
       cargo,
       estado_id,
-      zona_geografica
+      zona_geografica,
+      nombres,
+      comentario_estado
     } = req.body;
 
     // Validaciones
@@ -286,8 +292,10 @@ router.put('/:rut', async (req, res) => {
         talla_poleras = $6,
         cargo = $7, 
         estado_id = $8, 
-        zona_geografica = $9
-      WHERE rut = $10
+        zona_geografica = $9,
+        nombres = $10,
+        comentario_estado = $11
+      WHERE rut = $12
       RETURNING *
     `;
 
@@ -301,6 +309,8 @@ router.put('/:rut', async (req, res) => {
       cargo,
       estado_id,
       zona_geografica || null,
+      nombres || null,
+      comentario_estado || null,
       rut
     ]);
 

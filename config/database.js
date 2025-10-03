@@ -15,8 +15,8 @@ const pool = new Pool({
   database: process.env.DB_NAME,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
-  ssl: {
-    rejectUnauthorized: false // Requerido para Supabase
+  ssl: process.env.DB_HOST === 'localhost' ? false : {
+    rejectUnauthorized: false // Solo para conexiones remotas
   },
   max: parseInt(process.env.DB_MAX_CONNECTIONS) || 5, // Máximo número de conexiones en el pool
   idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT) || 10000, // Tiempo antes de cerrar conexión inactiva

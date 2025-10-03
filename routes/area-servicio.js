@@ -27,7 +27,7 @@ router.get('/', async (req, res) => {
 
     // Filtro por RUT (búsqueda)
     if (search) {
-      queryText += ` AND (pd.rut ILIKE $${paramIndex} OR pd.nombre ILIKE $${paramIndex})`;
+      queryText += ` AND (pd.rut ILIKE $${paramIndex} OR pd.nombres ILIKE $${paramIndex})`;
       queryParams.push(`%${search}%`);
       paramIndex++;
     }
@@ -54,7 +54,7 @@ router.get('/', async (req, res) => {
     }
 
     // Agregar paginación
-    queryText += ` ORDER BY pd.cargo, pd.nombre LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    queryText += ` ORDER BY pd.cargo, pd.nombres LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     queryParams.push(limit, offset);
 
     const result = await query(queryText, queryParams);
@@ -65,7 +65,7 @@ router.get('/', async (req, res) => {
     let countParamIndex = 1;
 
     if (search) {
-      countQuery += ` AND (pd.rut ILIKE $${countParamIndex} OR pd.nombre ILIKE $${countParamIndex})`;
+      countQuery += ` AND (pd.rut ILIKE $${countParamIndex} OR pd.nombres ILIKE $${countParamIndex})`;
       countParams.push(`%${search}%`);
       countParamIndex++;
     }
@@ -280,7 +280,7 @@ router.get('/cargo/:cargo', async (req, res) => {
       paramIndex++;
     }
 
-    queryText += ` ORDER BY pd.nombre LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    queryText += ` ORDER BY pd.nombres LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     queryParams.push(limit, offset);
 
     const result = await query(queryText, queryParams);
@@ -345,7 +345,7 @@ router.get('/zona/:zona', async (req, res) => {
       paramIndex++;
     }
 
-    queryText += ` ORDER BY pd.nombre LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    queryText += ` ORDER BY pd.nombres LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     queryParams.push(limit, offset);
 
     const result = await query(queryText, queryParams);
@@ -417,7 +417,7 @@ router.get('/disponibles', async (req, res) => {
       paramIndex++;
     }
 
-    queryText += ` ORDER BY pd.cargo, pd.nombre LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    queryText += ` ORDER BY pd.cargo, pd.nombres LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     queryParams.push(limit, offset);
 
     const result = await query(queryText, queryParams);

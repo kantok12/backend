@@ -139,7 +139,7 @@ router.get('/', async (req, res) => {
         cc.rut_persona,
         cc.nombre_curso,
         cc.fecha_obtencion,
-        pd.nombre as nombre_persona,
+        pd.nombres as nombre_persona,
         pd.cargo,
         pd.zona_geografica,
         COALESCE(doc_count.total_documentos, 0) as total_documentos
@@ -277,7 +277,7 @@ router.get('/persona/:rut', async (req, res) => {
         cc.rut_persona,
         cc.nombre_curso,
         cc.fecha_obtencion,
-        pd.nombre as nombre_persona,
+        pd.nombres as nombre_persona,
         pd.cargo,
         pd.zona_geografica
       FROM mantenimiento.cursos_certificaciones cc
@@ -332,7 +332,7 @@ router.get('/:id', async (req, res) => {
         cc.rut_persona,
         cc.nombre_curso,
         cc.fecha_obtencion,
-        pd.nombre as nombre_persona,
+        pd.nombres as nombre_persona,
         pd.cargo,
         pd.zona_geografica,
         pd.sexo,
@@ -386,7 +386,7 @@ router.post('/', async (req, res) => {
     
     // Verificar que la persona existe
     const checkPersonQuery = `
-      SELECT rut, nombre FROM mantenimiento.personal_disponible WHERE rut = $1
+      SELECT rut, nombres FROM mantenimiento.personal_disponible WHERE rut = $1
     `;
     
     const personExists = await query(checkPersonQuery, [rut_persona]);
@@ -975,7 +975,7 @@ router.get('/persona/:rut/documentos', async (req, res) => {
     
     // Verificar que la persona existe
     const checkPersonQuery = `
-      SELECT rut, nombre, cargo, zona_geografica 
+      SELECT rut, nombres, cargo, zona_geografica 
       FROM mantenimiento.personal_disponible 
       WHERE rut = $1
     `;
@@ -1122,7 +1122,7 @@ router.post('/persona/:rut/documentos', uploadMultiple, handleUploadError, async
     
     // Verificar que la persona existe
     const checkPersonQuery = `
-      SELECT rut, nombre, cargo, zona_geografica 
+      SELECT rut, nombres, cargo, zona_geografica 
       FROM mantenimiento.personal_disponible 
       WHERE rut = $1
     `;
@@ -1198,7 +1198,7 @@ router.post('/persona/:rut/documentos', uploadMultiple, handleUploadError, async
       documentosSubidos.push(documentoResult.rows[0]);
     }
     
-    console.log(`✅ ${documentosSubidos.length} documentos subidos para ${persona.nombre} - Curso: ${nombre_curso}`);
+    console.log(`✅ ${documentosSubidos.length} documentos subidos para ${persona.nombres} - Curso: ${nombre_curso}`);
     
     res.status(201).json({
       success: true,

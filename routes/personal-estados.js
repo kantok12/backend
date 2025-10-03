@@ -52,7 +52,7 @@ router.get('/', async (req, res) => {
     }
 
     if (search) {
-      whereConditions.push(`(pe.comentario ILIKE $${paramIndex} OR pe.cargo ILIKE $${paramIndex} OR pd.nombre ILIKE $${paramIndex})`);
+      whereConditions.push(`(pe.comentario ILIKE $${paramIndex} OR pe.cargo ILIKE $${paramIndex} OR pd.nombres ILIKE $${paramIndex})`);
       queryParams.push(`%${search}%`);
       paramIndex++;
     }
@@ -62,7 +62,7 @@ router.get('/', async (req, res) => {
       SELECT 
         pe.id,
         pe.rut,
-        pd.nombre as nombre_persona,
+        pd.nombres as nombre_persona,
         pe.estado_id,
         e.nombre as estado_nombre,
         e.descripcion as estado_descripcion,
@@ -126,7 +126,7 @@ router.get('/:id', async (req, res) => {
       SELECT 
         pe.id,
         pe.rut,
-        pd.nombre as nombre_persona,
+        pd.nombres as nombre_persona,
         pe.estado_id,
         e.nombre as estado_nombre,
         e.descripcion as estado_descripcion,
@@ -186,7 +186,7 @@ router.get('/persona/:rut', async (req, res) => {
       SELECT 
         pe.id,
         pe.rut,
-        pd.nombre as nombre_persona,
+        pd.nombres as nombre_persona,
         pe.estado_id,
         e.nombre as estado_nombre,
         e.descripcion as estado_descripcion,

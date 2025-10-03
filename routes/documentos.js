@@ -35,7 +35,7 @@ const storage = multer.diskStorage({
 const uploadMultiple = multer({
   storage: storage,
   limits: {
-    fileSize: 50 * 1024 * 1024, // 50MB por archivo (para PDFs grandes)
+    fileSize: 100 * 1024 * 1024, // 100MB por archivo (para documentos grandes)
     files: 5 // Máximo 5 archivos por request
   },
   fileFilter: (req, file, cb) => {
@@ -71,7 +71,7 @@ const uploadMultiple = multer({
       cb(new Error(`Tipo de archivo no permitido: ${file.mimetype} (${fileExtension}). Tipos permitidos: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, RTF, JPG, PNG, TIFF, BMP`), false);
     }
   }
-}).array('archivos', 5);
+}).array('archivo', 5);
 
 // Middleware para manejar errores de multer
 const handleUploadError = (error, req, res, next) => {
@@ -79,7 +79,7 @@ const handleUploadError = (error, req, res, next) => {
     if (error.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({
         success: false,
-        message: 'El archivo es demasiado grande. Máximo 50MB por archivo.'
+        message: 'El archivo es demasiado grande. Máximo 100MB por archivo.'
       });
     }
     if (error.code === 'LIMIT_FILE_COUNT') {
@@ -165,7 +165,7 @@ router.get('/', async (req, res) => {
         d.descripcion,
         d.fecha_subida,
         d.subido_por,
-        pd.nombre as nombre_persona,
+        pd.nombres as nombre_persona,
         pd.cargo,
         pd.zona_geografica
       FROM mantenimiento.documentos d
@@ -310,7 +310,7 @@ router.get('/:id', async (req, res) => {
         d.descripcion,
         d.fecha_subida,
         d.subido_por,
-        pd.nombre as nombre_persona,
+        pd.nombres as nombre_persona,
         pd.cargo,
         pd.zona_geografica
       FROM mantenimiento.documentos d
@@ -349,15 +349,19 @@ router.post('/', uploadMultiple, handleUploadError, async (req, res) => {
   try {
     const { 
       rut_persona, 
+      personal_id,
       nombre_documento, 
       tipo_documento, 
       descripcion 
     } = req.body;
+    
+    // Aceptar tanto rut_persona como personal_id
+    const rutPersona = rut_persona || personal_id;
     const archivos = req.files;
     
     console.log('📄 POST /api/documentos - Subiendo documentos');
     console.log('🔍 Datos recibidos:', { 
-      rut_persona, 
+      rut_persona: rutPersona, 
       nombre_documento, 
       tipo_documento, 
       descripcion, 
@@ -365,7 +369,7 @@ router.post('/', uploadMultiple, handleUploadError, async (req, res) => {
     });
     
     // Validaciones
-    if (!rut_persona) {
+    if (!rutPersona) {
       return res.status(400).json({
         success: false,
         message: 'El RUT de la persona es requerido'
@@ -395,12 +399,12 @@ router.post('/', uploadMultiple, handleUploadError, async (req, res) => {
     
     // Verificar que la persona existe
     const checkPersonQuery = `
-      SELECT rut, nombre, cargo, zona_geografica 
+      SELECT rut, nombres, cargo, zona_geografica 
       FROM mantenimiento.personal_disponible 
       WHERE rut = $1
     `;
     
-    const personResult = await query(checkPersonQuery, [rut_persona]);
+    const personResult = await query(checkPersonQuery, [rutPersona]);
     
     if (personResult.rows.length === 0) {
       // Eliminar archivos subidos si la persona no existe
@@ -412,7 +416,7 @@ router.post('/', uploadMultiple, handleUploadError, async (req, res) => {
       
       return res.status(404).json({
         success: false,
-        message: `No se encontró personal con RUT: ${rut_persona}`
+        message: `No se encontró personal con RUT: ${rutPersona}`
       });
     }
     
@@ -439,7 +443,7 @@ router.post('/', uploadMultiple, handleUploadError, async (req, res) => {
       `;
       
         const documentData = [
-          rut_persona,
+          rutPersona,
         nombre_documento,
         tipo_documento,
           archivo.filename,
@@ -481,7 +485,7 @@ router.post('/', uploadMultiple, handleUploadError, async (req, res) => {
       data: {
         persona: {
           rut: persona.rut,
-          nombre: persona.nombre,
+          nombre: persona.nombres,
           cargo: persona.cargo
         },
         documentos: documentosSubidos
@@ -508,7 +512,7 @@ router.get('/persona/:rut', async (req, res) => {
     
     // Verificar que la persona existe
     const checkPersonQuery = `
-      SELECT rut, nombre, cargo, zona_geografica 
+      SELECT rut, nombres, cargo, zona_geografica 
       FROM mantenimiento.personal_disponible 
       WHERE rut = $1
     `;
@@ -569,14 +573,14 @@ router.get('/persona/:rut', async (req, res) => {
     const countResult = await query(countQuery, queryParams.slice(0, -2));
     const total = parseInt(countResult.rows[0].total);
     
-    console.log(`✅ Encontrados ${result.rows.length} documentos para ${persona.nombre}`);
+    console.log(`✅ Encontrados ${result.rows.length} documentos para ${persona.nombres}`);
     
     res.json({
       success: true,
       data: {
         persona: {
           rut: persona.rut,
-          nombre: persona.nombre,
+          nombre: persona.nombres,
           cargo: persona.cargo,
           zona_geografica: persona.zona_geografica
         },
@@ -615,7 +619,7 @@ router.get('/:id/descargar', async (req, res) => {
         d.tipo_mime,
         d.ruta_archivo,
         d.tamaño_bytes,
-        pd.nombre as nombre_persona
+        pd.nombres as nombre_persona
       FROM mantenimiento.documentos d
       LEFT JOIN mantenimiento.personal_disponible pd ON d.rut_persona = pd.rut
       WHERE d.id = $1 AND d.activo = true
@@ -688,7 +692,7 @@ router.delete('/:id', async (req, res) => {
     // Soft delete - marcar como inactivo
     const deleteQuery = `
       UPDATE mantenimiento.documentos 
-      SET activo = false, fecha_actualizacion = CURRENT_TIMESTAMP
+      SET activo = false
       WHERE id = $1
       RETURNING id, nombre_documento
     `;

@@ -69,7 +69,7 @@ router.get('/', async (req, res) => {
         c.descripcion,
         c.fecha_creacion,
         c.fecha_actualizacion,
-        p.nombre as nombre_persona,
+        p.nombres as nombre_persona,
         p.cargo,
         p.zona_geografica
       FROM mantenimiento.cursos c
@@ -134,7 +134,7 @@ router.get('/persona/:rut', async (req, res) => {
         c.institucion,
         c.descripcion,
         c.fecha_creacion,
-        p.nombre as nombre_persona,
+        p.nombres as nombre_persona,
         p.cargo,
         p.zona_geografica,
         CASE 
@@ -152,8 +152,17 @@ router.get('/persona/:rut', async (req, res) => {
     const result = await query(queryText, [rut]);
     
     if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
+      return res.status(200).json({
+        success: true,
+        data: {
+          persona: {
+            rut: rut,
+            nombre: null,
+            cargo: null,
+            zona_geografica: null
+          },
+          cursos: []
+        },
         message: `No se encontraron cursos para el RUT: ${rut}`
       });
     }
@@ -220,7 +229,7 @@ router.post('/', async (req, res) => {
     
     // Verificar que la persona existe
     const checkPersonQuery = `
-      SELECT rut, nombre FROM mantenimiento.personal_disponible WHERE rut = $1
+      SELECT rut, nombres FROM mantenimiento.personal_disponible WHERE rut = $1
     `;
     
     const personExists = await query(checkPersonQuery, [rut_persona]);
@@ -480,7 +489,7 @@ router.get('/vencidos', async (req, res) => {
         c.institucion,
         c.descripcion,
         c.fecha_creacion,
-        p.nombre as nombre_persona,
+        p.nombres as nombre_persona,
         p.cargo,
         p.zona_geografica,
         CASE 
@@ -630,7 +639,7 @@ router.get('/vencer', async (req, res) => {
       SELECT 
         c.id,
         c.rut_persona,
-        pd.nombre as nombre_persona,
+        pd.nombres as nombre_persona,
         c.nombre_curso,
         c.fecha_inicio,
         c.fecha_fin,
@@ -704,7 +713,7 @@ router.get('/vencidos', async (req, res) => {
       SELECT 
         c.id,
         c.rut_persona,
-        pd.nombre as nombre_persona,
+        pd.nombres as nombre_persona,
         c.nombre_curso,
         c.fecha_inicio,
         c.fecha_fin,

@@ -17,36 +17,36 @@ router.get('/carteras', async (req, res) => {
     let queryText = `
       SELECT 
         c.id,
-        c.name,
-        c.created_at,
+        c.nombre,
+        c.fecha_creacion,
         COUNT(cl.id) as total_clientes,
         COUNT(n.id) as total_nodos
-      FROM "Servicios".carteras c
-      LEFT JOIN "Servicios".clientes cl ON c.id = cl.cartera_id
-      LEFT JOIN "Servicios".nodos n ON cl.id = n.cliente_id
+      FROM mantenimiento.carteras c
+      LEFT JOIN mantenimiento.clientes cl ON c.id = cl.cartera_id
+      LEFT JOIN mantenimiento.nodos n ON cl.id = n.cliente_id
       WHERE 1=1
     `;
     const queryParams = [];
     let paramIndex = 1;
 
     if (search) {
-      queryText += ` AND c.name ILIKE $${paramIndex}`;
+      queryText += ` AND c.nombre ILIKE $${paramIndex}`;
       queryParams.push(`%${search}%`);
       paramIndex++;
     }
 
-    queryText += ` GROUP BY c.id, c.name, c.created_at ORDER BY c.name LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    queryText += ` GROUP BY c.id, c.nombre, c.fecha_creacion ORDER BY c.nombre LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     queryParams.push(limit, offset);
 
     const result = await query(queryText, queryParams);
 
     // Contar total
-    let countQuery = `SELECT COUNT(*) FROM "Servicios".carteras WHERE 1=1`;
+    let countQuery = `SELECT COUNT(*) FROM mantenimiento.carteras WHERE 1=1`;
     const countParams = [];
     let countParamIndex = 1;
 
     if (search) {
-      countQuery += ` AND name ILIKE $${countParamIndex}`;
+      countQuery += ` AND nombre ILIKE $${countParamIndex}`;
       countParams.push(`%${search}%`);
       countParamIndex++;
     }
@@ -85,15 +85,15 @@ router.get('/carteras/:id', async (req, res) => {
     const result = await query(`
       SELECT 
         c.id,
-        c.name,
-        c.created_at,
+        c.nombre,
+        c.fecha_creacion,
         COUNT(cl.id) as total_clientes,
         COUNT(n.id) as total_nodos
-      FROM "Servicios".carteras c
-      LEFT JOIN "Servicios".clientes cl ON c.id = cl.cartera_id
-      LEFT JOIN "Servicios".nodos n ON cl.id = n.cliente_id
+      FROM mantenimiento.carteras c
+      LEFT JOIN mantenimiento.clientes cl ON c.id = cl.cartera_id
+      LEFT JOIN mantenimiento.nodos n ON cl.id = n.cliente_id
       WHERE c.id = $1
-      GROUP BY c.id, c.name, c.created_at
+      GROUP BY c.id, c.nombre, c.fecha_creacion
     `, [id]);
 
     if (result.rows.length === 0) {
@@ -112,9 +112,9 @@ router.get('/carteras/:id', async (req, res) => {
         cl.created_at,
         ug.nombre as region_nombre,
         COUNT(n.id) as total_nodos
-      FROM "Servicios".clientes cl
-      LEFT JOIN "Servicios".ubicacion_geografica ug ON cl.region_id = ug.id
-      LEFT JOIN "Servicios".nodos n ON cl.id = n.cliente_id
+      FROM mantenimiento.clientes cl
+      LEFT JOIN mantenimiento.ubicacion_geografica ug ON cl.region_id = ug.id
+      LEFT JOIN mantenimiento.nodos n ON cl.id = n.cliente_id
       WHERE cl.cartera_id = $1
       GROUP BY cl.id, cl.nombre, cl.created_at, ug.nombre
       ORDER BY cl.created_at DESC
@@ -163,7 +163,7 @@ router.post('/carteras', async (req, res) => {
     }
 
     // Verificar que el código no exista
-    const existingCheck = await query('SELECT id FROM "Servicios".carteras WHERE codigo = $1', [codigo]);
+    const existingCheck = await query('SELECT id FROM mantenimiento.carteras WHERE codigo = $1', [codigo]);
     if (existingCheck.rows.length > 0) {
       return res.status(400).json({
         success: false,
@@ -173,7 +173,7 @@ router.post('/carteras', async (req, res) => {
     }
 
     const result = await query(`
-      INSERT INTO "Servicios".carteras (nombre, descripcion, codigo, responsable, telefono, email, direccion, estado)
+      INSERT INTO mantenimiento.carteras (nombre, descripcion, codigo, responsable, telefono, email, direccion, estado)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *
     `, [nombre, descripcion, codigo, responsable, telefono, email, direccion, estado]);
@@ -214,10 +214,10 @@ router.get('/ingenieros', async (req, res) => {
         c.codigo as cartera_codigo,
         COUNT(n.id) as total_nodos,
         COUNT(sp.id) as total_servicios_programados
-      FROM "Servicios".ingenieria_servicios i
-      LEFT JOIN "Servicios".carteras c ON i.cartera_id = c.id
-      LEFT JOIN "Servicios".nodos n ON i.id = n.ingeniero_id AND n.activo = true
-      LEFT JOIN "Servicios".servicios_programados sp ON n.id = sp.nodo_id AND sp.activo = true
+      FROM mantenimiento.ingenieria_servicios i
+      LEFT JOIN mantenimiento.carteras c ON i.cartera_id = c.id
+      LEFT JOIN mantenimiento.nodos n ON i.id = n.ingeniero_id AND n.activo = true
+      LEFT JOIN mantenimiento.servicios_programados sp ON n.id = sp.nodo_id AND sp.activo = true
       WHERE i.activo = true
     `;
     const queryParams = [];
@@ -247,7 +247,7 @@ router.get('/ingenieros', async (req, res) => {
     const result = await query(queryText, queryParams);
 
     // Contar total
-    let countQuery = `SELECT COUNT(*) FROM "Servicios".ingenieria_servicios WHERE activo = true`;
+    let countQuery = `SELECT COUNT(*) FROM mantenimiento.ingenieria_servicios WHERE activo = true`;
     const countParams = [];
     let countParamIndex = 1;
 
@@ -306,10 +306,10 @@ router.get('/ingenieros/:id', async (req, res) => {
         c.codigo as cartera_codigo,
         COUNT(n.id) as total_nodos,
         COUNT(sp.id) as total_servicios_programados
-      FROM "Servicios".ingenieria_servicios i
-      LEFT JOIN "Servicios".carteras c ON i.cartera_id = c.id
-      LEFT JOIN "Servicios".nodos n ON i.id = n.ingeniero_id AND n.activo = true
-      LEFT JOIN "Servicios".servicios_programados sp ON n.id = sp.nodo_id AND sp.activo = true
+      FROM mantenimiento.ingenieria_servicios i
+      LEFT JOIN mantenimiento.carteras c ON i.cartera_id = c.id
+      LEFT JOIN mantenimiento.nodos n ON i.id = n.ingeniero_id AND n.activo = true
+      LEFT JOIN mantenimiento.servicios_programados sp ON n.id = sp.nodo_id AND sp.activo = true
       WHERE i.id = $1 AND i.activo = true
       GROUP BY i.id, c.nombre, c.codigo
     `, [id]);
@@ -365,7 +365,7 @@ router.post('/ingenieros', async (req, res) => {
     }
 
     // Verificar que la cartera existe
-    const carteraCheck = await query('SELECT id FROM "Servicios".carteras WHERE id = $1 AND activo = true', [cartera_id]);
+    const carteraCheck = await query('SELECT id FROM mantenimiento.carteras WHERE id = $1 AND activo = true', [cartera_id]);
     if (carteraCheck.rows.length === 0) {
       return res.status(400).json({
         success: false,
@@ -375,7 +375,7 @@ router.post('/ingenieros', async (req, res) => {
     }
 
     // Verificar que el RUT no exista
-    const rutCheck = await query('SELECT id FROM "Servicios".ingenieria_servicios WHERE rut = $1', [rut]);
+    const rutCheck = await query('SELECT id FROM mantenimiento.ingenieria_servicios WHERE rut = $1', [rut]);
     if (rutCheck.rows.length > 0) {
       return res.status(400).json({
         success: false,
@@ -385,7 +385,7 @@ router.post('/ingenieros', async (req, res) => {
     }
 
     const result = await query(`
-      INSERT INTO "Servicios".ingenieria_servicios (cartera_id, nombre, apellido, rut, telefono, email, especialidad, nivel_experiencia, fecha_ingreso, estado, observaciones)
+      INSERT INTO mantenimiento.ingenieria_servicios (cartera_id, nombre, apellido, rut, telefono, email, especialidad, nivel_experiencia, fecha_ingreso, estado, observaciones)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       RETURNING *
     `, [cartera_id, nombre, apellido, rut, telefono, email, especialidad, nivel_experiencia, fecha_ingreso, estado, observaciones]);
@@ -430,10 +430,10 @@ router.get('/nodos', async (req, res) => {
         c.codigo as cartera_codigo,
         COUNT(sp.id) as total_servicios_programados,
         COUNT(CASE WHEN sp.estado = 'pendiente' THEN 1 END) as servicios_pendientes
-      FROM "Servicios".nodos n
-      LEFT JOIN "Servicios".ingenieria_servicios i ON n.ingeniero_id = i.id
-      LEFT JOIN "Servicios".carteras c ON i.cartera_id = c.id
-      LEFT JOIN "Servicios".servicios_programados sp ON n.id = sp.nodo_id AND sp.activo = true
+      FROM mantenimiento.nodos n
+      LEFT JOIN mantenimiento.ingenieria_servicios i ON n.ingeniero_id = i.id
+      LEFT JOIN mantenimiento.carteras c ON i.cartera_id = c.id
+      LEFT JOIN mantenimiento.servicios_programados sp ON n.id = sp.nodo_id AND sp.activo = true
       WHERE n.activo = true
     `;
     const queryParams = [];
@@ -469,7 +469,7 @@ router.get('/nodos', async (req, res) => {
     const result = await query(queryText, queryParams);
 
     // Contar total
-    let countQuery = `SELECT COUNT(*) FROM "Servicios".nodos WHERE activo = true`;
+    let countQuery = `SELECT COUNT(*) FROM mantenimiento.nodos WHERE activo = true`;
     const countParams = [];
     let countParamIndex = 1;
 
@@ -552,10 +552,10 @@ router.get('/estructura', async (req, res) => {
         COUNT(sp.id) as total_servicios_programados,
         COUNT(CASE WHEN sp.estado = 'pendiente' THEN 1 END) as servicios_pendientes,
         COUNT(CASE WHEN sp.fecha_proximo_servicio <= CURRENT_DATE THEN 1 END) as servicios_vencidos
-      FROM "Servicios".carteras c
-      LEFT JOIN "Servicios".ingenieria_servicios i ON c.id = i.cartera_id AND i.activo = true
-      LEFT JOIN "Servicios".nodos n ON i.id = n.ingeniero_id AND n.activo = true
-      LEFT JOIN "Servicios".servicios_programados sp ON n.id = sp.nodo_id AND sp.activo = true
+      FROM mantenimiento.carteras c
+      LEFT JOIN mantenimiento.ingenieria_servicios i ON c.id = i.cartera_id AND i.activo = true
+      LEFT JOIN mantenimiento.nodos n ON i.id = n.ingeniero_id AND n.activo = true
+      LEFT JOIN mantenimiento.servicios_programados sp ON n.id = sp.nodo_id AND sp.activo = true
       WHERE c.activo = true
     `;
     const queryParams = [];
@@ -615,10 +615,10 @@ router.get('/servicios-vencer', async (req, res) => {
           WHEN sp.fecha_proximo_servicio <= CURRENT_DATE + INTERVAL '3 days' THEN 'PRÓXIMO'
           ELSE 'PROGRAMADO'
         END as estado_urgencia
-      FROM "Servicios".servicios_programados sp
-      JOIN "Servicios".nodos n ON sp.nodo_id = n.id
-      JOIN "Servicios".ingenieria_servicios i ON n.ingeniero_id = i.id
-      JOIN "Servicios".carteras c ON i.cartera_id = c.id
+      FROM mantenimiento.servicios_programados sp
+      JOIN mantenimiento.nodos n ON sp.nodo_id = n.id
+      JOIN mantenimiento.ingenieria_servicios i ON n.ingeniero_id = i.id
+      JOIN mantenimiento.carteras c ON i.cartera_id = c.id
       WHERE sp.activo = true 
         AND sp.estado = 'pendiente'
         AND sp.fecha_proximo_servicio <= CURRENT_DATE + INTERVAL '${dias} days'
@@ -659,12 +659,12 @@ router.get('/estadisticas', async (req, res) => {
     // Estadísticas generales
     const generalStats = await query(`
       SELECT 
-        (SELECT COUNT(*) FROM "Servicios".carteras WHERE activo = true) as total_carteras,
-        (SELECT COUNT(*) FROM "Servicios".ingenieria_servicios WHERE activo = true) as total_ingenieros,
-        (SELECT COUNT(*) FROM "Servicios".nodos WHERE activo = true) as total_nodos,
-        (SELECT COUNT(*) FROM "Servicios".servicios_programados WHERE activo = true) as total_servicios_programados,
-        (SELECT COUNT(*) FROM "Servicios".servicios_programados WHERE activo = true AND estado = 'pendiente') as servicios_pendientes,
-        (SELECT COUNT(*) FROM "Servicios".servicios_programados WHERE activo = true AND fecha_proximo_servicio <= CURRENT_DATE) as servicios_vencidos
+        (SELECT COUNT(*) FROM mantenimiento.carteras WHERE activo = true) as total_carteras,
+        (SELECT COUNT(*) FROM mantenimiento.ingenieria_servicios WHERE activo = true) as total_ingenieros,
+        (SELECT COUNT(*) FROM mantenimiento.nodos WHERE activo = true) as total_nodos,
+        (SELECT COUNT(*) FROM mantenimiento.servicios_programados WHERE activo = true) as total_servicios_programados,
+        (SELECT COUNT(*) FROM mantenimiento.servicios_programados WHERE activo = true AND estado = 'pendiente') as servicios_pendientes,
+        (SELECT COUNT(*) FROM mantenimiento.servicios_programados WHERE activo = true AND fecha_proximo_servicio <= CURRENT_DATE) as servicios_vencidos
     `);
 
     // Estadísticas por cartera
@@ -675,10 +675,10 @@ router.get('/estadisticas', async (req, res) => {
         COUNT(DISTINCT n.id) as total_nodos,
         COUNT(sp.id) as total_servicios,
         COUNT(CASE WHEN sp.estado = 'pendiente' THEN 1 END) as servicios_pendientes
-      FROM "Servicios".carteras c
-      LEFT JOIN "Servicios".ingenieria_servicios i ON c.id = i.cartera_id AND i.activo = true
-      LEFT JOIN "Servicios".nodos n ON i.id = n.ingeniero_id AND n.activo = true
-      LEFT JOIN "Servicios".servicios_programados sp ON n.id = sp.nodo_id AND sp.activo = true
+      FROM mantenimiento.carteras c
+      LEFT JOIN mantenimiento.ingenieria_servicios i ON c.id = i.cartera_id AND i.activo = true
+      LEFT JOIN mantenimiento.nodos n ON i.id = n.ingeniero_id AND n.activo = true
+      LEFT JOIN mantenimiento.servicios_programados sp ON n.id = sp.nodo_id AND sp.activo = true
       WHERE c.activo = true
       GROUP BY c.id, c.nombre
       ORDER BY c.nombre
@@ -691,8 +691,8 @@ router.get('/estadisticas', async (req, res) => {
         COUNT(*) as total_nodos,
         COUNT(sp.id) as total_servicios,
         COUNT(CASE WHEN sp.estado = 'pendiente' THEN 1 END) as servicios_pendientes
-      FROM "Servicios".nodos n
-      LEFT JOIN "Servicios".servicios_programados sp ON n.id = sp.nodo_id AND sp.activo = true
+      FROM mantenimiento.nodos n
+      LEFT JOIN mantenimiento.servicios_programados sp ON n.id = sp.nodo_id AND sp.activo = true
       WHERE n.activo = true
       GROUP BY tipo_nodo
       ORDER BY total_nodos DESC
