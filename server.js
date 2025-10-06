@@ -14,6 +14,7 @@ const areaServicioRoutes = require('./routes/area-servicio');
 const servicioRoutes = require('./routes/servicio');
 const serviciosSchemaRoutes = require('./routes/servicios-schema');
 const backupRoutes = require('./routes/backup');
+const asignacionesRoutes = require('./routes/asignaciones');
 const profileImagesRoutes = require('./routes/profile-images');
 
 const app = express();
@@ -72,6 +73,7 @@ app.use('/api/servicio', servicioRoutes);
 app.use('/api/servicios', serviciosSchemaRoutes);
 app.use('/api/backup', backupRoutes);
 app.use('/api/personal', profileImagesRoutes);
+app.use('/api/asignaciones', asignacionesRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

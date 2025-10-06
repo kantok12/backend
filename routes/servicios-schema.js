@@ -743,3 +743,4 @@ router.get('/estadisticas', async (req, res) => {
 });
 
 module.exports = router;
+

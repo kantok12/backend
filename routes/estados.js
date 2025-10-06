@@ -2,21 +2,56 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../config/database');
 
+// Estados base requeridos
+const ESTADOS_BASE = [
+  { nombre: 'asignado', descripcion: 'Personal asignado a labores' },
+  { nombre: 'vacaciones', descripcion: 'Personal en vacaciones' },
+  { nombre: 'capacitacion', descripcion: 'Personal en capacitación' },
+  { nombre: 'examenes', descripcion: 'Personal en exámenes' },
+  { nombre: 'desvinculado', descripcion: 'Personal desvinculado' },
+  { nombre: 'licencia medica', descripcion: 'Personal con licencia médica' }
+];
+
+async function ensureEstadosBase() {
+  // Inserta los estados base si no existen ya (case-insensitive)
+  for (const estado of ESTADOS_BASE) {
+    const exists = await query(
+      'SELECT id FROM mantenimiento.estados WHERE lower(nombre) = lower($1) LIMIT 1',
+      [estado.nombre]
+    );
+    if (exists.rows.length === 0) {
+      await query(
+        `INSERT INTO mantenimiento.estados (nombre, descripcion)
+         VALUES ($1, $2)`,
+        [estado.nombre, estado.descripcion]
+      );
+    }
+  }
+}
+
 // GET /estados - listar todos los estados (con paginación opcional)
 router.get('/', async (req, res) => {
   try {
+    // Asegurar que existan los 6 estados requeridos
+    await ensureEstadosBase();
+
     const limit = Number(req.query.limit) || 20;
     const offset = Number(req.query.offset) || 0;
     const search = req.query.search;
 
     // Construir consulta SQL
+    // Solo devolver los 6 estados solicitados, en el orden especificado
+    const estadosFiltro = ESTADOS_BASE.map(e => e.nombre.toLowerCase());
+
     let queryText = `
       SELECT id, nombre, descripcion, activo
       FROM mantenimiento.estados 
-      WHERE 1=1
+      WHERE lower(nombre) = ANY($1)
     `;
     const queryParams = [];
-    let paramIndex = 1;
+    let paramIndex = 2;
+
+    queryParams.push(estadosFiltro);
 
     // Filtro de búsqueda por nombre
     if (search) {
@@ -26,15 +61,16 @@ router.get('/', async (req, res) => {
     }
 
     // Agregar paginación
-    queryText += ` ORDER BY nombre LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    // Ordenar según el orden definido en ESTADOS_BASE
+    queryText += ` ORDER BY array_position($1, lower(nombre)) LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     queryParams.push(limit, offset);
 
     const result = await query(queryText, queryParams);
 
     // Consulta para contar total
-    let countQuery = `SELECT COUNT(*) FROM mantenimiento.estados WHERE 1=1`;
-    const countParams = [];
-    let countParamIndex = 1;
+    let countQuery = `SELECT COUNT(*) FROM mantenimiento.estados WHERE lower(nombre) = ANY($1)`;
+    const countParams = [estadosFiltro];
+    let countParamIndex = 2;
 
     if (search) {
       countQuery += ` AND nombre ILIKE $${countParamIndex}`;
