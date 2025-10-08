@@ -2,6 +2,10 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../config/database');
 
+// Importar rutas de mínimo personal y acuerdos
+const minimoPersonalRoutes = require('./minimo-personal');
+const acuerdosRoutes = require('./acuerdos');
+
 // =====================================================
 // ENDPOINTS PARA CARTEAS (ESQUEMA SERVICIOS)
 // =====================================================
@@ -741,6 +745,10 @@ router.get('/estadisticas', async (req, res) => {
     });
   }
 });
+
+// Montar rutas de mínimo personal y acuerdos
+router.use('/', minimoPersonalRoutes);
+router.use('/', acuerdosRoutes);
 
 module.exports = router;
 
