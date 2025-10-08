@@ -16,6 +16,8 @@ const serviciosSchemaRoutes = require('./routes/servicios-schema');
 const backupRoutes = require('./routes/backup');
 const asignacionesRoutes = require('./routes/asignaciones');
 const profileImagesRoutes = require('./routes/profile-images');
+const prerrequisitosRoutes = require('./routes/prerrequisitos');
+const programacionRoutes = require('./routes/programacion');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -73,7 +75,11 @@ app.use('/api/servicio', servicioRoutes);
 app.use('/api/servicios', serviciosSchemaRoutes);
 app.use('/api/backup', backupRoutes);
 app.use('/api/personal', profileImagesRoutes);
+app.use('/api/prerrequisitos', prerrequisitosRoutes);
+// Alias para compatibilidad con frontend (ortografía alternativa)
+app.use('/api/prerequisitos', prerrequisitosRoutes);
 app.use('/api/asignaciones', asignacionesRoutes);
+app.use('/api/programacion', programacionRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -96,7 +102,9 @@ app.get('/', (req, res) => {
       cursos: '/api/cursos',
       documentos: '/api/documentos',
       estados: '/api/estados',
-      servicios: '/api/servicios'
+      servicios: '/api/servicios',
+      asignaciones: '/api/asignaciones',
+      programacion: '/api/programacion'
     }
   });
 });

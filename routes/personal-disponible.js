@@ -451,11 +451,11 @@ router.get('/verify-import', async (req, res) => {
 router.delete('/:rut', async (req, res) => {
   try {
     const { rut } = req.params;
+    console.log(`🗑️ Eliminando personal con RUT: ${rut}`);
 
-    const queryText = 'DELETE FROM mantenimiento.personal_disponible WHERE rut = $1 RETURNING *';
-    const result = await query(queryText, [rut]);
-
-    if (result.rows.length === 0) {
+    // Verificar que existe el personal
+    const checkExists = await query('SELECT rut, nombres FROM mantenimiento.personal_disponible WHERE rut = $1', [rut]);
+    if (checkExists.rows.length === 0) {
       return res.status(404).json({
         success: false,
         error: 'Personal no encontrado',
@@ -463,11 +463,80 @@ router.delete('/:rut', async (req, res) => {
       });
     }
 
-    res.json({
-      success: true,
-      message: 'Personal disponible eliminado exitosamente',
-      data: result.rows[0]
-    });
+    const personalData = checkExists.rows[0];
+    console.log(`📋 Eliminando datos relacionados para: ${personalData.nombres} (${rut})`);
+
+    // Iniciar transacción para eliminar en cascada
+    await query('BEGIN');
+
+    try {
+      // 1. Eliminar de programación semanal (sin claves foráneas)
+      const programacionResult = await query('DELETE FROM mantenimiento.programacion_semanal WHERE rut = $1', [rut]);
+      console.log(`  ✅ Programación semanal: ${programacionResult.rowCount} registros eliminados`);
+
+      // 2. Eliminar de historial de programación (sin claves foráneas)
+      const historialResult = await query('DELETE FROM mantenimiento.programacion_historial WHERE rut = $1', [rut]);
+      console.log(`  ✅ Historial programación: ${historialResult.rowCount} registros eliminados`);
+
+      // 3. Eliminar asignaciones (sin claves foráneas)
+      const carterasResult = await query('DELETE FROM mantenimiento.personal_carteras WHERE rut = $1', [rut]);
+      console.log(`  ✅ Asignaciones carteras: ${carterasResult.rowCount} registros eliminados`);
+
+      const clientesResult = await query('DELETE FROM mantenimiento.personal_clientes WHERE rut = $1', [rut]);
+      console.log(`  ✅ Asignaciones clientes: ${clientesResult.rowCount} registros eliminados`);
+
+      const nodosResult = await query('DELETE FROM mantenimiento.personal_nodos WHERE rut = $1', [rut]);
+      console.log(`  ✅ Asignaciones nodos: ${nodosResult.rowCount} registros eliminados`);
+
+      // 4. Eliminar estados del personal (sin claves foráneas)
+      const estadosResult = await query('DELETE FROM mantenimiento.personal_estados WHERE rut = $1', [rut]);
+      console.log(`  ✅ Estados personal: ${estadosResult.rowCount} registros eliminados`);
+
+      // 5. Eliminar documentos (CON clave foránea hacia personal_disponible)
+      const documentosResult = await query('DELETE FROM mantenimiento.documentos WHERE rut_persona = $1', [rut]);
+      console.log(`  ✅ Documentos: ${documentosResult.rowCount} registros eliminados`);
+
+      // 6. Eliminar cursos (CON clave foránea hacia personal_disponible)
+      const cursosResult = await query('DELETE FROM mantenimiento.cursos WHERE rut_persona = $1', [rut]);
+      console.log(`  ✅ Cursos: ${cursosResult.rowCount} registros eliminados`);
+
+      // Verificar que no quedan cursos antes de eliminar personal
+      const cursosRestantes = await query('SELECT COUNT(*) as total FROM mantenimiento.cursos WHERE rut_persona = $1', [rut]);
+      console.log(`  🔍 Cursos restantes después de eliminación: ${cursosRestantes.rows[0].total}`);
+
+      // 7. Finalmente, eliminar el personal (después de eliminar todas las referencias)
+      const personalResult = await query('DELETE FROM mantenimiento.personal_disponible WHERE rut = $1 RETURNING *', [rut]);
+      console.log(`  ✅ Personal eliminado: ${personalResult.rowCount} registros`);
+
+      // Confirmar transacción
+      await query('COMMIT');
+
+      console.log(`🎉 Eliminación completa para RUT: ${rut}`);
+
+      res.json({
+        success: true,
+        message: 'Personal disponible y todos sus datos relacionados eliminados exitosamente',
+        data: {
+          personal: personalResult.rows[0],
+          eliminaciones: {
+            programacion_semanal: programacionResult.rowCount,
+            historial_programacion: historialResult.rowCount,
+            asignaciones_carteras: carterasResult.rowCount,
+            asignaciones_clientes: clientesResult.rowCount,
+            asignaciones_nodos: nodosResult.rowCount,
+            estados_personal: estadosResult.rowCount,
+            cursos: cursosResult.rowCount,
+            documentos: documentosResult.rowCount
+          }
+        }
+      });
+
+    } catch (cascadeError) {
+      // Revertir transacción en caso de error
+      await query('ROLLBACK');
+      console.error('❌ Error en eliminación en cascada:', cascadeError);
+      throw cascadeError;
+    }
 
   } catch (error) {
     console.error('Error al eliminar personal disponible:', error);

@@ -15,10 +15,10 @@ router.get('/', async (req, res) => {
     const getAllQuery = `
       SELECT 
         rut,
-        nombre
+        nombres
       FROM mantenimiento.personal_disponible 
-      WHERE nombre IS NOT NULL
-      ORDER BY nombre, rut
+      WHERE nombres IS NOT NULL
+      ORDER BY nombres, rut
     `;
     
     const result = await query(getAllQuery);
@@ -49,7 +49,7 @@ router.get('/stats', async (req, res) => {
     const statsQuery = `
       SELECT 
         COUNT(*) as total_registros,
-        COUNT(nombre) as nombres_llenos
+        COUNT(nombres) as nombres_llenos
       FROM mantenimiento.personal_disponible
     `;
     
@@ -101,14 +101,14 @@ router.get('/search', async (req, res) => {
     const searchQuery = `
       SELECT 
         rut,
-        nombre
+        nombres
       FROM mantenimiento.personal_disponible 
       WHERE 
-        nombre ILIKE $1 OR 
+        nombres ILIKE $1 OR 
         rut ILIKE $2
       ORDER BY 
-        CASE WHEN nombre ILIKE $3 THEN 1 ELSE 2 END,
-        nombre, rut
+        CASE WHEN nombres ILIKE $3 THEN 1 ELSE 2 END,
+        nombres, rut
       LIMIT 50
     `;
     
@@ -146,7 +146,7 @@ router.get('/:rut', async (req, res) => {
     const getByRutQuery = `
       SELECT 
         rut,
-        nombre
+        nombres
       FROM mantenimiento.personal_disponible 
       WHERE rut = $1
     `;
@@ -182,12 +182,12 @@ router.get('/:rut', async (req, res) => {
 router.put('/:rut', async (req, res) => {
   try {
     const { rut } = req.params;
-    const { nombre, sexo, fecha_nacimiento, licencia_conducir } = req.body;
+    const { nombres, sexo, fecha_nacimiento, licencia_conducir } = req.body;
     
     console.log(`📝 PUT /api/nombres/${rut} - Actualizando nombre`);
     
     // Validaciones básicas
-    if (!nombre || nombre.trim().length === 0) {
+    if (!nombres || nombres.trim().length === 0) {
       return res.status(400).json({
         success: false,
         message: 'El nombre es requerido'
@@ -213,9 +213,9 @@ router.put('/:rut', async (req, res) => {
     const updateValues = [];
     let paramIndex = 1;
     
-    if (nombre) {
-      updateFields.push(`nombre = $${paramIndex++}`);
-      updateValues.push(nombre.trim());
+    if (nombres) {
+      updateFields.push(`nombres = $${paramIndex++}`);
+      updateValues.push(nombres.trim());
     }
     
     if (sexo) {
@@ -266,12 +266,12 @@ router.put('/:rut', async (req, res) => {
 // POST /api/nombres - Crear nuevo registro de nombre
 router.post('/', async (req, res) => {
   try {
-    const { rut, nombre, sexo, fecha_nacimiento, licencia_conducir } = req.body;
+    const { rut, nombres, sexo, fecha_nacimiento, licencia_conducir } = req.body;
     
     console.log('📝 POST /api/nombres - Creando nuevo nombre');
     
     // Validaciones
-    if (!rut || !nombre) {
+    if (!rut || !nombres) {
       return res.status(400).json({
         success: false,
         message: 'RUT y nombre son requeridos'
@@ -294,14 +294,14 @@ router.post('/', async (req, res) => {
     
     const insertQuery = `
       INSERT INTO mantenimiento.personal_disponible (
-        rut, nombre, sexo, fecha_nacimiento, licencia_conducir, estado_id
+        rut, nombres, sexo, fecha_nacimiento, licencia_conducir, estado_id
       ) VALUES ($1, $2, $3, $4, $5, 1)
       RETURNING *
     `;
     
     const result = await query(insertQuery, [
       rut,
-      nombre.trim(),
+      nombres.trim(),
       sexo || null,
       fecha_nacimiento || null,
       licencia_conducir || null

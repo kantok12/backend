@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -158,9 +158,9 @@ router.get('/vencidos', async (req, res) => {
         END as estado_vencimiento,
         CASE 
           WHEN d.fecha_vencimiento < CURRENT_DATE THEN 
-            (CURRENT_DATE - d.fecha_vencimiento)
+            EXTRACT(DAYS FROM CURRENT_DATE - d.fecha_vencimiento)::INTEGER
           WHEN d.fecha_vencimiento <= CURRENT_DATE + INTERVAL '30 days' THEN 
-            (d.fecha_vencimiento - CURRENT_DATE)
+            EXTRACT(DAYS FROM d.fecha_vencimiento - CURRENT_DATE)::INTEGER
           ELSE NULL
         END as dias_restantes
       FROM mantenimiento.documentos d

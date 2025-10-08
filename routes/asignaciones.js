@@ -97,10 +97,52 @@ router.delete('/persona/:rut/carteras/:cartera_id', async (req, res) => {
 router.post('/persona/:rut/clientes', async (req, res) => {
   try {
     const { rut } = req.params;
-    const { cliente_id } = req.body;
+    const { cliente_id, enforce } = req.body;
     if (!cliente_id) return res.status(400).json({ success: false, message: 'cliente_id es requerido' });
     if (!(await personExists(rut))) return res.status(404).json({ success: false, message: 'Persona no encontrada' });
     if (!(await clienteExists(cliente_id))) return res.status(404).json({ success: false, message: 'Cliente no encontrado' });
+
+    // Validar prerrequisitos antes de asignar (enforce por defecto true)
+    const requisitos = (await query(`
+      SELECT tipo_documento, obligatorio, dias_validez
+      FROM mantenimiento.prerrequisitos_clientes
+      WHERE cliente_id = $1
+    `, [cliente_id])).rows;
+
+    let requisitosUsados = requisitos;
+    if (requisitosUsados.length === 0) {
+      requisitosUsados = [
+        { tipo_documento: 'licencia_conducir', obligatorio: true, dias_validez: 365 },
+        { tipo_documento: 'certificado_seguridad', obligatorio: true, dias_validez: 365 },
+        { tipo_documento: 'certificado_medico', obligatorio: false, dias_validez: 365 }
+      ];
+    }
+
+    const docs = (await query(`
+      SELECT id, tipo_documento
+      FROM mantenimiento.documentos
+      WHERE rut_persona = $1 AND activo = true
+    `, [rut])).rows;
+
+    const cumplidos = [];
+    const faltantes = [];
+    for (const reqq of requisitosUsados) {
+      const match = docs.find(d => d.tipo_documento === reqq.tipo_documento);
+      if (match) {
+        cumplidos.push({ tipo_documento: reqq.tipo_documento, documento_id: match.id });
+      } else if (reqq.obligatorio) {
+        faltantes.push({ tipo_documento: reqq.tipo_documento, obligatorio: true });
+      }
+    }
+
+    const shouldEnforce = enforce === false ? false : true;
+    if (shouldEnforce && faltantes.length > 0) {
+      return res.status(409).json({
+        success: false,
+        message: 'No cumple prerrequisitos obligatorios para este cliente',
+        validacion: { requisitos: requisitosUsados, cumplidos, faltantes, vencidos: [], por_vencer: [] }
+      });
+    }
 
     await query(`
       INSERT INTO mantenimiento.personal_clientes (rut, cliente_id)
@@ -108,7 +150,7 @@ router.post('/persona/:rut/clientes', async (req, res) => {
       ON CONFLICT (rut, cliente_id) DO NOTHING
     `, [rut, cliente_id]);
 
-    res.status(201).json({ success: true, message: 'Cliente asignado' });
+    res.status(201).json({ success: true, message: 'Cliente asignado', validacion: { requisitos: requisitosUsados, cumplidos, faltantes, vencidos: [], por_vencer: [] } });
   } catch (err) {
     console.error('Error asignando cliente:', err);
     res.status(500).json({ success: false, message: 'Error asignando cliente', error: err.message });
