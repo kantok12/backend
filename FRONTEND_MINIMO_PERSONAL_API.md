@@ -493,3 +493,4 @@ const obtenerAcuerdosPorVencer = async (dias = 30) => {
 3. **Monitoreo**: Revisar regularmente acuerdos próximos a vencer
 4. **Cálculo**: Usar el endpoint de cálculo para obtener mínimos reales
 5. **Mantenimiento**: Actualizar o eliminar acuerdos según sea necesario
+
