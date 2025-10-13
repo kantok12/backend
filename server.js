@@ -18,6 +18,7 @@ const asignacionesRoutes = require('./routes/asignaciones');
 const profileImagesRoutes = require('./routes/profile-images');
 const prerrequisitosRoutes = require('./routes/prerrequisitos');
 const programacionRoutes = require('./routes/programacion');
+const carpetasPersonalRoutes = require('./routes/carpetas-personal');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -80,6 +81,7 @@ app.use('/api/prerrequisitos', prerrequisitosRoutes);
 app.use('/api/prerequisitos', prerrequisitosRoutes);
 app.use('/api/asignaciones', asignacionesRoutes);
 app.use('/api/programacion', programacionRoutes);
+app.use('/api/carpetas-personal', carpetasPersonalRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
