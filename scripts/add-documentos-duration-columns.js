@@ -125,3 +125,4 @@ async function addDocumentosDurationColumns() {
 
 addDocumentosDurationColumns();
 
+

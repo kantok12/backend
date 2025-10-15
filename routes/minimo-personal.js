@@ -467,3 +467,4 @@ router.get('/minimo-personal/:id/calcular', async (req, res) => {
 
 module.exports = router;
 
+

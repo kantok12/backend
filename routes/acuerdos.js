@@ -606,3 +606,4 @@ router.post('/acuerdos/:id/desactivar', async (req, res) => {
 
 module.exports = router;
 
+

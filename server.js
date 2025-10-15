@@ -19,6 +19,8 @@ const profileImagesRoutes = require('./routes/profile-images');
 const prerrequisitosRoutes = require('./routes/prerrequisitos');
 const programacionRoutes = require('./routes/programacion');
 const carpetasPersonalRoutes = require('./routes/carpetas-personal');
+const belrayRoutes = require('./routes/belray');
+const auditoriaRoutes = require('./routes/auditoria');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -28,27 +30,31 @@ app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 
 // Configuración CORS
-const allowedOrigins = [
-  'http://localhost:3000',
-  'http://localhost:3001', 
-  'http://localhost:3002',
-  'http://192.168.10.194:3000',
-  'http://192.168.10.194:3001',
-  'http://192.168.10.194:3002'
-];
-
 app.use(cors({
   origin: function (origin, callback) {
     // Permitir requests sin origin (como mobile apps o curl)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      console.log(`✅ CORS: Origin permitido - ${origin}`);
-      callback(null, true);
-    } else {
-      console.log(`❌ CORS: Origin bloqueado - ${origin}`);
-      callback(new Error('No permitido por CORS'));
+    // Permitir localhost en cualquier puerto
+    if (origin.startsWith('http://localhost:')) {
+      console.log(`✅ CORS: Localhost permitido - ${origin}`);
+      return callback(null, true);
     }
+    
+    // Permitir cualquier IP de la red local (192.168.x.x)
+    if (origin.match(/^http:\/\/192\.168\.\d+\.\d+:\d+$/)) {
+      console.log(`✅ CORS: Red local permitida - ${origin}`);
+      return callback(null, true);
+    }
+    
+    // Permitir 127.0.0.1 (localhost alternativo)
+    if (origin.startsWith('http://127.0.0.1:')) {
+      console.log(`✅ CORS: 127.0.0.1 permitido - ${origin}`);
+      return callback(null, true);
+    }
+    
+    console.log(`❌ CORS: Origin bloqueado - ${origin}`);
+    callback(new Error('No permitido por CORS'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -82,6 +88,8 @@ app.use('/api/prerequisitos', prerrequisitosRoutes);
 app.use('/api/asignaciones', asignacionesRoutes);
 app.use('/api/programacion', programacionRoutes);
 app.use('/api/carpetas-personal', carpetasPersonalRoutes);
+app.use('/api/belray', belrayRoutes);
+app.use('/api/auditoria', auditoriaRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
