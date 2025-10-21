@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { getSupabaseClient } = require('../config/database');
+const { query } = require('../config/database');
 
 // Middleware de autenticación
 const authenticateToken = async (req, res, next) => {
@@ -17,27 +17,28 @@ const authenticateToken = async (req, res, next) => {
     // Verificar el token JWT
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    // Verificar que el usuario existe en Supabase
-    const supabase = getSupabaseClient();
-    const { data: user, error } = await supabase
-      .from('usuarios')
-      .select('*')
-      .eq('id', decoded.userId)
-      .single();
+    // Verificar que el usuario existe en PostgreSQL
+    const userResult = await query(`
+      SELECT * FROM sistema.usuarios 
+      WHERE id = $1 AND activo = true
+    `, [decoded.userId]);
 
-    if (error || !user) {
+    if (userResult.rows.length === 0) {
       return res.status(401).json({
         error: 'Token inválido',
         message: 'El usuario no existe o el token es inválido'
       });
     }
 
+    const user = userResult.rows[0];
+
     // Agregar información del usuario al request
     req.user = {
       id: user.id,
       email: user.email,
       rol: user.rol,
-      nombre: user.nombre
+      nombre: user.nombre,
+      apellido: user.apellido
     };
 
     next();
@@ -92,19 +93,19 @@ const requireOwnership = (resourceTable, resourceIdField = 'id') => {
       const resourceId = req.params[resourceIdField];
       const userId = req.user.id;
 
-      const supabase = getSupabaseClient();
-      const { data: resource, error } = await supabase
-        .from(resourceTable)
-        .select('*')
-        .eq(resourceIdField, resourceId)
-        .single();
+      const resourceResult = await query(`
+        SELECT * FROM ${resourceTable} 
+        WHERE ${resourceIdField} = $1
+      `, [resourceId]);
 
-      if (error || !resource) {
+      if (resourceResult.rows.length === 0) {
         return res.status(404).json({
           error: 'Recurso no encontrado',
           message: 'El recurso solicitado no existe'
         });
       }
+
+      const resource = resourceResult.rows[0];
 
       // Permitir acceso si es administrador o propietario del recurso
       if (req.user.rol === 'admin' || resource.usuario_id === userId) {

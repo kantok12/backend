@@ -22,6 +22,21 @@ Content-Type: application/json
 }
 ```
 
+**Respuesta:**
+```json
+{
+  "message": "Usuario creado exitosamente",
+  "user": {
+    "id": 1,
+    "email": "usuario@ejemplo.com",
+    "nombre": "Juan",
+    "apellido": "Pérez",
+    "rol": "usuario"
+  },
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
 ### **Inicio de Sesión**
 ```http
 POST /api/auth/login
@@ -33,16 +48,58 @@ Content-Type: application/json
 }
 ```
 
+**Respuesta:**
+```json
+{
+  "message": "Inicio de sesión exitoso",
+  "user": {
+    "id": 1,
+    "email": "usuario@ejemplo.com",
+    "nombre": "Juan",
+    "apellido": "Pérez",
+    "rol": "usuario"
+  },
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
 ### **Obtener Usuario Actual**
 ```http
 GET /api/auth/me
 Authorization: Bearer <token>
 ```
 
+**Respuesta:**
+```json
+{
+  "user": {
+    "id": 1,
+    "email": "usuario@ejemplo.com",
+    "nombre": "Juan",
+    "apellido": "Pérez",
+    "rol": "usuario",
+    "email_verificado": false,
+    "ultimo_login": "2025-10-21T11:47:58.262Z"
+  }
+}
+```
+
 ### **Renovar Token**
 ```http
 POST /api/auth/refresh
 Authorization: Bearer <token>
+```
+
+### **Cambiar Contraseña**
+```http
+POST /api/auth/change-password
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "currentPassword": "contraseña_actual",
+  "newPassword": "nueva_contraseña"
+}
 ```
 
 ### **Cerrar Sesión**
@@ -53,6 +110,128 @@ POST /api/auth/logout
 ### **Verificar Usuarios (Debug)**
 ```http
 GET /api/auth/check-users
+```
+
+---
+
+## 👥 **GESTIÓN DE USUARIOS**
+
+### **Listar Usuarios**
+```http
+GET /api/users?page=1&limit=20&search=texto
+Authorization: Bearer <token>
+```
+
+**Respuesta:**
+```json
+{
+  "message": "Usuarios obtenidos exitosamente",
+  "users": [
+    {
+      "id": 1,
+      "email": "admin@sistema.com",
+      "nombre": "Administrador",
+      "apellido": "Sistema",
+      "rol": "admin",
+      "activo": true,
+      "email_verificado": true,
+      "ultimo_login": "2025-10-21T11:47:58.262Z",
+      "created_at": "2025-10-21T10:00:00.000Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 1,
+    "pages": 1,
+    "hasNext": false,
+    "hasPrev": false
+  }
+}
+```
+
+### **Obtener Usuario por ID**
+```http
+GET /api/users/1
+Authorization: Bearer <token>
+```
+
+### **Crear Usuario (Solo Admin)**
+```http
+POST /api/users
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "email": "nuevo@ejemplo.com",
+  "password": "contraseña123",
+  "nombre": "Nuevo",
+  "apellido": "Usuario",
+  "rol": "usuario"
+}
+```
+
+### **Actualizar Usuario**
+```http
+PUT /api/users/1
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "nombre": "Nombre Actualizado",
+  "apellido": "Apellido Actualizado",
+  "rol": "supervisor"
+}
+```
+
+### **Eliminar Usuario (Solo Admin)**
+```http
+DELETE /api/users/1
+Authorization: Bearer <token>
+```
+
+### **Resetear Contraseña (Solo Admin)**
+```http
+POST /api/users/1/reset-password
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "newPassword": "nueva_contraseña"
+}
+```
+
+### **Estadísticas de Usuarios**
+```http
+GET /api/users/stats
+Authorization: Bearer <token>
+```
+
+**Respuesta:**
+```json
+{
+  "message": "Estadísticas de usuarios obtenidas exitosamente",
+  "stats": {
+    "total": 5,
+    "porRol": {
+      "admins": 1,
+      "supervisors": 1,
+      "usuarios": 2,
+      "operadores": 1
+    },
+    "porEstado": {
+      "activos": 4,
+      "inactivos": 1
+    },
+    "verificacion": {
+      "emailsVerificados": 3,
+      "emailsSinVerificar": 2
+    },
+    "actividad": {
+      "activosUltimos30Dias": 3
+    }
+  }
+}
 ```
 
 ---

@@ -4,6 +4,8 @@ const path = require('path');
 const fs = require('fs');
 
 // Importar rutas del esquema mantenimiento
+const authRoutes = require('./routes/auth');
+const usersRoutes = require('./routes/users');
 const estadosRoutes = require('./routes/estados');
 const personalDisponibleRoutes = require('./routes/personal-disponible');
 const nombresRoutes = require('./routes/nombres');
@@ -71,6 +73,8 @@ app.use((req, res, next) => {
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Rutas
+app.use('/api/auth', authRoutes);
+app.use('/api/users', usersRoutes);
 app.use('/api/estados', estadosRoutes);
 app.use('/api/personal-disponible', personalDisponibleRoutes);
 app.use('/api/nombres', nombresRoutes);
@@ -107,6 +111,8 @@ app.get('/', (req, res) => {
     message: 'API Backend - Sistema de Gestión de Personal',
     version: '1.0.0',
     endpoints: {
+      auth: '/api/auth',
+      users: '/api/users',
       health: '/api/health',
       personal: '/api/personal-disponible',
       cursos: '/api/cursos',
