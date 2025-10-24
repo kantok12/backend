@@ -8,9 +8,13 @@
     "dev": "nodemon server.js",
     "dev:network": "HOST=0.0.0.0 nodemon server.js",
     "start:network": "HOST=0.0.0.0 node server.js",
+    "start:vpn": "HOST=0.0.0.0 NODE_ENV=production VPN_ENABLED=true node server.js",
+    "dev:vpn": "HOST=0.0.0.0 VPN_ENABLED=true nodemon server.js",
     "test": "jest",
     "test:servicios": "node test-servicios-endpoints.js",
-    "test:servicios:remote": "API_URL=https://tu-servidor.com node test-servicios-endpoints.js"
+    "test:servicios:remote": "API_URL=https://tu-servidor.com node test-servicios-endpoints.js",
+    "setup:vpn": "powershell -ExecutionPolicy Bypass -File setup-aws-vpn.ps1",
+    "setup:vpn:linux": "bash setup-aws-vpn.sh"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.21.0",

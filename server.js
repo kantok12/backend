@@ -20,6 +20,7 @@ const asignacionesRoutes = require('./routes/asignaciones');
 const profileImagesRoutes = require('./routes/profile-images');
 const prerrequisitosRoutes = require('./routes/prerrequisitos');
 const programacionRoutes = require('./routes/programacion');
+const programacionOptimizadaRoutes = require('./routes/programacion-optimizada');
 const carpetasPersonalRoutes = require('./routes/carpetas-personal');
 const belrayRoutes = require('./routes/belray');
 const auditoriaRoutes = require('./routes/auditoria');
@@ -52,6 +53,23 @@ app.use(cors({
     // Permitir 127.0.0.1 (localhost alternativo)
     if (origin.startsWith('http://127.0.0.1:')) {
       console.log(`✅ CORS: 127.0.0.1 permitido - ${origin}`);
+      return callback(null, true);
+    }
+    
+    // Permitir rangos de IP de AWS VPN (10.x.x.x, 172.16-31.x.x)
+    if (origin.match(/^http:\/\/10\.\d+\.\d+\.\d+:\d+$/)) {
+      console.log(`✅ CORS: AWS VPN (10.x.x.x) permitido - ${origin}`);
+      return callback(null, true);
+    }
+    
+    if (origin.match(/^http:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+:\d+$/)) {
+      console.log(`✅ CORS: AWS VPN (172.16-31.x.x) permitido - ${origin}`);
+      return callback(null, true);
+    }
+    
+    // Permitir HTTPS para producción
+    if (origin.startsWith('https://')) {
+      console.log(`✅ CORS: HTTPS permitido - ${origin}`);
       return callback(null, true);
     }
     
@@ -91,6 +109,7 @@ app.use('/api/prerrequisitos', prerrequisitosRoutes);
 app.use('/api/prerequisitos', prerrequisitosRoutes);
 app.use('/api/asignaciones', asignacionesRoutes);
 app.use('/api/programacion', programacionRoutes);
+app.use('/api/programacion-optimizada', programacionOptimizadaRoutes);
 app.use('/api/carpetas-personal', carpetasPersonalRoutes);
 app.use('/api/belray', belrayRoutes);
 app.use('/api/auditoria', auditoriaRoutes);
@@ -120,7 +139,8 @@ app.get('/', (req, res) => {
       estados: '/api/estados',
       servicios: '/api/servicios',
       asignaciones: '/api/asignaciones',
-      programacion: '/api/programacion'
+      programacion: '/api/programacion',
+      programacionOptimizada: '/api/programacion-optimizada'
     }
   });
 });

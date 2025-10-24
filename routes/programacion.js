@@ -106,7 +106,7 @@ router.get('/', async (req, res) => {
         p.created_at,
         p.updated_at
       FROM mantenimiento.programacion_semanal p
-      JOIN mantenimiento.personal_disponible pd ON pd.rut = p.rut
+      JOIN mantenimiento.personal_disponible pd ON REPLACE(pd.rut, '.', '') = REPLACE(p.rut, '.', '')
       JOIN servicios.carteras c ON c.id = p.cartera_id
       LEFT JOIN servicios.clientes cl ON cl.id = p.cliente_id
       LEFT JOIN servicios.nodos n ON n.id = p.nodo_id
@@ -181,7 +181,7 @@ router.get('/persona/:rut', async (req, res) => {
         p.created_at,
         p.updated_at
       FROM mantenimiento.programacion_semanal p
-      JOIN mantenimiento.personal_disponible pd ON pd.rut = p.rut
+      JOIN mantenimiento.personal_disponible pd ON REPLACE(pd.rut, '.', '') = REPLACE(p.rut, '.', '')
       JOIN servicios.carteras c ON c.id = p.cartera_id
       LEFT JOIN servicios.clientes cl ON cl.id = p.cliente_id
       LEFT JOIN servicios.nodos n ON n.id = p.nodo_id
@@ -583,7 +583,7 @@ router.get('/semana/:fecha', async (req, res) => {
         p.created_at,
         p.updated_at
       FROM mantenimiento.programacion_semanal p
-      JOIN mantenimiento.personal_disponible pd ON pd.rut = p.rut
+      JOIN mantenimiento.personal_disponible pd ON REPLACE(pd.rut, '.', '') = REPLACE(p.rut, '.', '')
       JOIN servicios.carteras c ON c.id = p.cartera_id
       LEFT JOIN servicios.clientes cl ON cl.id = p.cliente_id
       LEFT JOIN servicios.nodos n ON n.id = p.nodo_id
