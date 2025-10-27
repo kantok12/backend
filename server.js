@@ -21,6 +21,8 @@ const profileImagesRoutes = require('./routes/profile-images');
 const prerrequisitosRoutes = require('./routes/prerrequisitos');
 const programacionRoutes = require('./routes/programacion');
 const programacionOptimizadaRoutes = require('./routes/programacion-optimizada');
+const programacionSemanalRoutes = require('./routes/programacion-semanal');
+const programacionCompatibilidadRoutes = require('./routes/programacion-compatibilidad');
 const carpetasPersonalRoutes = require('./routes/carpetas-personal');
 const belrayRoutes = require('./routes/belray');
 const auditoriaRoutes = require('./routes/auditoria');
@@ -110,6 +112,8 @@ app.use('/api/prerequisitos', prerrequisitosRoutes);
 app.use('/api/asignaciones', asignacionesRoutes);
 app.use('/api/programacion', programacionRoutes);
 app.use('/api/programacion-optimizada', programacionOptimizadaRoutes);
+app.use('/api/programacion-semanal', programacionSemanalRoutes);
+app.use('/api/programacion-compatibilidad', programacionCompatibilidadRoutes);
 app.use('/api/carpetas-personal', carpetasPersonalRoutes);
 app.use('/api/belray', belrayRoutes);
 app.use('/api/auditoria', auditoriaRoutes);
@@ -140,7 +144,9 @@ app.get('/', (req, res) => {
       servicios: '/api/servicios',
       asignaciones: '/api/asignaciones',
       programacion: '/api/programacion',
-      programacionOptimizada: '/api/programacion-optimizada'
+      programacionOptimizada: '/api/programacion-optimizada',
+      programacionSemanal: '/api/programacion-semanal',
+      programacionCompatibilidad: '/api/programacion-compatibilidad'
     }
   });
 });

@@ -353,16 +353,101 @@ Eliminar programación
 ## 🎯 Programación Optimizada (`/api/programacion-optimizada`)
 
 ### **GET** `/api/programacion-optimizada`
-Obtener programación optimizada por cartera y rango de fechas
+**Obtener programación por cartera y rango de fechas**
+
 **Query Parameters:**
 - `cartera_id` (requerido): ID de la cartera
 - `fecha_inicio` (opcional): Fecha de inicio del rango
 - `fecha_fin` (opcional): Fecha de fin del rango
-- `semana` (opcional): Fecha de inicio de semana
+- `semana` (opcional): Fecha de inicio de semana (YYYY-MM-DD)
 - `fecha` (opcional): Fecha específica para obtener su semana
 
+**Ejemplo:**
+```http
+GET /api/programacion-optimizada?cartera_id=1&fecha_inicio=2024-01-15&fecha_fin=2024-01-19
+```
+
+**Respuesta:**
+```json
+{
+  "success": true,
+  "data": {
+    "cartera": {
+      "id": 1,
+      "nombre": "SNACK"
+    },
+    "periodo": {
+      "inicio": "2024-01-15",
+      "fin": "2024-01-19"
+    },
+    "programacion": [
+      {
+        "id": 1,
+        "rut": "12345678-9",
+        "nombre_persona": "Juan Pérez",
+        "cargo": "Técnico",
+        "cartera_id": 1,
+        "nombre_cartera": "SNACK",
+        "cliente_id": 5,
+        "nombre_cliente": "Cliente A",
+        "nodo_id": 12,
+        "nombre_nodo": "Nodo A",
+        "fecha_trabajo": "2024-01-15",
+        "dia_semana": "lunes",
+        "horas_estimadas": 8,
+        "horas_reales": null,
+        "observaciones": "Trabajo programado",
+        "estado": "programado",
+        "created_at": "2024-01-15T10:00:00.000Z",
+        "updated_at": "2024-01-15T10:00:00.000Z"
+      }
+    ]
+  }
+}
+```
+
+### **GET** `/api/programacion-optimizada/persona/:rut`
+**Obtener programación de una persona específica**
+
+**Path Parameters:**
+- `rut` (requerido): RUT de la persona
+
+**Query Parameters:**
+- `dias` (opcional): Días a consultar (default: 30)
+
+**Ejemplo:**
+```http
+GET /api/programacion-optimizada/persona/12345678-9?dias=15
+```
+
+**Respuesta:**
+```json
+{
+  "success": true,
+  "data": {
+    "persona": {
+      "rut": "12345678-9",
+      "nombre": "Juan Pérez",
+      "cargo": "Técnico"
+    },
+    "programacion": [
+      {
+        "id": 1,
+        "rut": "12345678-9",
+        "fecha_trabajo": "2024-01-15",
+        "dia_semana": "lunes",
+        "horas_estimadas": 8,
+        "estado": "programado"
+      }
+    ]
+  }
+}
+```
+
 ### **POST** `/api/programacion-optimizada`
-Crear programación para fechas específicas
+**Crear programación para fechas específicas**
+
+**Body:**
 ```json
 {
   "rut": "12345678-9",
@@ -376,8 +461,42 @@ Crear programación para fechas específicas
 }
 ```
 
+**Características:**
+- ✅ **Actualización inteligente** - Si la fecha ya existe, actualiza el registro
+- ✅ **Creación múltiple** - Crea programación para múltiples fechas
+- ✅ **Validaciones completas** - Verifica persona, cartera, cliente y nodo
+
+**Respuesta:**
+```json
+{
+  "success": true,
+  "message": "Programación procesada: 2 fechas creadas, 1 fechas actualizadas",
+  "data": {
+    "programacion": [
+      {
+        "id": 1,
+        "rut": "12345678-9",
+        "fecha_trabajo": "2024-01-15",
+        "dia_semana": "lunes",
+        "horas_estimadas": 8,
+        "estado": "programado"
+      }
+    ],
+    "resumen": {
+      "total": 3,
+      "creadas": 2,
+      "actualizadas": 1,
+      "fechas_creadas": ["2024-01-17", "2024-01-19"],
+      "fechas_actualizadas": ["2024-01-15"]
+    }
+  }
+}
+```
+
 ### **POST** `/api/programacion-optimizada/semana`
-Crear programación para semana completa
+**Crear programación para una semana completa**
+
+**Body:**
 ```json
 {
   "rut": "12345678-9",
@@ -392,21 +511,180 @@ Crear programación para semana completa
 }
 ```
 
+**Características:**
+- ✅ **Programación semanal** - Crea programación para días específicos de la semana
+- ✅ **Flexibilidad** - Permite elegir qué días programar
+- ✅ **Cálculo automático** - Calcula fechas automáticamente
+
+**Respuesta:**
+```json
+{
+  "success": true,
+  "message": "Programación creada exitosamente para 4 días",
+  "data": [
+    {
+      "id": 1,
+      "rut": "12345678-9",
+      "fecha_trabajo": "2024-01-15",
+      "dia_semana": "lunes",
+      "horas_estimadas": 8,
+      "estado": "programado"
+    },
+    {
+      "id": 2,
+      "rut": "12345678-9",
+      "fecha_trabajo": "2024-01-16",
+      "dia_semana": "martes",
+      "horas_estimadas": 8,
+      "estado": "programado"
+    }
+  ]
+}
+```
+
 ### **GET** `/api/programacion-optimizada/calendario`
-Obtener vista de calendario mensual
+**Vista de calendario mensual**
+
 **Query Parameters:**
 - `cartera_id` (requerido): ID de la cartera
 - `mes` (opcional): Mes (1-12, default: mes actual)
 - `año` (opcional): Año (default: año actual)
 
+**Ejemplo:**
+```http
+GET /api/programacion-optimizada/calendario?cartera_id=1&mes=1&año=2024
+```
+
+**Respuesta:**
+```json
+{
+  "success": true,
+  "data": {
+    "cartera": {
+      "id": 1,
+      "nombre": "SNACK"
+    },
+    "mes": {
+      "numero": 1,
+      "año": 2024,
+      "inicio": "2024-01-01",
+      "fin": "2024-01-31"
+    },
+    "calendario": [
+      {
+        "fecha": "2024-01-15",
+        "dia_semana": "lunes",
+        "trabajadores": [
+          {
+            "id": 1,
+            "rut": "12345678-9",
+            "nombre_persona": "Juan Pérez",
+            "cargo": "Técnico",
+            "horas_estimadas": 8,
+            "estado": "programado"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
 ### **GET** `/api/programacion-optimizada/:id`
-Obtener programación específica
+**Obtener programación específica por ID**
+
+**Path Parameters:**
+- `id` (requerido): ID de la programación
+
+**Ejemplo:**
+```http
+GET /api/programacion-optimizada/123
+```
+
+**Respuesta:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 123,
+    "rut": "12345678-9",
+    "nombre_persona": "Juan Pérez",
+    "cartera_id": 1,
+    "nombre_cartera": "SNACK",
+    "fecha_trabajo": "2024-01-15",
+    "dia_semana": "lunes",
+    "horas_estimadas": 8,
+    "horas_reales": null,
+    "observaciones": "Trabajo programado",
+    "estado": "programado"
+  }
+}
+```
 
 ### **PUT** `/api/programacion-optimizada/:id`
-Actualizar programación específica
+**Actualizar programación específica**
+
+**Path Parameters:**
+- `id` (requerido): ID de la programación
+
+**Body:**
+```json
+{
+  "cliente_id": 5,
+  "nodo_id": 12,
+  "horas_estimadas": 6,
+  "horas_reales": 8,
+  "observaciones": "Actualización de programación",
+  "estado": "completado"
+}
+```
+
+**Características:**
+- ✅ **Actualización parcial** - Solo actualiza campos proporcionados
+- ✅ **Historial automático** - Registra cambios en el historial
+- ✅ **Validaciones** - Verifica cliente y nodo si se proporcionan
+
+**Respuesta:**
+```json
+{
+  "success": true,
+  "message": "Programación actualizada exitosamente",
+  "data": {
+    "id": 123,
+    "rut": "12345678-9",
+    "cliente_id": 5,
+    "nodo_id": 12,
+    "horas_estimadas": 6,
+    "horas_reales": 8,
+    "observaciones": "Actualización de programación",
+    "estado": "completado",
+    "updated_at": "2024-01-15T15:30:00.000Z"
+  }
+}
+```
 
 ### **DELETE** `/api/programacion-optimizada/:id`
-Eliminar programación específica
+**Eliminar programación específica**
+
+**Path Parameters:**
+- `id` (requerido): ID de la programación
+
+**Ejemplo:**
+```http
+DELETE /api/programacion-optimizada/123
+```
+
+**Características:**
+- ✅ **Eliminación segura** - Registra en historial antes de eliminar
+- ✅ **Auditoría completa** - Mantiene registro de eliminaciones
+
+**Respuesta:**
+```json
+{
+  "success": true,
+  "message": "Programación eliminada exitosamente"
+}
+```
 
 ---
 
@@ -636,14 +914,88 @@ El nuevo sistema de programación optimizada (`/api/programacion-optimizada`) of
 - **Mejor administración** y seguimiento
 - **Compatibilidad** con el sistema anterior
 
-### Ventajas del Sistema Optimizado:
+### 🎯 **Características Principales del Sistema Optimizado:**
 
-1. **📅 Fechas Específicas** - Cada día tiene una fecha exacta
-2. **🔍 Administración Mejorada** - Filtros y consultas precisas
-3. **📊 Vista de Calendario** - Programación mensual visual
-4. **⏰ Seguimiento de Horas** - Reales vs estimadas
-5. **🔄 Flexibilidad** - Días específicos fuera de semana estándar
-6. **📋 Auditoría Completa** - Historial por fecha específica
+#### **✅ Ventajas sobre el Sistema Anterior:**
+1. **📅 Fechas específicas** - Cada día tiene una fecha exacta
+2. **🔍 Filtros avanzados** - Consultas por rango de fechas
+3. **📊 Vista de calendario** - Programación mensual visual
+4. **⏰ Seguimiento de horas** - Reales vs estimadas
+5. **🔄 Flexibilidad total** - Días específicos fuera de semana estándar
+6. **📋 Auditoría completa** - Historial por fecha específica
+
+#### **🛡️ Validaciones y Seguridad:**
+- ✅ **Validación de personas** - Verifica que el RUT existe
+- ✅ **Validación de carteras** - Verifica que la cartera existe
+- ✅ **Validación de clientes** - Verifica cliente si se proporciona
+- ✅ **Validación de nodos** - Verifica nodo si se proporciona
+- ✅ **Restricción única** - No duplicados por RUT + cartera + fecha
+- ✅ **Historial completo** - Registra todas las operaciones
+
+#### **📊 Respuestas Mejoradas:**
+- ✅ **Mensajes informativos** - Indica fechas creadas vs actualizadas
+- ✅ **Resumen detallado** - Estadísticas de operaciones
+- ✅ **Datos completos** - Información de persona, cartera, cliente y nodo
+- ✅ **Ordenamiento lógico** - Por fecha y nombre de persona
+
+#### **🔧 Funcionalidades Avanzadas:**
+- ✅ **Actualización inteligente** - Si la fecha ya existe, actualiza el registro
+- ✅ **Creación múltiple** - Crea programación para múltiples fechas
+- ✅ **Programación semanal** - Crea programación para días específicos de la semana
+- ✅ **Vista de calendario** - Programación mensual agrupada por fecha
+- ✅ **Seguimiento de horas** - Horas estimadas vs reales trabajadas
+- ✅ **Estados de programación** - programado, completado, cancelado, etc.
+
+#### **📋 Ejemplos de Uso Común:**
+
+**1. Programar días específicos:**
+```javascript
+POST /api/programacion-optimizada
+{
+  "rut": "12345678-9",
+  "cartera_id": 1,
+  "fechas_trabajo": ["2024-01-15", "2024-01-17", "2024-01-19"],
+  "horas_estimadas": 8
+}
+```
+
+**2. Consultar programación por fechas:**
+```javascript
+GET /api/programacion-optimizada?cartera_id=1&fecha_inicio=2024-01-15&fecha_fin=2024-01-19
+```
+
+**3. Vista de calendario mensual:**
+```javascript
+GET /api/programacion-optimizada/calendario?cartera_id=1&mes=1&año=2024
+```
+
+**4. Programar semana completa:**
+```javascript
+POST /api/programacion-optimizada/semana
+{
+  "rut": "12345678-9",
+  "cartera_id": 1,
+  "semana_inicio": "2024-01-15",
+  "dias_trabajo": ["lunes", "martes", "jueves", "viernes"]
+}
+```
+
+**5. Actualizar horas reales:**
+```javascript
+PUT /api/programacion-optimizada/123
+{
+  "horas_reales": 8,
+  "estado": "completado"
+}
+```
+
+#### **🔄 Migración del Sistema Anterior:**
+- ✅ **Compatibilidad total** - El sistema anterior sigue funcionando
+- ✅ **Vista de compatibilidad** - `programacion_semanal_vista` para transición
+- ✅ **Migración automática** - Scripts para migrar datos existentes
+- ✅ **Transición gradual** - Puede usarse ambos sistemas simultáneamente
+
+El sistema de programación optimizada está **completamente funcional** y ofrece todas las funcionalidades necesarias para una gestión eficiente de la programación de personal.
 
 ---
 
