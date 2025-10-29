@@ -80,7 +80,89 @@ const handleUploadError = (error, req, res, next) => {
   next(error);
 };
 
-// POST /api/personal/{rut}/profile-image - Subir imagen de perfil
+// POST /api/personal/{rut}/upload - Subir imagen de perfil (compatible con documentación)
+router.post('/:rut/upload', uploadProfileImage, handleUploadError, async (req, res) => {
+  try {
+    const { rut } = req.params;
+    
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No se proporcionó archivo de imagen'
+      });
+    }
+
+    // Verificar que el RUT existe en la base de datos (usuarios o personal)
+    const userCheck = await query(
+      'SELECT id, nombre, apellido FROM sistema.usuarios WHERE rut = $1',
+      [rut]
+    );
+    const personalCheck = await query(
+      'SELECT rut, nombres FROM mantenimiento.personal_disponible WHERE rut = $1',
+      [rut]
+    );
+
+    if (userCheck.rows.length === 0 && personalCheck.rows.length === 0) {
+      // Eliminar archivo subido si el RUT no existe
+      fs.unlinkSync(req.file.path);
+      return res.status(404).json({
+        success: false,
+        message: 'RUT no encontrado en el sistema'
+      });
+    }
+
+    // Verificar si ya existe una imagen de perfil y eliminarla
+    const existingFiles = fs.readdirSync(profilesDir).filter(file => 
+      file.startsWith(rut) && /\.(jpg|jpeg|png|gif|webp)$/i.test(file)
+    );
+    
+    existingFiles.forEach(file => {
+      const oldFilePath = path.join(profilesDir, file);
+      if (fs.existsSync(oldFilePath) && file !== req.file.filename) {
+        fs.unlinkSync(oldFilePath);
+      }
+    });
+
+    // Construir URL de la imagen
+    const profileImageUrl = `http://192.168.10.194:3000/uploads/profiles/${req.file.filename}`;
+
+    // Actualizar profile_image_url en usuarios del sistema si existe
+    if (userCheck.rows.length > 0) {
+      await query(
+        'UPDATE sistema.usuarios SET profile_image_url = $1 WHERE rut = $2',
+        [profileImageUrl, rut]
+      );
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Imagen de perfil actualizada exitosamente',
+      data: {
+        profile_image_url: profileImageUrl,
+        rut: rut,
+        filename: req.file.filename,
+        size: req.file.size,
+        mimetype: req.file.mimetype
+      }
+    });
+
+  } catch (error) {
+    console.error('Error al subir imagen de perfil:', error);
+    
+    // Eliminar archivo si hubo error
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
+// POST /api/personal/{rut}/profile-image - Subir imagen de perfil (compatibilidad)
 router.post('/:rut/profile-image', uploadProfileImage, handleUploadError, async (req, res) => {
   try {
     const { rut } = req.params;
@@ -151,7 +233,178 @@ router.post('/:rut/profile-image', uploadProfileImage, handleUploadError, async 
   }
 });
 
-// GET /api/personal/{rut}/profile-image - Obtener imagen de perfil
+// GET /api/personal/{rut}/image - Obtener imagen de perfil (compatible con documentación)
+router.get('/:rut/image', async (req, res) => {
+  try {
+    const { rut } = req.params;
+
+    // Verificar que el RUT existe en el sistema (usuarios o personal)
+    const userCheck = await query(
+      'SELECT id, nombre, apellido FROM sistema.usuarios WHERE rut = $1',
+      [rut]
+    );
+    const personalCheck = await query(
+      'SELECT rut, nombres FROM mantenimiento.personal_disponible WHERE rut = $1',
+      [rut]
+    );
+
+    if (userCheck.rows.length === 0 && personalCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'RUT no encontrado en el sistema'
+      });
+    }
+
+    // Buscar imagen de perfil existente
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+    let profileImagePath = null;
+    let profileImageUrl = null;
+
+    for (const ext of allowedExtensions) {
+      const imagePath = path.join(profilesDir, `${rut}${ext}`);
+      if (fs.existsSync(imagePath)) {
+        profileImagePath = imagePath;
+        profileImageUrl = `http://192.168.10.194:3000/uploads/profiles/${rut}${ext}`;
+        break;
+      }
+    }
+
+    if (!profileImagePath) {
+      return res.status(404).json({
+        success: false,
+        message: 'No se encontró imagen de perfil para este RUT'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        profile_image_url: profileImageUrl,
+        rut: rut
+      }
+    });
+
+  } catch (error) {
+    console.error('Error al obtener imagen de perfil:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
+// HEAD /api/personal/{rut}/image - Verificar si existe imagen (compatible con documentación)
+router.head('/:rut/image', async (req, res) => {
+  try {
+    const { rut } = req.params;
+
+    // Verificar que el RUT existe en el sistema (usuarios o personal)
+    const userCheck = await query(
+      'SELECT id FROM sistema.usuarios WHERE rut = $1',
+      [rut]
+    );
+    const personalCheck = await query(
+      'SELECT rut FROM mantenimiento.personal_disponible WHERE rut = $1',
+      [rut]
+    );
+
+    if (userCheck.rows.length === 0 && personalCheck.rows.length === 0) {
+      return res.status(404).end();
+    }
+
+    // Buscar imagen de perfil existente
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+    let exists = false;
+
+    for (const ext of allowedExtensions) {
+      const imagePath = path.join(profilesDir, `${rut}${ext}`);
+      if (fs.existsSync(imagePath)) {
+        exists = true;
+        break;
+      }
+    }
+
+    if (exists) {
+      res.status(200).end();
+    } else {
+      res.status(404).end();
+    }
+
+  } catch (error) {
+    console.error('Error al verificar imagen de perfil:', error);
+    res.status(500).end();
+  }
+});
+
+// GET /api/personal/{rut}/image/download - Descargar imagen de perfil (compatible con documentación)
+router.get('/:rut/image/download', async (req, res) => {
+  try {
+    const { rut } = req.params;
+
+    // Verificar que el RUT existe en el sistema (usuarios o personal)
+    const userCheck = await query(
+      'SELECT id FROM sistema.usuarios WHERE rut = $1',
+      [rut]
+    );
+    const personalCheck = await query(
+      'SELECT rut FROM mantenimiento.personal_disponible WHERE rut = $1',
+      [rut]
+    );
+
+    if (userCheck.rows.length === 0 && personalCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'RUT no encontrado en el sistema'
+      });
+    }
+
+    // Buscar imagen de perfil existente
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+    let profileImagePath = null;
+
+    for (const ext of allowedExtensions) {
+      const imagePath = path.join(profilesDir, `${rut}${ext}`);
+      if (fs.existsSync(imagePath)) {
+        profileImagePath = imagePath;
+        break;
+      }
+    }
+
+    if (!profileImagePath) {
+      return res.status(404).json({
+        success: false,
+        message: 'No se encontró imagen de perfil para descargar'
+      });
+    }
+
+    // Enviar archivo
+    const ext = path.extname(profileImagePath);
+    const mimeType = {
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.png': 'image/png',
+      '.gif': 'image/gif',
+      '.webp': 'image/webp'
+    }[ext.toLowerCase()];
+
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Content-Disposition', `inline; filename="${rut}${ext}"`);
+    
+    const fileStream = fs.createReadStream(profileImagePath);
+    fileStream.pipe(res);
+
+  } catch (error) {
+    console.error('Error al descargar imagen de perfil:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/personal/{rut}/profile-image - Obtener imagen de perfil (compatibilidad)
 router.get('/:rut/profile-image', async (req, res) => {
   try {
     const { rut } = req.params;
@@ -271,7 +524,75 @@ router.get('/:rut/profile-image/download', async (req, res) => {
   }
 });
 
-// DELETE /api/personal/{rut}/profile-image - Eliminar imagen de perfil
+// DELETE /api/personal/{rut}/image - Eliminar imagen de perfil (compatible con documentación)
+router.delete('/:rut/image', async (req, res) => {
+  try {
+    const { rut } = req.params;
+
+    // Verificar que el RUT existe en el sistema (usuarios o personal)
+    const userCheck = await query(
+      'SELECT id, nombre, apellido FROM sistema.usuarios WHERE rut = $1',
+      [rut]
+    );
+    const personalCheck = await query(
+      'SELECT rut, nombres FROM mantenimiento.personal_disponible WHERE rut = $1',
+      [rut]
+    );
+
+    if (userCheck.rows.length === 0 && personalCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'RUT no encontrado en el sistema'
+      });
+    }
+
+    // Buscar y eliminar imagen de perfil existente
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+    let deleted = false;
+
+    for (const ext of allowedExtensions) {
+      const imagePath = path.join(profilesDir, `${rut}${ext}`);
+      if (fs.existsSync(imagePath)) {
+        fs.unlinkSync(imagePath);
+        deleted = true;
+        break;
+      }
+    }
+
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        message: 'No se encontró imagen de perfil para eliminar'
+      });
+    }
+
+    // Limpiar profile_image_url en usuarios del sistema si existe
+    if (userCheck.rows.length > 0) {
+      await query(
+        'UPDATE sistema.usuarios SET profile_image_url = NULL WHERE rut = $1',
+        [rut]
+      );
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Imagen de perfil eliminada exitosamente',
+      data: {
+        rut: rut
+      }
+    });
+
+  } catch (error) {
+    console.error('Error al eliminar imagen de perfil:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
+// DELETE /api/personal/{rut}/profile-image - Eliminar imagen de perfil (compatibilidad)
 router.delete('/:rut/profile-image', async (req, res) => {
   try {
     const { rut } = req.params;

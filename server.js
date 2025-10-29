@@ -18,6 +18,7 @@ const serviciosSchemaRoutes = require('./routes/servicios-schema');
 const backupRoutes = require('./routes/backup');
 const asignacionesRoutes = require('./routes/asignaciones');
 const profileImagesRoutes = require('./routes/profile-images');
+const profilePhotosRoutes = require('./routes/profile-photos');
 const prerrequisitosRoutes = require('./routes/prerrequisitos');
 const programacionRoutes = require('./routes/programacion');
 const programacionOptimizadaRoutes = require('./routes/programacion-optimizada');
@@ -106,6 +107,7 @@ app.use('/api/servicio', servicioRoutes);
 app.use('/api/servicios', serviciosSchemaRoutes);
 app.use('/api/backup', backupRoutes);
 app.use('/api/personal', profileImagesRoutes);
+app.use('/api/profile-photos', profilePhotosRoutes);
 app.use('/api/prerrequisitos', prerrequisitosRoutes);
 // Alias para compatibilidad con frontend (ortografía alternativa)
 app.use('/api/prerequisitos', prerrequisitosRoutes);

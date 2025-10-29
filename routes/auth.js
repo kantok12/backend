@@ -166,6 +166,7 @@ router.get('/me', asyncHandler(async (req, res) => {
 
   if (!token) {
     return res.status(401).json({
+      success: false,
       error: 'Token requerido',
       message: 'Debe proporcionar un token de autenticación'
     });
@@ -175,13 +176,29 @@ router.get('/me', asyncHandler(async (req, res) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     const userResult = await query(`
-      SELECT id, email, nombre, apellido, rol, activo, email_verificado, ultimo_login
-      FROM sistema.usuarios 
-      WHERE id = $1 AND activo = true
+      SELECT 
+        u.id,
+        u.email,
+        u.nombre,
+        u.apellido,
+        u.rut,
+        u.cargo,
+        u.cartera_id,
+        c.name as cartera_nombre,
+        u.rol,
+        u.activo,
+        u.email_verificado,
+        u.ultimo_login,
+        u.created_at as fecha_creacion,
+        u.profile_image_url
+      FROM sistema.usuarios u
+      LEFT JOIN servicios.carteras c ON u.cartera_id = c.id
+      WHERE u.id = $1 AND u.activo = true
     `, [decoded.userId]);
 
     if (userResult.rows.length === 0) {
       return res.status(401).json({
+        success: false,
         error: 'Usuario no encontrado',
         message: 'El usuario no existe o está inactivo'
       });
@@ -190,18 +207,25 @@ router.get('/me', asyncHandler(async (req, res) => {
     const user = userResult.rows[0];
 
     res.json({
-      user: {
+      success: true,
+      data: {
         id: user.id,
+        rut: user.rut,
+        nombres: user.nombre,
+        apellidos: user.apellido,
         email: user.email,
-        nombre: user.nombre,
-        apellido: user.apellido,
-        rol: user.rol,
-        email_verificado: user.email_verificado,
-        ultimo_login: user.ultimo_login
+        cargo: user.cargo,
+        cartera_id: user.cartera_id,
+        cartera_nombre: user.cartera_nombre,
+        activo: user.activo,
+        fecha_creacion: user.fecha_creacion,
+        ultimo_acceso: user.ultimo_login,
+        profile_image_url: user.profile_image_url
       }
     });
   } catch (error) {
     return res.status(401).json({
+      success: false,
       error: 'Token inválido',
       message: 'El token proporcionado no es válido'
     });
