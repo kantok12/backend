@@ -27,6 +27,7 @@ const programacionCompatibilidadRoutes = require('./routes/programacion-compatib
 const carpetasPersonalRoutes = require('./routes/carpetas-personal');
 const belrayRoutes = require('./routes/belray');
 const auditoriaRoutes = require('./routes/auditoria');
+const personalPorClienteRoutes = require('./routes/personal-por-cliente');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -119,6 +120,7 @@ app.use('/api/programacion-compatibilidad', programacionCompatibilidadRoutes);
 app.use('/api/carpetas-personal', carpetasPersonalRoutes);
 app.use('/api/belray', belrayRoutes);
 app.use('/api/auditoria', auditoriaRoutes);
+app.use('/api/personal-por-cliente', personalPorClienteRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -148,7 +150,8 @@ app.get('/', (req, res) => {
       programacion: '/api/programacion',
       programacionOptimizada: '/api/programacion-optimizada',
       programacionSemanal: '/api/programacion-semanal',
-      programacionCompatibilidad: '/api/programacion-compatibilidad'
+      programacionCompatibilidad: '/api/programacion-compatibilidad',
+      personalPorCliente: '/api/personal-por-cliente'
     }
   });
 });
