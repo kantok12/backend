@@ -22,6 +22,7 @@ const profilePhotosRoutes = require('./routes/profile-photos');
 const prerrequisitosRoutes = require('./routes/prerrequisitos');
 const programacionRoutes = require('./routes/programacion');
 const programacionOptimizadaRoutes = require('./routes/programacion-optimizada');
+const programacionOptimizadaTodasRoutes = require('./routes/programacion-optimizada-todas');
 const programacionSemanalRoutes = require('./routes/programacion-semanal');
 const programacionCompatibilidadRoutes = require('./routes/programacion-compatibilidad');
 const carpetasPersonalRoutes = require('./routes/carpetas-personal');
@@ -35,6 +36,9 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ extended: true, limit: '100mb' }));
+
+// Endpoint para toda la programación de todas las carteras
+app.use('/api/programacion-optimizada/todas', programacionOptimizadaTodasRoutes);
 
 // Configuración CORS
 app.use(cors({
