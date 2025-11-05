@@ -1,6 +1,62 @@
 const express = require('express');
 const router = express.Router();
 const { query } = require('../config/database');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+// Configuración de multer para subir archivos de cursos
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(__dirname, '../uploads/documentos');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const timestamp = Date.now();
+    const ext = path.extname(file.originalname);
+    const name = path.basename(file.originalname, ext);
+    const safeName = name.replace(/[^a-zA-Z0-9]/g, '_');
+    cb(null, `${safeName}_${timestamp}${ext}`);
+  }
+});
+
+const uploadCurso = multer({
+  storage: storage,
+  limits: {
+    fileSize: 100 * 1024 * 1024, // 100MB
+    files: 1
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
+    
+    if (allowedTypes.includes(file.mimetype) && allowedExtensions.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error(`Tipo de archivo no permitido: ${file.mimetype}`), false);
+    }
+  }
+}).single('archivo');
+
+const handleUploadError = (error, req, res, next) => {
+  if (error instanceof multer.MulterError) {
+    return res.status(400).json({
+      success: false,
+      message: 'Error en la subida del archivo',
+      error: error.message
+    });
+  } else if (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+  next();
+};
 
 /**
  * RUTAS PARA CURSOS
@@ -204,7 +260,7 @@ router.get('/persona/:rut', async (req, res) => {
 });
 
 // POST /api/cursos - Crear nuevo curso
-router.post('/', async (req, res) => {
+router.post('/', uploadCurso, handleUploadError, async (req, res) => {
   try {
     const { 
       rut_persona, 
@@ -214,13 +270,21 @@ router.post('/', async (req, res) => {
       fecha_vencimiento,
       estado = 'completado',
       institucion,
-      descripcion 
+      descripcion,
+      fecha_emision,
+      dias_validez
     } = req.body;
     
+    const archivo = req.file;
+    
     console.log('📝 POST /api/cursos - Creando nuevo curso');
+    console.log('🔍 Datos recibidos:', { rut_persona, nombre_curso, tiene_archivo: !!archivo });
     
     // Validaciones
     if (!rut_persona || !nombre_curso) {
+      if (archivo) {
+        fs.unlinkSync(archivo.path);
+      }
       return res.status(400).json({
         success: false,
         message: 'RUT y nombre del curso son requeridos'
@@ -229,17 +293,22 @@ router.post('/', async (req, res) => {
     
     // Verificar que la persona existe
     const checkPersonQuery = `
-      SELECT rut, nombres FROM mantenimiento.personal_disponible WHERE rut = $1
+      SELECT rut, nombres, cargo FROM mantenimiento.personal_disponible WHERE rut = $1
     `;
     
-    const personExists = await query(checkPersonQuery, [rut_persona]);
+    const personResult = await query(checkPersonQuery, [rut_persona]);
     
-    if (personExists.rows.length === 0) {
+    if (personResult.rows.length === 0) {
+      if (archivo) {
+        fs.unlinkSync(archivo.path);
+      }
       return res.status(404).json({
         success: false,
         message: `No se encontró personal con RUT: ${rut_persona}`
       });
     }
+    
+    const persona = personResult.rows[0];
     
     // Verificar que no existe el mismo curso para la misma persona
     const checkDuplicateQuery = `
@@ -250,13 +319,17 @@ router.post('/', async (req, res) => {
     const duplicateResult = await query(checkDuplicateQuery, [rut_persona, nombre_curso]);
     
     if (duplicateResult.rows.length > 0) {
+      if (archivo) {
+        fs.unlinkSync(archivo.path);
+      }
       return res.status(409).json({
         success: false,
         message: `La persona ya tiene un curso registrado: ${nombre_curso}`
       });
     }
     
-    const insertQuery = `
+    // Insertar curso en la tabla cursos
+    const insertCursoQuery = `
       INSERT INTO mantenimiento.cursos (
         rut_persona, nombre_curso, fecha_inicio, fecha_fin, fecha_vencimiento,
         estado, institucion, descripcion
@@ -264,7 +337,7 @@ router.post('/', async (req, res) => {
       RETURNING *
     `;
     
-    const result = await query(insertQuery, [
+    const cursoResult = await query(insertCursoQuery, [
       rut_persona,
       nombre_curso.trim(),
       fecha_inicio,
@@ -275,16 +348,116 @@ router.post('/', async (req, res) => {
       descripcion
     ]);
     
+    const curso = cursoResult.rows[0];
+    let documentoInfo = null;
+    
+    // Si hay archivo, guardarlo en Google Drive y registrarlo en documentos
+    if (archivo) {
+      try {
+        // Buscar carpeta de Google Drive para el usuario
+        const baseDir = 'G:/Unidades compartidas/Unidad de Apoyo/Personal';
+        let cursosCertificacionesDir = null;
+        
+        const dirs = fs.readdirSync(baseDir, { withFileTypes: true }).filter(d => d.isDirectory());
+        for (const dir of dirs) {
+          if (dir.name.includes(rut_persona)) {
+            cursosCertificacionesDir = path.join(baseDir, dir.name, 'cursos_certificaciones');
+            if (!fs.existsSync(cursosCertificacionesDir)) {
+              fs.mkdirSync(cursosCertificacionesDir, { recursive: true });
+            }
+            break;
+          }
+        }
+        
+        // Copiar archivo a Google Drive
+        if (cursosCertificacionesDir) {
+          const googleDrivePath = path.join(cursosCertificacionesDir, archivo.filename);
+          fs.copyFileSync(archivo.path, googleDrivePath);
+          console.log(`📂 Archivo copiado a Google Drive: ${googleDrivePath}`);
+        }
+        
+        // Registrar en tabla documentos
+        const insertDocumentQuery = `
+          INSERT INTO mantenimiento.documentos (
+            rut_persona,
+            nombre_documento,
+            tipo_documento,
+            nombre_archivo,
+            nombre_original,
+            tipo_mime,
+            tamaño_bytes,
+            ruta_archivo,
+            descripcion,
+            subido_por,
+            fecha_emision,
+            fecha_vencimiento,
+            dias_validez,
+            institucion_emisora
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+          RETURNING id, fecha_subida
+        `;
+        
+        const documentData = [
+          rut_persona,
+          nombre_curso,
+          'certificado_curso',
+          archivo.filename,
+          archivo.originalname,
+          archivo.mimetype,
+          archivo.size,
+          archivo.path,
+          descripcion || null,
+          req.user?.username || 'sistema',
+          fecha_emision || fecha_inicio || null,
+          fecha_vencimiento || null,
+          dias_validez || null,
+          institucion || null
+        ];
+        
+        const documentResult = await query(insertDocumentQuery, documentData);
+        const documento = documentResult.rows[0];
+        
+        documentoInfo = {
+          id: documento.id,
+          nombre_archivo: archivo.filename,
+          nombre_original: archivo.originalname,
+          fecha_subida: documento.fecha_subida
+        };
+        
+        console.log(`✅ Documento guardado: ${archivo.originalname} (ID: ${documento.id})`);
+        
+      } catch (fileError) {
+        console.error('❌ Error guardando archivo:', fileError);
+        // No falla la creación del curso si falla el archivo
+      }
+    }
+    
     console.log(`✅ Nuevo curso creado para RUT: ${rut_persona}`);
     
     res.status(201).json({
       success: true,
       message: 'Curso creado exitosamente',
-      data: result.rows[0]
+      data: {
+        curso: curso,
+        documento: documentoInfo,
+        persona: {
+          rut: persona.rut,
+          nombre: persona.nombres,
+          cargo: persona.cargo
+        }
+      }
     });
     
   } catch (error) {
     console.error('❌ Error creando curso:', error);
+    
+    // Eliminar archivo si hubo error
+    if (req.file) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (e) {}
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',

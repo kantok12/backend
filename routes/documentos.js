@@ -598,9 +598,45 @@ router.post('/', uploadMultiple, handleUploadError, async (req, res) => {
     const persona = personResult.rows[0];
     const documentosSubidos = [];
     
+    // Buscar carpeta de Google Drive para el usuario
+    const baseDir = 'G:/Unidades compartidas/Unidad de Apoyo/Personal';
+    let userGoogleDriveDir = null;
+    let cursosCertificacionesDir = null;
+    try {
+      const dirs = fs.readdirSync(baseDir, { withFileTypes: true }).filter(d => d.isDirectory());
+      for (const dir of dirs) {
+        if (dir.name.includes(rutPersona)) {
+          userGoogleDriveDir = path.join(baseDir, dir.name, 'documentos');
+          if (!fs.existsSync(userGoogleDriveDir)) {
+            fs.mkdirSync(userGoogleDriveDir, { recursive: true });
+          }
+          cursosCertificacionesDir = path.join(baseDir, dir.name, 'cursos_certificaciones');
+          if (!fs.existsSync(cursosCertificacionesDir)) {
+            fs.mkdirSync(cursosCertificacionesDir, { recursive: true });
+          }
+          break;
+        }
+      }
+    } catch (err) {
+      console.error('Error buscando carpeta de Google Drive:', err.message);
+    }
+    
     // Procesar cada archivo
     for (const archivo of archivos) {
       try {
+        // Copiar archivo a Google Drive si se encontró la carpeta
+        let googleDrivePath = null;
+        if (userGoogleDriveDir) {
+          // Si es certificado_curso o diploma, guardar en cursos_certificaciones
+          if (tipo_documento && ['certificado_curso', 'diploma', 'curso', 'certificacion', 'certificación'].includes(tipo_documento.toLowerCase())) {
+            googleDrivePath = path.join(cursosCertificacionesDir, archivo.filename);
+          } else {
+            googleDrivePath = path.join(userGoogleDriveDir, archivo.filename);
+          }
+          fs.copyFileSync(archivo.path, googleDrivePath);
+          console.log(`📂 Archivo copiado a Google Drive: ${googleDrivePath}`);
+        }
+
         const insertDocumentQuery = `
         INSERT INTO mantenimiento.documentos (
             rut_persona,
@@ -710,20 +746,56 @@ router.get('/persona/:rut', async (req, res) => {
     }
     
     const persona = personResult.rows[0];
+
+    // Buscar documentos en carpeta Google Drive enlazada
+    const baseDir = 'G:/Unidades compartidas/Unidad de Apoyo/Personal';
+    let userDocumentosDir = null;
+    let userCursosDir = null;
+    try {
+      // Buscar carpeta que contenga el rut
+      const dirs = fs.readdirSync(baseDir, { withFileTypes: true }).filter(d => d.isDirectory());
+      for (const dir of dirs) {
+        if (dir.name.includes(rut)) {
+          userDocumentosDir = path.join(baseDir, dir.name, 'documentos');
+          userCursosDir = path.join(baseDir, dir.name, 'cursos_certificaciones');
+          break;
+        }
+      }
+    } catch (err) {
+      console.error('Error leyendo carpetas de Google Drive:', err.message);
+    }
+
+    let documentosLocales = [];
     
-    // Construir filtros
+    // Leer documentos generales
+    if (userDocumentosDir && fs.existsSync(userDocumentosDir)) {
+      const archivosDocumentos = fs.readdirSync(userDocumentosDir).map(filename => ({
+        nombre_archivo: filename,
+        ruta_local: path.join(userDocumentosDir, filename),
+        carpeta: 'documentos'
+      }));
+      documentosLocales = documentosLocales.concat(archivosDocumentos);
+    }
+    
+    // Leer cursos/certificaciones
+    if (userCursosDir && fs.existsSync(userCursosDir)) {
+      const archivosCursos = fs.readdirSync(userCursosDir).map(filename => ({
+        nombre_archivo: filename,
+        ruta_local: path.join(userCursosDir, filename),
+        carpeta: 'cursos_certificaciones'
+      }));
+      documentosLocales = documentosLocales.concat(archivosCursos);
+    }
+
+    // Lógica original de BD
     let whereConditions = ['d.rut_persona = $1', 'd.activo = true'];
     let queryParams = [rut];
     let paramIndex = 2;
-    
     if (tipo_documento) {
       whereConditions.push(`d.tipo_documento = $${paramIndex++}`);
       queryParams.push(tipo_documento);
     }
-    
     const whereClause = `WHERE ${whereConditions.join(' AND ')}`;
-    
-    // Query principal
     const getDocumentosQuery = `
       SELECT 
         d.id,
@@ -746,23 +818,17 @@ router.get('/persona/:rut', async (req, res) => {
       ORDER BY d.fecha_subida DESC, d.nombre_documento
       LIMIT $${paramIndex++} OFFSET $${paramIndex++}
     `;
-    
     queryParams.push(parseInt(limit), parseInt(offset));
-    
     const result = await query(getDocumentosQuery, queryParams);
-    
-    // Query para contar total
     const countQuery = `
       SELECT COUNT(*) as total
       FROM mantenimiento.documentos d
       ${whereClause}
     `;
-    
     const countResult = await query(countQuery, queryParams.slice(0, -2));
     const total = parseInt(countResult.rows[0].total);
-    
     console.log(`✅ Encontrados ${result.rows.length} documentos para ${persona.nombres}`);
-    
+
     res.json({
       success: true,
       data: {
@@ -773,6 +839,7 @@ router.get('/persona/:rut', async (req, res) => {
           zona_geografica: persona.zona_geografica
         },
         documentos: result.rows,
+        documentos_locales: documentosLocales,
         pagination: {
           total,
           limit: parseInt(limit),
@@ -781,7 +848,6 @@ router.get('/persona/:rut', async (req, res) => {
         }
       }
     });
-    
   } catch (error) {
     console.error(`❌ Error obteniendo documentos para RUT ${req.params.rut}:`, error);
     res.status(500).json({
@@ -792,58 +858,263 @@ router.get('/persona/:rut', async (req, res) => {
   }
 });
 
-// GET /api/documentos/:id/descargar - Descargar documento
-router.get('/:id/descargar', async (req, res) => {
+// POST /api/documentos/registrar-existente - Registrar documento que ya existe en Google Drive
+router.post('/registrar-existente', async (req, res) => {
   try {
-    const { id } = req.params;
-    
-    console.log(`📥 GET /api/documentos/${id}/descargar - Descargando documento`);
-    
-    // Obtener información del documento
-    const getDocumentQuery = `
-      SELECT 
-        d.nombre_archivo,
-        d.nombre_original,
-        d.tipo_mime,
-        d.ruta_archivo,
-        d.tamaño_bytes,
-        pd.nombres as nombre_persona
-      FROM mantenimiento.documentos d
-      LEFT JOIN mantenimiento.personal_disponible pd ON d.rut_persona = pd.rut
-      WHERE d.id = $1 AND d.activo = true
+    const {
+      rut_persona,
+      nombre_archivo,
+      ruta_local,
+      nombre_documento,
+      tipo_documento,
+      descripcion,
+      fecha_emision,
+      fecha_vencimiento,
+      dias_validez,
+      institucion_emisora
+    } = req.body;
+
+    console.log('📄 POST /api/documentos/registrar-existente - Registrando documento existente');
+
+    // Validaciones
+    if (!rut_persona || !nombre_archivo || !ruta_local) {
+      return res.status(400).json({
+        success: false,
+        message: 'RUT, nombre de archivo y ruta local son requeridos'
+      });
+    }
+
+    if (!nombre_documento || !tipo_documento) {
+      return res.status(400).json({
+        success: false,
+        message: 'Nombre y tipo de documento son requeridos'
+      });
+    }
+
+    // Normalizar y validar tipo_documento contra la restricción CHECK de la BD
+    const validTipos = [
+      'certificado_curso',
+      'diploma',
+      'certificado_laboral',
+      'certificado_medico',
+      'licencia_conducir',
+      'certificado_seguridad',
+      'certificado_vencimiento',
+      'otro'
+    ];
+
+    // Mapeo de sinónimos/abreviaturas frecuentes -> valores válidos de la BD
+    const tipoRaw = String(tipo_documento || '').trim().toLowerCase();
+    const tipoMap = {
+      // Cursos/certificaciones
+      'curso': 'certificado_curso',
+      'certificacion': 'certificado_curso',
+      'certificación': 'certificado_curso',
+      // Variantes comunes
+      'licencia': 'licencia_conducir',
+      'licencia_conductor': 'licencia_conducir',
+      'seguridad': 'certificado_seguridad',
+      'medico': 'certificado_medico',
+      'laboral': 'certificado_laboral',
+      'vencimiento': 'certificado_vencimiento',
+      // Abreviaturas frecuentes
+      'cv': 'otro',
+      'c.v.': 'otro',
+      // Cédula/DNI/etc. no tiene categoría propia en la CHECK -> usar 'otro'
+      'cedula': 'otro',
+      'cédula': 'otro',
+      'cedula_identidad': 'otro',
+      'dni': 'otro',
+      'identidad': 'otro'
+    };
+
+    const tipoNormalizado = tipoMap[tipoRaw] || tipoRaw;
+
+    if (!validTipos.includes(tipoNormalizado)) {
+      return res.status(400).json({
+        success: false,
+        message: `tipo_documento inválido: "${tipo_documento}". Valores permitidos: ${validTipos.join(', ')}`
+      });
+    }
+
+    // Verificar que la persona existe
+    const checkPersonQuery = `
+      SELECT rut, nombres, cargo 
+      FROM mantenimiento.personal_disponible 
+      WHERE rut = $1
     `;
-    
-    const result = await query(getDocumentQuery, [id]);
-    
-    if (result.rows.length === 0) {
+    const personResult = await query(checkPersonQuery, [rut_persona]);
+
+    if (personResult.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: `No se encontró documento con ID: ${id}`
+        message: `No se encontró personal con RUT: ${rut_persona}`
       });
     }
-    
+
+    const persona = personResult.rows[0];
+
+    // Verificar que el archivo existe en Google Drive
+    if (!fs.existsSync(ruta_local)) {
+      return res.status(404).json({
+        success: false,
+        message: 'El archivo no existe en la ruta especificada'
+      });
+    }
+
+    // Obtener información del archivo
+    const stats = fs.statSync(ruta_local);
+    const ext = path.extname(nombre_archivo);
+    const timestamp = Date.now();
+    const nuevoNombreArchivo = `${path.basename(nombre_archivo, ext)}_${timestamp}${ext}`;
+    const destinoLocal = path.join(__dirname, '../uploads/documentos', nuevoNombreArchivo);
+
+    // Copiar archivo a uploads/documentos (backup local) solo si no está ya allí
+    try {
+      if (!destinoLocal.toLowerCase().includes(ruta_local.toLowerCase()) && ruta_local !== destinoLocal) {
+        // Asegurar que existe el directorio de destino
+        const uploadsDir = path.dirname(destinoLocal);
+        if (!fs.existsSync(uploadsDir)) {
+          fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+        fs.copyFileSync(ruta_local, destinoLocal);
+        console.log(`📁 Archivo copiado a uploads local: ${destinoLocal}`);
+      }
+    } catch (copyErr) {
+      console.error('⚠️ Error copiando a uploads local:', copyErr.message);
+      // Continuar aunque falle el backup local
+    }
+
+     // Buscar carpeta de Google Drive para el usuario y cursos_certificaciones
+     const baseDir = 'G:/Unidades compartidas/Unidad de Apoyo/Personal';
+     let userGoogleDriveDir = null;
+     let cursosCertificacionesDir = null;
+     try {
+       const dirs = fs.readdirSync(baseDir, { withFileTypes: true }).filter(d => d.isDirectory());
+       for (const dir of dirs) {
+         if (dir.name.includes(rut_persona)) {
+           userGoogleDriveDir = path.join(baseDir, dir.name, 'documentos');
+           if (!fs.existsSync(userGoogleDriveDir)) {
+             fs.mkdirSync(userGoogleDriveDir, { recursive: true });
+           }
+           cursosCertificacionesDir = path.join(baseDir, dir.name, 'cursos_certificaciones');
+           if (!fs.existsSync(cursosCertificacionesDir)) {
+             fs.mkdirSync(cursosCertificacionesDir, { recursive: true });
+           }
+           break;
+         }
+       }
+     } catch (err) {
+       console.error('Error buscando carpeta de Google Drive:', err.message);
+     }
+
+     // Determinar la carpeta de destino en Google Drive
+     let googleDrivePath = null;
+  const esCurso = ['certificado_curso', 'diploma'].includes(tipoNormalizado);
+     
+     if (esCurso) {
+       googleDrivePath = cursosCertificacionesDir ? path.join(cursosCertificacionesDir, nombre_archivo) : null;
+     } else {
+       googleDrivePath = userGoogleDriveDir ? path.join(userGoogleDriveDir, nombre_archivo) : null;
+     }
+
+     // Solo copiar si el archivo NO está ya en Google Drive (evitar copiar a sí mismo)
+     const archivoYaEnGoogleDrive = ruta_local.toLowerCase().startsWith('g:') || ruta_local.toLowerCase().startsWith('g:/');
+     
+     if (googleDrivePath && !archivoYaEnGoogleDrive) {
+       // Archivo viene de otra ubicación, copiarlo a Google Drive
+       try {
+         fs.copyFileSync(ruta_local, googleDrivePath);
+         console.log(`📂 Archivo copiado a Google Drive: ${googleDrivePath}`);
+       } catch (copyErr) {
+         console.error('⚠️ Error copiando a Google Drive:', copyErr.message);
+         return res.status(500).json({
+           success: false,
+           message: 'Error al copiar archivo a Google Drive',
+           error: copyErr.message
+         });
+       }
+     } else if (archivoYaEnGoogleDrive) {
+       // Archivo ya está en Google Drive, solo registrarlo
+       console.log(`📂 Archivo ya existe en Google Drive: ${ruta_local}`);
+       googleDrivePath = ruta_local; // Usar la ruta existente
+     }
+
+    // Determinar tipo MIME
+    const mimeTypes = {
+      '.pdf': 'application/pdf',
+      '.doc': 'application/msword',
+      '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.png': 'image/png'
+    };
+    const tipoMime = mimeTypes[ext.toLowerCase()] || 'application/octet-stream';
+
+    // Insertar en BD
+    const insertQuery = `
+      INSERT INTO mantenimiento.documentos (
+        rut_persona,
+        nombre_documento,
+        tipo_documento,
+        nombre_archivo,
+        nombre_original,
+        tipo_mime,
+        tamaño_bytes,
+        ruta_archivo,
+        descripcion,
+        subido_por,
+        fecha_emision,
+        fecha_vencimiento,
+        dias_validez,
+        institucion_emisora
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      RETURNING id, fecha_subida
+    `;
+
+    const values = [
+      rut_persona,
+      nombre_documento,
+      tipoNormalizado,
+      nuevoNombreArchivo,
+      nombre_archivo,
+      tipoMime,
+      stats.size,
+      destinoLocal,
+      descripcion || null,
+      req.user?.username || 'sistema',
+      fecha_emision || null,
+      fecha_vencimiento || null,
+      dias_validez || null,
+      institucion_emisora || null
+    ];
+
+    const result = await query(insertQuery, values);
     const documento = result.rows[0];
-    
-    // Verificar que el archivo existe
-    if (!fs.existsSync(documento.ruta_archivo)) {
-      return res.status(404).json({
-        success: false,
-        message: 'El archivo no existe en el servidor'
-      });
-    }
-    
-    // Configurar headers para descarga
-    res.setHeader('Content-Type', documento.tipo_mime);
-    res.setHeader('Content-Disposition', `attachment; filename="${documento.nombre_original}"`);
-    res.setHeader('Content-Length', documento.tamaño_bytes);
-    
-    console.log(`✅ Descargando: ${documento.nombre_original} (${documento.tamaño_bytes} bytes)`);
-    
-    // Enviar archivo
-    res.sendFile(path.resolve(documento.ruta_archivo));
-    
+
+    console.log(`✅ Documento registrado: ${nombre_documento} (ID: ${documento.id})`);
+
+    res.status(201).json({
+      success: true,
+      message: 'Documento registrado exitosamente',
+      data: {
+        id: documento.id,
+        persona: {
+          rut: persona.rut,
+          nombre: persona.nombres,
+          cargo: persona.cargo
+        },
+        documento: {
+          nombre_documento,
+          tipo_documento: tipoNormalizado,
+          nombre_archivo: nuevoNombreArchivo,
+          fecha_subida: documento.fecha_subida
+        }
+      }
+    });
+
   } catch (error) {
-    console.error(`❌ Error descargando documento ${req.params.id}:`, error);
+    console.error('❌ Error registrando documento existente:', error);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',

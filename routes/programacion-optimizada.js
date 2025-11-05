@@ -768,4 +768,176 @@ router.get('/calendario', async (req, res) => {
   }
 });
 
+// POST /api/programacion-optimizada/copiar-semana - Copiar programación a la siguiente semana
+router.post('/copiar-semana', async (req, res) => {
+  try {
+    const { fecha_inicio, cartera_id } = req.body;
+
+    console.log('📋 POST /api/programacion-optimizada/copiar-semana');
+    console.log('   fecha_inicio:', fecha_inicio);
+    console.log('   cartera_id:', cartera_id);
+
+    // Validaciones de entrada
+    if (!fecha_inicio) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'fecha_inicio es requerida' 
+      });
+    }
+
+    if (!cartera_id) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'cartera_id es requerido' 
+      });
+    }
+
+    // Validar formato de fecha
+    const fechaInicio = new Date(fecha_inicio);
+    if (isNaN(fechaInicio.getTime())) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Formato de fecha inválido. Use YYYY-MM-DD' 
+      });
+    }
+
+    // Verificar que la cartera existe
+    if (!(await carteraExists(cartera_id))) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Cartera no encontrada' 
+      });
+    }
+
+    // Calcular semana actual usando el helper existente
+    const semanaActual = getWeekDates(fecha_inicio);
+    const semanaInicioActual = semanaActual.inicio;
+    const semanaFinActual = semanaActual.fin;
+
+    // Calcular semana siguiente
+    const fechaSiguiente = new Date(semanaInicioActual);
+    fechaSiguiente.setDate(fechaSiguiente.getDate() + 7);
+    const semanaSiguiente = getWeekDates(fechaSiguiente);
+    const semanaInicioSiguiente = semanaSiguiente.inicio;
+    const semanaFinSiguiente = semanaSiguiente.fin;
+
+    console.log(`📅 Copiando de ${semanaInicioActual} → ${semanaFinActual}`);
+    console.log(`   a ${semanaInicioSiguiente} → ${semanaFinSiguiente}`);
+
+    // Obtener programación de la semana actual
+    const programacionActual = await query(`
+      SELECT 
+        rut,
+        cartera_id,
+        cliente_id,
+        nodo_id,
+        fecha_trabajo,
+        dia_semana,
+        horas_estimadas,
+        observaciones,
+        estado
+      FROM mantenimiento.programacion_optimizada
+      WHERE cartera_id = $1 
+        AND fecha_trabajo BETWEEN $2 AND $3
+        AND estado = 'activo'
+      ORDER BY fecha_trabajo, rut
+    `, [cartera_id, semanaInicioActual, semanaFinActual]);
+
+    if (programacionActual.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'No se encontró programación para la semana especificada' 
+      });
+    }
+
+    console.log(`📋 Encontradas ${programacionActual.rows.length} asignaciones para copiar`);
+
+    // Verificar si ya existe programación en la semana siguiente
+    const programacionExistente = await query(`
+      SELECT COUNT(*) as total
+      FROM mantenimiento.programacion_optimizada
+      WHERE cartera_id = $1 
+        AND fecha_trabajo BETWEEN $2 AND $3
+    `, [cartera_id, semanaInicioSiguiente, semanaFinSiguiente]);
+
+    if (parseInt(programacionExistente.rows[0].total) > 0) {
+      return res.status(409).json({ 
+        success: false, 
+        message: `Ya existe programación para la semana siguiente (${programacionExistente.rows[0].total} registros). Elimínela primero si desea reemplazarla.` 
+      });
+    }
+
+    // Copiar cada asignación a la siguiente semana
+    const nuevasAsignaciones = [];
+    let copiadosExitosos = 0;
+    let errores = 0;
+
+    for (const asignacion of programacionActual.rows) {
+      try {
+        // Calcular nueva fecha de trabajo (mismo día de la semana, pero siguiente semana)
+        const fechaTrabajoActual = new Date(asignacion.fecha_trabajo);
+        const nuevaFechaTrabajo = new Date(fechaTrabajoActual);
+        nuevaFechaTrabajo.setDate(fechaTrabajoActual.getDate() + 7);
+        
+        const nuevaFechaTrabajoStr = nuevaFechaTrabajo.toISOString().split('T')[0];
+
+        // Insertar nueva asignación
+        const result = await query(`
+          INSERT INTO mantenimiento.programacion_optimizada 
+          (rut, cartera_id, cliente_id, nodo_id, fecha_trabajo, dia_semana, horas_estimadas, observaciones, estado)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+          RETURNING id, rut, fecha_trabajo
+        `, [
+          asignacion.rut, 
+          asignacion.cartera_id, 
+          asignacion.cliente_id, 
+          asignacion.nodo_id, 
+          nuevaFechaTrabajoStr, 
+          asignacion.dia_semana,
+          asignacion.horas_estimadas,
+          asignacion.observaciones,
+          asignacion.estado || 'activo'
+        ]);
+
+        nuevasAsignaciones.push(result.rows[0]);
+        copiadosExitosos++;
+
+        console.log(`✅ ${asignacion.rut} - ${asignacion.fecha_trabajo} → ${nuevaFechaTrabajoStr}`);
+
+      } catch (err) {
+        console.error(`❌ Error copiando asignación de ${asignacion.rut}:`, err.message);
+        errores++;
+      }
+    }
+
+    console.log(`📊 Resultado: ${copiadosExitosos} copiados, ${errores} errores`);
+
+    res.status(201).json({
+      success: true,
+      message: `Programación copiada exitosamente: ${copiadosExitosos} asignaciones creadas`,
+      data: {
+        semana_origen: {
+          inicio: semanaInicioActual,
+          fin: semanaFinActual
+        },
+        semana_destino: {
+          inicio: semanaInicioSiguiente,
+          fin: semanaFinSiguiente
+        },
+        asignaciones_copiadas: copiadosExitosos,
+        errores: errores,
+        nuevas_asignaciones: nuevasAsignaciones
+      }
+    });
+
+  } catch (err) {
+    console.error('❌ Error en POST /programacion-optimizada/copiar-semana:', err);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error al copiar programación', 
+      error: err.message 
+    });
+  }
+});
+
 module.exports = router;
