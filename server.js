@@ -1,3 +1,4 @@
+const personalCargosEstadosRoutes = require('./routes/personal-cargos-estados');
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -125,6 +126,7 @@ app.use('/api/carpetas-personal', carpetasPersonalRoutes);
 app.use('/api/belray', belrayRoutes);
 app.use('/api/auditoria', auditoriaRoutes);
 app.use('/api/personal-por-cliente', personalPorClienteRoutes);
+app.use('/api/personal', personalCargosEstadosRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
