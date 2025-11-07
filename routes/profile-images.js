@@ -7,21 +7,34 @@ const { query } = require('../config/database');
 const router = express.Router();
 
 // Crear directorio de perfiles si no existe
-const profilesDir = path.join(__dirname, '../uploads/profiles');
-if (!fs.existsSync(profilesDir)) {
-  fs.mkdirSync(profilesDir, { recursive: true });
-}
+const googleDriveDir = 'G:\\Unidades compartidas\\Unidad de Apoyo\\Personal';
 
 // Configuración de almacenamiento para imágenes de perfil
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, profilesDir);
+  destination: async (req, file, cb) => {
+    const { rut } = req.params;
+    // Obtener nombre completo desde la base de datos
+    let nombreCompleto = rut;
+    try {
+      const result = await query(
+        'SELECT nombres FROM mantenimiento.personal_disponible WHERE rut = $1',
+        [rut]
+      );
+      if (result.rows.length > 0) {
+        nombreCompleto = result.rows[0].nombres.trim();
+      }
+    } catch (err) {
+      // Si falla, usar solo rut
+    }
+    const folderName = `${nombreCompleto} - ${rut}`;
+    const userDir = path.join('G:/Unidades compartidas/Unidad de Apoyo/Personal', folderName);
+    if (!fs.existsSync(userDir)) {
+      fs.mkdirSync(userDir, { recursive: true });
+    }
+    cb(null, userDir);
   },
   filename: (req, file, cb) => {
-    const { rut } = req.params;
-    const ext = path.extname(file.originalname).toLowerCase();
-    const filename = `${rut}${ext}`;
-    cb(null, filename);
+    cb(null, 'foto.jpg'); // Siempre guardar como foto.jpg
   }
 });
 
@@ -41,7 +54,6 @@ const uploadProfileImage = multer({
       'image/gif',
       'image/webp'
     ];
-    
     const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
     const fileExtension = path.extname(file.originalname).toLowerCase();
     
@@ -80,11 +92,27 @@ const handleUploadError = (error, req, res, next) => {
   next(error);
 };
 
-// POST /api/personal/{rut}/upload - Subir imagen de perfil (compatible con documentación)
+// POST /api/personal/{rut}/upload - Subir imagen de perfil
 router.post('/:rut/upload', uploadProfileImage, handleUploadError, async (req, res) => {
   try {
     const { rut } = req.params;
-    
+    // Obtener nombre completo desde la base de datos
+    let nombreCompleto = rut;
+    try {
+      const result = await query(
+        'SELECT nombres FROM mantenimiento.personal_disponible WHERE rut = $1',
+        [rut]
+      );
+      if (result.rows.length > 0) {
+        nombreCompleto = result.rows[0].nombres.trim();
+      }
+    } catch (err) {
+      // Si falla, usar solo rut
+    }
+    const folderName = `${nombreCompleto} - ${rut}`;
+    const userDir = path.join('G:/Unidades compartidas/Unidad de Apoyo/Personal', folderName);
+    const imagePath = path.join(userDir, 'foto.jpg');
+
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -92,47 +120,17 @@ router.post('/:rut/upload', uploadProfileImage, handleUploadError, async (req, r
       });
     }
 
-    // Verificar que el RUT existe en la base de datos (usuarios o personal)
-    const userCheck = await query(
-      'SELECT id, nombre, apellido FROM sistema.usuarios WHERE rut = $1',
-      [rut]
-    );
-    const personalCheck = await query(
-      'SELECT rut, nombres FROM mantenimiento.personal_disponible WHERE rut = $1',
-      [rut]
-    );
-
-    if (userCheck.rows.length === 0 && personalCheck.rows.length === 0) {
-      // Eliminar archivo subido si el RUT no existe
-      fs.unlinkSync(req.file.path);
-      return res.status(404).json({
+    // Si ya existe una foto, se reemplaza automáticamente por multer
+    // Confirmar que la imagen se guardó correctamente
+    if (!fs.existsSync(imagePath)) {
+      return res.status(500).json({
         success: false,
-        message: 'RUT no encontrado en el sistema'
+        message: 'Error al guardar la imagen de perfil'
       });
     }
 
-    // Verificar si ya existe una imagen de perfil y eliminarla
-    const existingFiles = fs.readdirSync(profilesDir).filter(file => 
-      file.startsWith(rut) && /\.(jpg|jpeg|png|gif|webp)$/i.test(file)
-    );
-    
-    existingFiles.forEach(file => {
-      const oldFilePath = path.join(profilesDir, file);
-      if (fs.existsSync(oldFilePath) && file !== req.file.filename) {
-        fs.unlinkSync(oldFilePath);
-      }
-    });
-
-    // Construir URL de la imagen
-    const profileImageUrl = `http://192.168.10.194:3000/uploads/profiles/${req.file.filename}`;
-
-    // Actualizar profile_image_url en usuarios del sistema si existe
-    if (userCheck.rows.length > 0) {
-      await query(
-        'UPDATE sistema.usuarios SET profile_image_url = $1 WHERE rut = $2',
-        [profileImageUrl, rut]
-      );
-    }
+    // Construir URL pública de la imagen para el frontend
+    const profileImageUrl = `http://localhost:3000/api/personal/${rut}/image/download`;
 
     res.status(200).json({
       success: true,
@@ -140,20 +138,12 @@ router.post('/:rut/upload', uploadProfileImage, handleUploadError, async (req, r
       data: {
         profile_image_url: profileImageUrl,
         rut: rut,
-        filename: req.file.filename,
+        filename: 'foto.jpg',
         size: req.file.size,
         mimetype: req.file.mimetype
       }
     });
-
   } catch (error) {
-    console.error('Error al subir imagen de perfil:', error);
-    
-    // Eliminar archivo si hubo error
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
-    
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
@@ -189,21 +179,8 @@ router.post('/:rut/profile-image', uploadProfileImage, handleUploadError, async 
       });
     }
 
-    // Verificar si ya existe una imagen de perfil y eliminarla
-    const existingImagePath = path.join(profilesDir, `${rut}.*`);
-    const existingFiles = fs.readdirSync(profilesDir).filter(file => 
-      file.startsWith(rut) && /\.(jpg|jpeg|png|gif|webp)$/i.test(file)
-    );
-    
-    existingFiles.forEach(file => {
-      const oldFilePath = path.join(profilesDir, file);
-      if (fs.existsSync(oldFilePath) && file !== req.file.filename) {
-        fs.unlinkSync(oldFilePath);
-      }
-    });
-
-    // Construir URL de la imagen
-    const profileImageUrl = `http://192.168.10.194:3000/uploads/profiles/${req.file.filename}`;
+    // Construir URL pública de la imagen para el frontend
+    const profileImageUrl = `http://localhost:3000/api/personal/${rut}/image/download`;
 
     res.status(200).json({
       success: true,
@@ -237,55 +214,17 @@ router.post('/:rut/profile-image', uploadProfileImage, handleUploadError, async 
 router.get('/:rut/image', async (req, res) => {
   try {
     const { rut } = req.params;
-
-    // Verificar que el RUT existe en el sistema (usuarios o personal)
-    const userCheck = await query(
-      'SELECT id, nombre, apellido FROM sistema.usuarios WHERE rut = $1',
-      [rut]
-    );
-    const personalCheck = await query(
-      'SELECT rut, nombres FROM mantenimiento.personal_disponible WHERE rut = $1',
-      [rut]
-    );
-
-    if (userCheck.rows.length === 0 && personalCheck.rows.length === 0) {
+    const imagePath = path.join('G:/Unidades compartidas/Unidad de Apoyo/Personal', rut, 'foto.jpg');
+    if (!fs.existsSync(imagePath)) {
       return res.status(404).json({
         success: false,
-        message: 'RUT no encontrado en el sistema'
+        message: 'No se encontró imagen de perfil para este usuario'
       });
     }
-
-    // Buscar imagen de perfil existente
-    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
-    let profileImagePath = null;
-    let profileImageUrl = null;
-
-    for (const ext of allowedExtensions) {
-      const imagePath = path.join(profilesDir, `${rut}${ext}`);
-      if (fs.existsSync(imagePath)) {
-        profileImagePath = imagePath;
-        profileImageUrl = `http://192.168.10.194:3000/uploads/profiles/${rut}${ext}`;
-        break;
-      }
-    }
-
-    if (!profileImagePath) {
-      return res.status(404).json({
-        success: false,
-        message: 'No se encontró imagen de perfil para este RUT'
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      data: {
-        profile_image_url: profileImageUrl,
-        rut: rut
-      }
-    });
-
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Content-Disposition', `inline; filename="foto.jpg"`);
+    fs.createReadStream(imagePath).pipe(res);
   } catch (error) {
-    console.error('Error al obtener imagen de perfil:', error);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
@@ -341,61 +280,31 @@ router.head('/:rut/image', async (req, res) => {
 router.get('/:rut/image/download', async (req, res) => {
   try {
     const { rut } = req.params;
-
-    // Verificar que el RUT existe en el sistema (usuarios o personal)
-    const userCheck = await query(
-      'SELECT id FROM sistema.usuarios WHERE rut = $1',
-      [rut]
-    );
-    const personalCheck = await query(
-      'SELECT rut FROM mantenimiento.personal_disponible WHERE rut = $1',
-      [rut]
-    );
-
-    if (userCheck.rows.length === 0 && personalCheck.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'RUT no encontrado en el sistema'
-      });
-    }
-
-    // Buscar imagen de perfil existente
-    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
-    let profileImagePath = null;
-
-    for (const ext of allowedExtensions) {
-      const imagePath = path.join(profilesDir, `${rut}${ext}`);
-      if (fs.existsSync(imagePath)) {
-        profileImagePath = imagePath;
-        break;
+    // Obtener nombre completo desde la base de datos
+    let nombreCompleto = rut;
+    try {
+      const result = await query(
+        'SELECT nombres FROM mantenimiento.personal_disponible WHERE rut = $1',
+        [rut]
+      );
+      if (result.rows.length > 0) {
+        nombreCompleto = result.rows[0].nombres.trim();
       }
+    } catch (err) {
+      // Si falla, usar solo rut
     }
-
-    if (!profileImagePath) {
+    const folderName = `${nombreCompleto} - ${rut}`;
+    const imagePath = path.join('G:/Unidades compartidas/Unidad de Apoyo/Personal', folderName, 'foto.jpg');
+    if (!fs.existsSync(imagePath)) {
       return res.status(404).json({
         success: false,
-        message: 'No se encontró imagen de perfil para descargar'
+        message: 'No se encontró imagen de perfil para este usuario'
       });
     }
-
-    // Enviar archivo
-    const ext = path.extname(profileImagePath);
-    const mimeType = {
-      '.jpg': 'image/jpeg',
-      '.jpeg': 'image/jpeg',
-      '.png': 'image/png',
-      '.gif': 'image/gif',
-      '.webp': 'image/webp'
-    }[ext.toLowerCase()];
-
-    res.setHeader('Content-Type', mimeType);
-    res.setHeader('Content-Disposition', `inline; filename="${rut}${ext}"`);
-    
-    const fileStream = fs.createReadStream(profileImagePath);
-    fileStream.pipe(res);
-
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Content-Disposition', `inline; filename="foto.jpg"`);
+    fs.createReadStream(imagePath).pipe(res);
   } catch (error) {
-    console.error('Error al descargar imagen de perfil:', error);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',

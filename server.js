@@ -203,13 +203,29 @@ async function testDatabaseConnection() {
 }
 
 // Iniciar servidor
-app.listen(PORT, '0.0.0.0', async () => {
+const server = app.listen(PORT, '0.0.0.0', async () => {
   console.log('🚀 Servidor ejecutándose en el puerto', PORT);
   console.log('📊 Ambiente:', process.env.NODE_ENV || 'development');
-  console.log('🔗 URL Local: http://localhost:' + PORT);
-  console.log('🌐 URL Red Local: http://192.168.10.194:' + PORT);
-  console.log('🏥 Health check: http://192.168.10.194:' + PORT + '/api/health');
-  console.log('📱 Para acceder desde otros dispositivos en la red, usa: http://192.168.10.194:' + PORT);
+  
+  // Obtener la IP de la red local para mostrarla
+  const os = require('os');
+  const networkInterfaces = os.networkInterfaces();
+  let localIp = 'localhost';
+  for (const name of Object.keys(networkInterfaces)) {
+    for (const net of networkInterfaces[name]) {
+      // Skip over internal (i.e. 127.0.0.1) and non-ipv4 addresses
+      if (net.family === 'IPv4' && !net.internal) {
+        localIp = net.address;
+        break;
+      }
+    }
+    if (localIp !== 'localhost') break;
+  }
+
+  console.log(`🔗 URL Local: http://localhost:${PORT}`);
+  console.log(`🌐 URL Red Local: http://${localIp}:${PORT}`);
+  console.log(`🏥 Health check: http://${localIp}:${PORT}/api/health`);
+  console.log(`📱 Para acceder desde otros dispositivos en la red, usa: http://${localIp}:${PORT}`);
   
   console.log('🔍 Probando conexión a PostgreSQL...');
   await testDatabaseConnection();
@@ -217,4 +233,4 @@ app.listen(PORT, '0.0.0.0', async () => {
   console.log('🕒 Timestamp del servidor:', new Date().toISOString());
 });
 
-module.exports = app;
+module.exports = { app, server };

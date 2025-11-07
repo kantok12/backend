@@ -1,126 +1,210 @@
 const express = require('express');
-const router = express.Router();
 const { query } = require('../config/database');
+const { body, validationResult } = require('express-validator');
 
-// Listar prerrequisitos por cliente
-router.get('/clientes/:clienteId', async (req, res) => {
+const router = express.Router();
+
+// Middleware para validar errores
+const handleValidationErrors = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Errores de validación',
+      errors: errors.array()
+    });
+  }
+  next();
+};
+
+// GET /api/prerrequisitos/cliente/:cliente_id - Listar prerrequisitos globales Y los de un cliente específico
+router.get('/cliente/:cliente_id', async (req, res) => {
   try {
-    const { clienteId } = req.params;
-    const { match, rut } = req.query;
-
-    // Si se pide match via query (?match=1&rut=...), delegar al handler de match
-    if ((match === '1' || match === 'true') && rut) {
-      req.query.rut = rut;
-      return router.handle({ ...req, url: `/clientes/${clienteId}/match?rut=${encodeURIComponent(rut)}`, method: 'GET' }, res);
-    }
+    const { cliente_id } = req.params;
+    
     const result = await query(`
-      SELECT id, cliente_id, tipo_documento, obligatorio, dias_validez
-      FROM mantenimiento.prerrequisitos_clientes
-      WHERE cliente_id = $1
-      ORDER BY tipo_documento
-    `, [clienteId]);
-    res.json({ success: true, data: result.rows });
-  } catch (err) {
-    console.error('Error al listar prerrequisitos:', err);
-    res.status(500).json({ success: false, message: 'Error al listar prerrequisitos', error: err.message });
+      SELECT 
+        id, 
+        cliente_id, 
+        tipo_documento, 
+        descripcion, 
+        dias_duracion, 
+        created_at, 
+        updated_at,
+        CASE 
+          WHEN cliente_id IS NULL THEN true
+          ELSE false
+        END as es_global
+      FROM mantenimiento.cliente_prerrequisitos
+      WHERE cliente_id = $1 OR cliente_id IS NULL
+      ORDER BY es_global DESC, tipo_documento ASC
+    `, [cliente_id]);
+
+    res.json({
+      success: true,
+      message: 'Prerrequisitos obtenidos exitosamente',
+      data: result.rows
+    });
+
+  } catch (error) {
+    console.error('❌ Error obteniendo prerrequisitos:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
   }
 });
 
-// Crear/actualizar lista de prerrequisitos del cliente
-router.post('/clientes/:clienteId', async (req, res) => {
-  try {
-    const { clienteId } = req.params;
-    const { requisitos } = req.body; // [{tipo_documento, obligatorio, dias_validez}]
-    if (!Array.isArray(requisitos)) {
-      return res.status(400).json({ success: false, message: 'requisitos debe ser un arreglo' });
+// GET /api/prerrequisitos/globales - Listar solo los prerrequisitos globales
+router.get('/globales', async (req, res) => {
+    try {
+      const result = await query(`
+        SELECT id, cliente_id, tipo_documento, descripcion, dias_duracion, created_at, updated_at
+        FROM mantenimiento.cliente_prerrequisitos
+        WHERE cliente_id IS NULL
+        ORDER BY tipo_documento
+      `);
+  
+      res.json({
+        success: true,
+        message: 'Prerrequisitos globales obtenidos exitosamente',
+        data: result.rows
+      });
+  
+    } catch (error) {
+      console.error('❌ Error obteniendo prerrequisitos globales:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor',
+        error: error.message
+      });
     }
+  });
 
-    // Borrado suave: opcionalmente podríamos reemplazar por upserts; aquí haremos upsert individual
-    for (const r of requisitos) {
-      if (!r.tipo_documento) continue;
-      await query(`
-        INSERT INTO mantenimiento.prerrequisitos_clientes (cliente_id, tipo_documento, obligatorio, dias_validez)
-        VALUES ($1, $2, $3, $4)
-        ON CONFLICT (cliente_id, tipo_documento)
-        DO UPDATE SET obligatorio = EXCLUDED.obligatorio, dias_validez = EXCLUDED.dias_validez
-      `, [clienteId, r.tipo_documento, r.obligatorio !== false, r.dias_validez || null]);
-    }
+// POST /api/prerrequisitos - Crear un nuevo prerrequisito (global o específico)
+router.post('/', [
+  body('cliente_id').optional().isInt({ min: 1 }).withMessage('El ID de cliente debe ser un número entero válido.'),
+  body('tipo_documento').notEmpty().withMessage('El tipo de documento es requerido.'),
+  body('dias_duracion').optional({ checkFalsy: true }).isInt({ min: 0 }).withMessage('Los días de duración deben ser un número entero no negativo.'),
+  handleValidationErrors
+], async (req, res) => {
+  try {
+    const { cliente_id, tipo_documento, descripcion, dias_duracion } = req.body;
+    const finalClienteId = cliente_id || null; // Si no viene cliente_id, es global (NULL)
+    const finalDiasDuracion = dias_duracion || null;
 
     const result = await query(`
-      SELECT id, cliente_id, tipo_documento, obligatorio, dias_validez
-      FROM mantenimiento.prerrequisitos_clientes
-      WHERE cliente_id = $1
-      ORDER BY tipo_documento
-    `, [clienteId]);
+      INSERT INTO mantenimiento.cliente_prerrequisitos (cliente_id, tipo_documento, descripcion, dias_duracion)
+      VALUES ($1, $2, $3, $4)
+      RETURNING *
+    `, [finalClienteId, tipo_documento, descripcion, finalDiasDuracion]);
 
-    res.status(201).json({ success: true, message: 'Prerrequisitos guardados', data: result.rows });
-  } catch (err) {
-    console.error('Error al guardar prerrequisitos:', err);
-    res.status(500).json({ success: false, message: 'Error al guardar prerrequisitos', error: err.message });
+    res.status(201).json({
+      success: true,
+      message: `Prerrequisito ${finalClienteId ? 'específico' : 'global'} creado exitosamente.`,
+      data: result.rows[0]
+    });
+
+  } catch (error) {
+    if (error.code === '23505') { // unique_violation
+      return res.status(409).json({
+        success: false,
+        message: 'Error de unicidad: Este tipo de documento ya existe para este cliente o como prerrequisito global.'
+      });
+    }
+    if (error.code === '23503') { // foreign_key_violation
+        return res.status(400).json({
+          success: false,
+          message: 'El cliente especificado no existe.'
+        });
+      }
+    console.error('❌ Error creando prerrequisito:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
   }
 });
 
-// Match prerrequisitos vs documentos del personal
-router.get('/clientes/:clienteId/match', async (req, res) => {
+// PUT /api/prerrequisitos/:id - Actualizar un prerrequisito
+router.put('/:id', [
+  body('tipo_documento').notEmpty().withMessage('El tipo de documento es requerido.'),
+  body('dias_duracion').optional({ checkFalsy: true }).isInt({ min: 0 }).withMessage('Los días de duración deben ser un número entero no negativo.'),
+  handleValidationErrors
+], async (req, res) => {
   try {
-    const { clienteId } = req.params;
-    const { rut } = req.query;
-    if (!rut) return res.status(400).json({ success: false, message: 'rut es requerido' });
+    const { id } = req.params;
+    const { tipo_documento, descripcion, dias_duracion } = req.body;
+    const finalDiasDuracion = dias_duracion || null;
 
-    // Obtener requisitos (si no hay, generar mock temporal)
-    let requisitos = (await query(`
-      SELECT tipo_documento, obligatorio, dias_validez
-      FROM mantenimiento.prerrequisitos_clientes
-      WHERE cliente_id = $1
-    `, [clienteId])).rows;
+    const result = await query(`
+      UPDATE mantenimiento.cliente_prerrequisitos
+      SET tipo_documento = $1, descripcion = $2, dias_duracion = $3
+      WHERE id = $4
+      RETURNING *
+    `, [tipo_documento, descripcion, finalDiasDuracion, id]);
 
-    if (requisitos.length === 0) {
-      requisitos = [
-        { tipo_documento: 'licencia_conducir', obligatorio: true, dias_validez: 365 },
-        { tipo_documento: 'certificado_seguridad', obligatorio: true, dias_validez: 365 },
-        { tipo_documento: 'certificado_medico', obligatorio: false, dias_validez: 365 }
-      ];
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Prerrequisito no encontrado.'
+      });
     }
 
-    // Documentos del personal
-    const docs = (await query(`
-      SELECT id, tipo_documento, nombre_documento, fecha_subida
-      FROM mantenimiento.documentos
-      WHERE rut_persona = $1 AND activo = true
-    `, [rut])).rows;
+    res.json({
+      success: true,
+      message: 'Prerrequisito actualizado exitosamente.',
+      data: result.rows[0]
+    });
 
-    const now = new Date();
-    const cumplidos = [];
-    const faltantes = [];
-    const vencidos = [];
-    const por_vencer = [];
-
-    for (const reqq of requisitos) {
-      const match = docs.find(d => d.tipo_documento === reqq.tipo_documento);
-      if (!match) {
-        faltantes.push({ tipo_documento: reqq.tipo_documento, obligatorio: reqq.obligatorio });
-        continue;
+  } catch (error) {
+    if (error.code === '23505') {
+        return res.status(409).json({
+          success: false,
+          message: 'Error de unicidad: Este tipo de documento ya existe para este cliente o como prerrequisito global.'
+        });
       }
+    console.error('❌ Error actualizando prerrequisito:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
 
-      // Validación de vigencia si aplica
-      if (reqq.dias_validez && match.fecha_vencimiento) {
-        const fv = new Date(match.fecha_vencimiento);
-        if (fv < now) {
-          vencidos.push({ tipo_documento: reqq.tipo_documento, documento_id: match.id, vence: match.fecha_vencimiento });
-          continue;
-        }
-        const diasRestantes = Math.ceil((fv.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        if (diasRestantes <= 30) {
-          por_vencer.push({ tipo_documento: reqq.tipo_documento, documento_id: match.id, dias_restantes: diasRestantes });
-        }
-      }
-      cumplidos.push({ tipo_documento: reqq.tipo_documento, documento_id: match.id });
+// DELETE /api/prerrequisitos/:id - Eliminar un prerrequisito
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await query(
+      'DELETE FROM mantenimiento.cliente_prerrequisitos WHERE id = $1 RETURNING *',
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Prerrequisito no encontrado.'
+      });
     }
 
-    res.json({ success: true, data: { requisitos, cumplidos, faltantes, vencidos, por_vencer } });
-  } catch (err) {
-    console.error('Error en match de prerrequisitos:', err);
-    res.status(500).json({ success: false, message: 'Error en match de prerrequisitos', error: err.message });
+    res.json({
+      success: true,
+      message: 'Prerrequisito eliminado exitosamente.',
+      data: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error('❌ Error eliminando prerrequisito:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
   }
 });
 
