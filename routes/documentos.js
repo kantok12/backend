@@ -455,6 +455,60 @@ router.get('/formatos', async (req, res) => {
   }
 });
 
+// GET /api/documentos/:id/descargar - Descargar archivo del documento (ruta directa o uploads)
+router.get('/:id/descargar', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`📥 GET /api/documentos/${id}/descargar - Descargando archivo`);
+
+    const getDocumentQuery = `
+      SELECT id, nombre_archivo, nombre_original, ruta_archivo, tipo_mime
+      FROM mantenimiento.documentos
+      WHERE id = $1 AND activo = true
+    `;
+
+    const result = await query(getDocumentQuery, [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: `No se encontró documento con ID: ${id}` });
+    }
+
+    const doc = result.rows[0];
+
+    // Priorizar ruta_archivo si está disponible
+    const candidates = [];
+    if (doc.ruta_archivo) candidates.push(doc.ruta_archivo);
+    if (doc.nombre_archivo) candidates.push(path.join(__dirname, '../uploads/documentos', doc.nombre_archivo));
+
+    let foundPath = null;
+    for (const p of candidates) {
+      if (p && fs.existsSync(p)) {
+        foundPath = p;
+        break;
+      }
+    }
+
+    if (!foundPath) {
+      console.warn(`⚠️ Archivo no encontrado en disco para documento ID ${id}`, candidates);
+      return res.status(404).json({ success: false, message: 'Archivo no encontrado en el servidor' });
+    }
+
+    const downloadName = doc.nombre_original || path.basename(foundPath);
+    console.log(`✅ Enviando archivo ${foundPath} as ${downloadName}`);
+    return res.download(foundPath, downloadName);
+  } catch (error) {
+    console.error(`❌ Error descargando documento ${req.params.id}:`, error);
+    return res.status(500).json({ success: false, message: 'Error interno del servidor', error: error.message });
+  }
+});
+
+// GET /api/documentos/download/:id - Compatibilidad con rutas alternativas usadas en frontend
+router.get('/download/:id', async (req, res) => {
+  // Delegate to the /:id/descargar handler logic by calling the same code path
+  // We simply call the descargar route handler logic to avoid duplication.
+  req.url = `/${req.params.id}/descargar`;
+  return router.handle(req, res);
+});
+
 // GET /api/documentos/:id - Obtener documento por ID
 router.get('/:id', async (req, res) => {
   try {
@@ -1123,21 +1177,21 @@ router.post('/registrar-existente', async (req, res) => {
   }
 });
 
-// DELETE /api/documentos/:id - Eliminar documento (soft delete)
+// DELETE /api/documentos/:id - Eliminar documento (hard delete)
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
-    console.log(`🗑️ DELETE /api/documentos/${id} - Eliminando documento`);
+    console.log(`🗑️ DELETE /api/documentos/${id} - Eliminando documento (Hard Delete)`);
     
-    // Verificar que el documento existe
-    const checkDocumentQuery = `
+    // 1. Obtener la información del documento ANTES de eliminarlo de la BD
+    const getDocumentQuery = `
       SELECT id, nombre_documento, ruta_archivo, rut_persona
       FROM mantenimiento.documentos 
-      WHERE id = $1 AND activo = true
+      WHERE id = $1
     `;
     
-    const documentResult = await query(checkDocumentQuery, [id]);
+    const documentResult = await query(getDocumentQuery, [id]);
     
     if (documentResult.rows.length === 0) {
       return res.status(404).json({
@@ -1148,21 +1202,50 @@ router.delete('/:id', async (req, res) => {
     
     const documento = documentResult.rows[0];
     
-    // Soft delete - marcar como inactivo
+    // 2. Eliminar el registro de la base de datos
     const deleteQuery = `
-      UPDATE mantenimiento.documentos 
-      SET activo = false
+      DELETE FROM mantenimiento.documentos 
       WHERE id = $1
       RETURNING id, nombre_documento
     `;
     
     const deleteResult = await query(deleteQuery, [id]);
     
-    console.log(`✅ Documento eliminado: ${deleteResult.rows[0].nombre_documento}`);
+    // 3. Si la eliminación de la BD fue exitosa, eliminar el archivo físico
+    if (deleteResult.rows.length > 0) {
+      console.log(`✅ Registro de BD eliminado: ${deleteResult.rows[0].nombre_documento}`);
+      
+      // Eliminar el archivo del sistema de archivos local
+      if (documento.ruta_archivo) {
+        deleteFile(documento.ruta_archivo);
+      }
+
+      // Adicionalmente, intentar eliminar de la carpeta de Google Drive si existe
+      const baseDir = 'G:/Unidades compartidas/Unidad de Apoyo/Personal';
+      try {
+        const dirs = fs.readdirSync(baseDir, { withFileTypes: true }).filter(d => d.isDirectory());
+        for (const dir of dirs) {
+          if (dir.name.includes(documento.rut_persona)) {
+            const googleDriveFilePath = path.join(baseDir, dir.name, 'documentos', documento.nombre_archivo);
+            const googleDriveCursosPath = path.join(baseDir, dir.name, 'cursos_certificaciones', documento.nombre_archivo);
+            
+            deleteFile(googleDriveFilePath);
+            deleteFile(googleDriveCursosPath);
+            break;
+          }
+        }
+      } catch (err) {
+        console.warn('⚠️  Advertencia: No se pudo verificar/eliminar el archivo de Google Drive.', err.message);
+      }
+
+    } else {
+        // Esto no debería ocurrir si la primera consulta encontró el documento, pero es un buen seguro.
+        throw new Error('No se pudo eliminar el registro de la base de datos.');
+    }
     
     res.json({
       success: true,
-      message: 'Documento eliminado exitosamente',
+      message: 'Documento y archivo asociado eliminados exitosamente',
       data: {
         id: deleteResult.rows[0].id,
         nombre_documento: deleteResult.rows[0].nombre_documento

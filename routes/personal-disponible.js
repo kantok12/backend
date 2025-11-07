@@ -338,6 +338,64 @@ router.put('/:rut', async (req, res) => {
   }
 });
 
+// GET /personal-disponible/por-cliente/:cliente_id - Obtener personal que cumple con prerrequisitos de un cliente
+router.get('/por-cliente/:cliente_id', async (req, res) => {
+  const { cliente_id } = req.params;
+
+  try {
+    const queryText = `
+      SELECT 
+        pd.rut,
+        pd.nombres,
+        pd.cargo,
+        pd.zona_geografica,
+        e.nombre as estado_nombre
+      FROM 
+        mantenimiento.personal_disponible pd
+      JOIN 
+        mantenimiento.estados e ON pd.estado_id = e.id
+      WHERE 
+        pd.estado_id = 1 -- Solo personal con estado 'Disponible'
+        AND NOT EXISTS (
+          -- Selecciona los prerrequisitos que el personal NO cumple
+          SELECT 1
+          FROM mantenimiento.cliente_prerrequisitos cp
+          WHERE 
+            (cp.cliente_id = $1 OR cp.cliente_id IS NULL) -- Prerrequisitos del cliente y globales
+            AND NOT EXISTS (
+              -- Verifica si existe un documento válido para el prerrequisito
+              SELECT 1
+              FROM mantenimiento.documentos d
+              WHERE 
+                d.rut_persona = pd.rut
+                AND d.tipo_documento = cp.tipo_documento
+                AND (
+                  cp.dias_duracion IS NULL OR -- El prerrequisito no expira
+                  (d.fecha_emision IS NOT NULL AND d.fecha_emision + (cp.dias_duracion || ' days')::interval >= CURRENT_DATE)
+                )
+            )
+        );
+    `;
+
+    const result = await query(queryText, [cliente_id]);
+
+    res.json({
+      success: true,
+      message: `Personal que cumple con los prerrequisitos del cliente ${cliente_id} obtenido exitosamente.`,
+      count: result.rows.length,
+      data: result.rows,
+    });
+
+  } catch (error) {
+    console.error(`Error al obtener personal por prerrequisitos del cliente ${cliente_id}:`, error);
+    res.status(500).json({
+      success: false,
+      error: `Error al obtener personal para el cliente ${cliente_id}`,
+      message: error.message,
+    });
+  }
+});
+
 // DELETE /personal-disponible/:rut - eliminar personal disponible
 
 // GET /personal-disponible/verify-import - verificar importación reciente

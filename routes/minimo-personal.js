@@ -27,16 +27,18 @@ router.get('/minimo-personal', async (req, res) => {
       cartera_id, 
       cliente_id, 
       nodo_id, 
-      activo = true,
       limit = 50, 
       offset = 0 
     } = req.query;
+    // Normalizar el parámetro 'activo' recibido por query. Si no viene, asumimos true.
+    const activoParam = req.query.activo;
+    const activo = (typeof activoParam === 'undefined') ? true : (activoParam === 'true' || activoParam === true || activoParam === '1');
 
     console.log('📋 GET /api/servicios/minimo-personal - Listando mínimos de personal');
 
-    let whereConditions = ['mp.activo = $1'];
-    let queryParams = [activo === 'true'];
-    let paramCount = 1;
+  let whereConditions = ['mp.activo = $1'];
+  let queryParams = [activo];
+  let paramCount = 1;
 
     if (cartera_id) {
       paramCount++;
@@ -126,7 +128,9 @@ router.get('/minimo-personal', async (req, res) => {
 });
 
 // GET /api/servicios/minimo-personal/:id - Obtener mínimo específico
-router.get('/minimo-personal/:id', async (req, res) => {
+// NOTE: restrict :id to digits so that routes like /minimo-personal/por-cliente
+// do not get interpreted as an :id parameter.
+router.get('/minimo-personal/:id(\\d+)', async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -196,6 +200,113 @@ router.get('/minimo-personal/:id', async (req, res) => {
       message: 'Error interno del servidor',
       error: error.message
     });
+  }
+});
+
+// GET /api/servicios/minimo-personal/por-cliente
+// Devuelve un mapeo cliente_id -> mínimo real (una entrada por cliente activa).
+router.get('/minimo-personal/por-cliente', async (req, res) => {
+  try {
+    console.log('📋 GET /api/servicios/minimo-personal/por-cliente - Obteniendo mínimo por cliente (deduplicado)');
+
+    const queryText = `
+      SELECT DISTINCT ON (mp.cliente_id)
+        mp.cliente_id,
+        mp.id AS minimo_id,
+        mp.minimo_base,
+        servicios.calcular_minimo_real(mp.id) AS minimo_real,
+        mp.updated_at
+      FROM servicios.minimo_personal mp
+      WHERE mp.cliente_id IS NOT NULL AND mp.activo = true
+      ORDER BY mp.cliente_id, mp.id DESC
+    `;
+
+    const result = await query(queryText);
+
+    // Convertir a objeto mapeado para consumo fácil por frontend
+    const mapping = {};
+    for (const row of result.rows) {
+      mapping[row.cliente_id] = {
+        minimo_id: row.minimo_id,
+        minimo_base: Number(row.minimo_base),
+        minimo_real: Number(row.minimo_real),
+        updated_at: row.updated_at
+      };
+    }
+
+    res.json({
+      success: true,
+      message: 'Mínimos por cliente obtenidos exitosamente',
+      count: Object.keys(mapping).length,
+      data: mapping
+    });
+
+  } catch (error) {
+    console.error('❌ Error en GET /api/servicios/minimo-personal/por-cliente:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/servicios/minimo-personal/by-cliente/:cliente_id
+// Devuelve el mínimo (más reciente y activo) asociado a un cliente específico
+router.get('/minimo-personal/by-cliente/:cliente_id(\d+)', async (req, res) => {
+  try {
+    const { cliente_id } = req.params;
+    console.log(`📋 GET /api/servicios/minimo-personal/by-cliente/${cliente_id} - Obteniendo mínimo para cliente`);
+
+    // Buscar el registro más reciente (por id) activo para ese cliente
+    const result = await query(`
+      SELECT mp.*
+      FROM servicios.minimo_personal mp
+      WHERE mp.cliente_id = $1 AND mp.activo = true
+      ORDER BY mp.id DESC
+      LIMIT 1
+    `, [cliente_id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: `No se encontró un mínimo activo para el cliente ${cliente_id}`
+      });
+    }
+
+    const minimo = result.rows[0];
+
+    // Calcular minimo_real y traer acuerdos relacionados
+    const minimoRealRes = await query('SELECT servicios.calcular_minimo_real($1) as minimo_real', [minimo.id]);
+    const acuerdosResult = await query(`
+      SELECT id, tipo_acuerdo, valor_modificacion, fecha_inicio, fecha_fin, motivo, aprobado_por, estado, created_at, created_by
+      FROM servicios.acuerdos
+      WHERE minimo_personal_id = $1
+      ORDER BY fecha_inicio DESC
+    `, [minimo.id]);
+
+    res.json({
+      success: true,
+      message: 'Mínimo por cliente obtenido exitosamente',
+      data: {
+        minimo_id: minimo.id,
+        cartera_id: minimo.cartera_id,
+        cliente_id: minimo.cliente_id,
+        nodo_id: minimo.nodo_id,
+        minimo_base: minimo.minimo_base,
+        minimo_real: Number(minimoRealRes.rows[0].minimo_real),
+        descripcion: minimo.descripcion,
+        activo: minimo.activo,
+        created_at: minimo.created_at,
+        updated_at: minimo.updated_at,
+        created_by: minimo.created_by,
+        acuerdos: acuerdosResult.rows
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error en GET /api/servicios/minimo-personal/by-cliente/:cliente_id:', error);
+    res.status(500).json({ success: false, message: 'Error interno del servidor', error: error.message });
   }
 });
 

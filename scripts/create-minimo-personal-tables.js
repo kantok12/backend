@@ -91,10 +91,10 @@ async function createMinimoPersonalTables() {
         modificacion_total INTEGER := 0;
         acuerdo RECORD;
       BEGIN
-        -- Obtener mínimo base
-        SELECT minimo_base INTO minimo_base
-        FROM servicios.minimo_personal
-        WHERE id = p_minimo_personal_id AND activo = true;
+        -- Obtener mínimo base (qualify column with table alias to avoid ambiguity)
+        SELECT mp.minimo_base INTO minimo_base
+        FROM servicios.minimo_personal mp
+        WHERE mp.id = p_minimo_personal_id AND mp.activo = true;
         
         IF minimo_base IS NULL THEN
           RETURN 0;
@@ -102,12 +102,12 @@ async function createMinimoPersonalTables() {
         
         -- Calcular modificaciones activas
         FOR acuerdo IN
-          SELECT valor_modificacion
-          FROM servicios.acuerdos
-          WHERE minimo_personal_id = p_minimo_personal_id
-            AND estado = 'activo'
-            AND fecha_inicio <= p_fecha_calculo
-            AND (fecha_fin IS NULL OR fecha_fin >= p_fecha_calculo)
+          SELECT a.valor_modificacion
+          FROM servicios.acuerdos a
+          WHERE a.minimo_personal_id = p_minimo_personal_id
+            AND a.estado = 'activo'
+            AND a.fecha_inicio <= p_fecha_calculo
+            AND (a.fecha_fin IS NULL OR a.fecha_fin >= p_fecha_calculo)
         LOOP
           modificacion_total := modificacion_total + acuerdo.valor_modificacion;
         END LOOP;
