@@ -3,6 +3,8 @@ const { query } = require('../config/database');
 const { body, validationResult } = require('express-validator');
 
 const router = express.Router();
+const { matchForCliente } = require('../services/prerrequisitosService');
+const { getPersonasQueCumplen } = require('../services/prerrequisitosService');
 
 // Middleware para validar errores
 const handleValidationErrors = (req, res, next) => {
@@ -208,6 +210,58 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// POST /api/prerrequisitos/clientes/:clienteId/match - Realizar matching de prerrequisitos para un conjunto de RUTs
+router.post('/clientes/:clienteId/match', [
+  body('ruts').isArray({ min: 1 }).withMessage('El campo ruts debe ser un array con al menos un RUT.'),
+  body('requireAll').optional().isBoolean(),
+  body('includeGlobal').optional().isBoolean(),
+  handleValidationErrors
+], async (req, res) => {
+  try {
+    const { clienteId } = req.params;
+    const { ruts, requireAll = true, includeGlobal = true } = req.body;
+
+    // Llamar al servicio
+    const results = await matchForCliente(parseInt(clienteId, 10), ruts, { requireAll, includeGlobal });
+
+    res.json({
+      success: true,
+      data: results
+    });
+
+  } catch (error) {
+    console.error('❌ Error en matching de prerrequisitos:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/prerrequisitos/clientes/:clienteId/cumplen - Obtener personas que cumplen TODOS los prerrequisitos
+router.get('/clientes/:clienteId/cumplen', async (req, res) => {
+  try {
+    const { clienteId } = req.params;
+    const includeGlobal = req.query.includeGlobal !== 'false';
+    const limit = parseInt(req.query.limit) || 1000;
+    const offset = parseInt(req.query.offset) || 0;
+
+    const result = await getPersonasQueCumplen(parseInt(clienteId, 10), { includeGlobal, limit, offset });
+
+    if (!result || !result.data) {
+      return res.json({ success: true, message: result.message || 'No data', data: [] });
+    }
+
+    res.json({ success: true, message: result.message || 'OK', data: result.data });
+  } catch (error) {
+    console.error('❌ Error en GET /api/prerrequisitos/clientes/:clienteId/cumplen:', error);
+    res.status(500).json({ success: false, message: 'Error interno del servidor', error: error.message });
+  }
+});
+
 module.exports = router;
+
+
 
 

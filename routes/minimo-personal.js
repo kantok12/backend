@@ -253,7 +253,8 @@ router.get('/minimo-personal/por-cliente', async (req, res) => {
 
 // GET /api/servicios/minimo-personal/by-cliente/:cliente_id
 // Devuelve el mínimo (más reciente y activo) asociado a un cliente específico
-router.get('/minimo-personal/by-cliente/:cliente_id(\d+)', async (req, res) => {
+// NOTE: escape the backslash in the string literal so the route regex is registered correctly
+router.get('/minimo-personal/by-cliente/:cliente_id(\\d+)', async (req, res) => {
   try {
     const { cliente_id } = req.params;
     console.log(`📋 GET /api/servicios/minimo-personal/by-cliente/${cliente_id} - Obteniendo mínimo para cliente`);
