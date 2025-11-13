@@ -8,6 +8,11 @@ const router = express.Router();
 
 // Crear directorio de perfiles si no existe
 const googleDriveDir = 'G:\\Unidades compartidas\\Unidad de Apoyo\\Personal';
+// Directorio local para uploads de imágenes de perfil (coincide con `profile-photos`)
+const profilesDir = path.join(__dirname, '../uploads/profiles');
+if (!fs.existsSync(profilesDir)) {
+  fs.mkdirSync(profilesDir, { recursive: true });
+}
 
 // Configuración de almacenamiento para imágenes de perfil
 const storage = multer.diskStorage({
@@ -127,6 +132,27 @@ router.post('/:rut/upload', uploadProfileImage, handleUploadError, async (req, r
         success: false,
         message: 'Error al guardar la imagen de perfil'
       });
+    }
+
+    // Eliminar otras imágenes antiguas en la carpeta del usuario (otras extensiones)
+    try {
+      const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+      const files = fs.readdirSync(userDir);
+      files.forEach(file => {
+        const ext = path.extname(file).toLowerCase();
+        const filePath = path.join(userDir, file);
+        // eliminar cualquier imagen que no sea la foto actual (foto.jpg)
+        if (allowedExtensions.includes(ext) && file !== 'foto.jpg') {
+          try {
+            if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+          } catch (err) {
+            console.error('Error eliminando archivo antiguo de perfil:', filePath, err);
+          }
+        }
+      });
+    } catch (err) {
+      // No bloquear la subida si falla la limpieza
+      console.error('Error limpiando imágenes antiguas en userDir:', userDir, err);
     }
 
     // Construir URL pública de la imagen para el frontend

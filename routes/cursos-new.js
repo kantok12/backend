@@ -201,7 +201,7 @@ router.get('/persona/:rut', async (req, res) => {
         END as estado_vencimiento
       FROM mantenimiento.cursos c
       LEFT JOIN mantenimiento.personal_disponible p ON c.rut_persona = p.rut
-      WHERE c.rut_persona = $1 AND c.activo = true
+      WHERE translate(c.rut_persona, '.', '') = translate($1, '.', '') AND c.activo = true
       ORDER BY c.fecha_creacion DESC
     `;
     
@@ -293,7 +293,7 @@ router.post('/', uploadCurso, handleUploadError, async (req, res) => {
     
     // Verificar que la persona existe
     const checkPersonQuery = `
-      SELECT rut, nombres, cargo FROM mantenimiento.personal_disponible WHERE rut = $1
+      SELECT rut, nombres, cargo FROM mantenimiento.personal_disponible WHERE translate(rut, '.', '') = translate($1, '.', '')
     `;
     
     const personResult = await query(checkPersonQuery, [rut_persona]);
@@ -313,9 +313,9 @@ router.post('/', uploadCurso, handleUploadError, async (req, res) => {
     // Verificar que no existe el mismo curso para la misma persona
     const checkDuplicateQuery = `
       SELECT id FROM mantenimiento.cursos 
-      WHERE rut_persona = $1 AND nombre_curso = $2 AND activo = true
+      WHERE translate(rut_persona, '.', '') = translate($1, '.', '') AND nombre_curso = $2 AND activo = true
     `;
-    
+
     const duplicateResult = await query(checkDuplicateQuery, [rut_persona, nombre_curso]);
     
     if (duplicateResult.rows.length > 0) {
@@ -372,6 +372,14 @@ router.post('/', uploadCurso, handleUploadError, async (req, res) => {
         // Copiar archivo a Google Drive
         if (cursosCertificacionesDir) {
           const googleDrivePath = path.join(cursosCertificacionesDir, archivo.filename);
+          // Remove numeric variants to avoid duplicates
+          try {
+            const ext = path.extname(archivo.filename);
+            const nameOnly = path.basename(archivo.filename, ext);
+            removeNumericVariants(cursosCertificacionesDir, nameOnly, ext);
+          } catch (e) {
+            console.warn('⚠️ Error eliminando variantes en Google Drive (cursos):', e.message);
+          }
           fs.copyFileSync(archivo.path, googleDrivePath);
           console.log(`📂 Archivo copiado a Google Drive: ${googleDrivePath}`);
         }
@@ -402,7 +410,7 @@ router.post('/', uploadCurso, handleUploadError, async (req, res) => {
           nombre_curso,
           'certificado_curso',
           archivo.filename,
-          archivo.originalname,
+          archivo.filename, // nombre_original igual al nombre final en disco
           archivo.mimetype,
           archivo.size,
           archivo.path,
@@ -420,7 +428,7 @@ router.post('/', uploadCurso, handleUploadError, async (req, res) => {
         documentoInfo = {
           id: documento.id,
           nombre_archivo: archivo.filename,
-          nombre_original: archivo.originalname,
+          nombre_original: archivo.filename,
           fecha_subida: documento.fecha_subida
         };
         

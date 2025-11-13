@@ -4,7 +4,7 @@ const router = express.Router();
 
 // Helper para verificar si una persona existe
 async function personExists(rut) {
-  const r = await query('SELECT rut FROM mantenimiento.personal_disponible WHERE rut = $1', [rut]);
+  const r = await query(`SELECT rut FROM mantenimiento.personal_disponible WHERE translate(rut, '.', '') = translate($1, '.', '')`, [rut]);
   return r.rows.length > 0;
 }
 
@@ -185,7 +185,7 @@ router.get('/persona/:rut', async (req, res) => {
       JOIN servicios.carteras c ON c.id = p.cartera_id
       LEFT JOIN servicios.clientes cl ON cl.id = p.cliente_id
       LEFT JOIN servicios.nodos n ON n.id = p.nodo_id
-      WHERE p.rut = $1
+  WHERE translate(p.rut, '.', '') = translate($1, '.', '')
       ORDER BY p.semana_inicio DESC
       LIMIT $2
     `, [rut, parseInt(semanas)]);

@@ -11,7 +11,9 @@ async function testPostCurso() {
   
   // Agregar campos al formulario
   form.append('rut_persona', '20.320.662-3');
-  form.append('nombre_curso', 'Primeros Auxilios Básicos');
+  // Hacer el nombre único para evitar colisiones en pruebas
+  const uniqueCursoName = `Primeros Auxilios Básicos ${Date.now()}`;
+  form.append('nombre_curso', uniqueCursoName);
   form.append('fecha_inicio', '2025-11-01');
   form.append('fecha_fin', '2025-11-03');
   form.append('fecha_vencimiento', '2026-11-03');

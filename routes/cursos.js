@@ -623,7 +623,7 @@ router.post('/:id/documentos', uploadMultiple, handleUploadError, async (req, re
       const documentoResult = await query(insertDocumentoQuery, [
         id,
         fileInfo.nombre_archivo,
-        fileInfo.nombre_original,
+        fileInfo.nombre_archivo, // nombre_original igual al nombre final guardado
         fileInfo.tipo_mime,
         fileInfo.tamaño_bytes,
         fileInfo.ruta_archivo,
@@ -1187,7 +1187,7 @@ router.post('/persona/:rut/documentos', uploadMultiple, handleUploadError, async
       const documentoResult = await query(insertDocumentoQuery, [
         curso.id,
         fileInfo.nombre_archivo,
-        fileInfo.nombre_original,
+        fileInfo.nombre_archivo, // nombre_original igual al nombre final guardado
         fileInfo.tipo_mime,
         fileInfo.tamaño_bytes,
         fileInfo.ruta_archivo,

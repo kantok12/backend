@@ -6,6 +6,33 @@ const { query } = require('../config/database');
 
 const router = express.Router();
 
+// Helper to escape a string for RegExp
+function escapeRegExp(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Remove numeric-suffixed variants of a filename in a directory (e.g. name_12345.ext)
+function removeNumericVariants(dir, nameOnly, ext) {
+  try {
+    if (!fs.existsSync(dir)) return;
+    const files = fs.readdirSync(dir);
+    const pattern = new RegExp(`^${escapeRegExp(nameOnly)}(_\\d+)?${escapeRegExp(ext)}$`, 'i');
+    for (const f of files) {
+      if (pattern.test(f)) {
+        const full = path.join(dir, f);
+        try {
+          fs.unlinkSync(full);
+          console.log(`🗑️ Eliminado archivo variante: ${full}`);
+        } catch (e) {
+          console.warn(`⚠️ No se pudo eliminar variante ${full}:`, e.message);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('⚠️ Error buscando/eliminando variantes numéricas:', err.message);
+  }
+}
+
 // =====================================================
 // CONFIGURACIÓN DE MULTER PARA SUBIDA DE ARCHIVOS
 // =====================================================
@@ -31,6 +58,38 @@ const storage = multer.diskStorage({
     cb(null, `${safeName}_${timestamp}${ext}`);
   }
 });
+
+// Helper: sanitize a user-provided filename and ensure extension is preserved.
+function sanitizeAndResolveFilename(desiredName, originalName, uploadDir, options = {}) {
+  // desiredName: may or may not include extension. originalName provides ext fallback.
+  const origExt = path.extname(originalName) || '';
+  let base = String(desiredName || '').trim();
+  // Remove path characters and keep safe chars (letters, numbers, dash, underscore, space and dot)
+  base = base.replace(/\\/g, '').replace(/\//g, '');
+  base = base.replace(/[^a-zA-Z0-9 ._\-()]/g, '');
+  // If user provided no extension, append original ext
+  let ext = path.extname(base);
+  if (!ext && origExt) ext = origExt;
+  // Remove ext from base name for collision handling
+  let nameOnly = base;
+  if (ext && base.toLowerCase().endsWith(ext.toLowerCase())) {
+    nameOnly = base.slice(0, base.length - ext.length);
+  }
+  nameOnly = nameOnly.trim().replace(/\s+/g, '_');
+  if (!nameOnly) nameOnly = 'file';
+
+  let finalName = `${nameOnly}${ext}`;
+  let finalPath = path.join(uploadDir, finalName);
+  // If collision and allowSuffix option is true, append timestamp; otherwise return the same name
+  const allowSuffix = options.allowSuffix !== undefined ? Boolean(options.allowSuffix) : true;
+  if (fs.existsSync(finalPath) && allowSuffix) {
+    const ts = Date.now();
+    finalName = `${nameOnly}_${ts}${ext}`;
+    finalPath = path.join(uploadDir, finalName);
+  }
+
+  return { finalName, finalPath };
+}
 
 const uploadMultiple = multer({
   storage: storage,
@@ -630,7 +689,8 @@ router.post('/', uploadMultiple, handleUploadError, async (req, res) => {
     const checkPersonQuery = `
       SELECT rut, nombres, cargo, zona_geografica 
       FROM mantenimiento.personal_disponible 
-      WHERE rut = $1
+      -- Normalizamos eliminando puntos para permitir búsquedas con/sin formato (ej. 20.011.078-1 vs 20011078-1)
+      WHERE translate(rut, '.', '') = translate($1, '.', '')
     `;
     
     const personResult = await query(checkPersonQuery, [rutPersona]);
@@ -676,8 +736,48 @@ router.post('/', uploadMultiple, handleUploadError, async (req, res) => {
     }
     
     // Procesar cada archivo
-    for (const archivo of archivos) {
+    const uploadDir = path.join(__dirname, '../uploads/documentos');
+    // nombre_archivo_destino puede ser string o array (por cada archivo)
+    const destNames = req.body.nombre_archivo_destino;
+    for (let i = 0; i < archivos.length; i++) {
+      const archivo = archivos[i];
       try {
+        // Si el cliente pidió un nombre de archivo destino, renombrar el archivo guardado por multer
+        if (destNames) {
+          const desired = Array.isArray(destNames) ? destNames[i] : destNames;
+          if (desired) {
+            try {
+              // Do not append a numeric suffix if the destination name already exists: overwrite instead
+              const { finalName, finalPath } = sanitizeAndResolveFilename(desired, archivo.originalname, uploadDir, { allowSuffix: false });
+              // Mover/renombrar archivo desde la ruta temporal creada por multer
+              // If target exists, remove it so rename doesn't create duplicate with numbers
+              try {
+                if (fs.existsSync(finalPath)) {
+                  fs.unlinkSync(finalPath);
+                }
+              } catch (e) {
+                console.warn('⚠️ No se pudo eliminar archivo destino antes de renombrar:', e.message);
+              }
+              // Also remove numeric-suffixed variants in uploads and Drive folder to avoid duplicates
+              try {
+                const ext = path.extname(finalName);
+                const nameOnly = path.basename(finalName, ext);
+                removeNumericVariants(uploadDir, nameOnly, ext);
+                if (cursosCertificacionesDir) removeNumericVariants(cursosCertificacionesDir, nameOnly, ext);
+                if (userGoogleDriveDir) removeNumericVariants(userGoogleDriveDir, nameOnly, ext);
+              } catch (e) {
+                console.warn('⚠️ Error al eliminar variantes numéricas antes de renombrar:', e.message);
+              }
+              fs.renameSync(archivo.path, finalPath);
+              archivo.filename = finalName;
+              archivo.path = finalPath;
+            } catch (renameErr) {
+              console.warn('⚠️ No se pudo renombrar archivo según nombre_archivo_destino:', renameErr.message);
+              // continuar con el nombre original
+            }
+          }
+        }
+
         // Copiar archivo a Google Drive si se encontró la carpeta
         let googleDrivePath = null;
         if (userGoogleDriveDir) {
@@ -711,16 +811,18 @@ router.post('/', uploadMultiple, handleUploadError, async (req, res) => {
           RETURNING id, fecha_subida
       `;
       
+        // Usar el RUT tal como está guardado en la tabla `personal_disponible` (persona.rut)
+        // para evitar violaciones de llave foránea si el input viene en distinto formato.
         const documentData = [
-          rutPersona,
-        nombre_documento,
-        tipo_documento,
+          persona.rut,
+          nombre_documento,
+          tipo_documento,
           archivo.filename,
-          archivo.originalname,
+          archivo.filename, // nombre_original ajustado para coincidir con el nombre final en disco
           archivo.mimetype,
           archivo.size,
           archivo.path,
-        descripcion || null,
+          descripcion || null,
           req.user?.username || 'sistema',
           fecha_emision || null,
           fecha_vencimiento || null,
@@ -728,13 +830,20 @@ router.post('/', uploadMultiple, handleUploadError, async (req, res) => {
           institucion_emisora || null
         ];
         
+        // DEBUG: registrar exactamente qué RUT se usará en la inserción (ayuda a detectar espacios/formatos)
+        try {
+          console.log('DEBUG: insertar documento - persona.rut=', JSON.stringify(persona.rut), 'length=', String(persona.rut).length, 'charCodes=', String(persona.rut).split('').map(c=>c.charCodeAt(0)));
+        } catch (dbgErr) {
+          console.warn('DEBUG: no se pudo imprimir persona.rut', dbgErr.message);
+        }
+
         const documentResult = await query(insertDocumentQuery, documentData);
         const documento = documentResult.rows[0];
         
         documentosSubidos.push({
           id: documento.id,
           nombre_archivo: archivo.filename,
-          nombre_original: archivo.originalname,
+          nombre_original: archivo.filename, // ajustar para que coincida con el nombre final en disco
           tipo_mime: archivo.mimetype,
           tamaño_bytes: archivo.size,
           fecha_subida: documento.fecha_subida
@@ -787,7 +896,8 @@ router.get('/persona/:rut', async (req, res) => {
     const checkPersonQuery = `
       SELECT rut, nombres, cargo, zona_geografica 
       FROM mantenimiento.personal_disponible 
-      WHERE rut = $1
+      -- Normalizamos eliminando puntos para permitir búsquedas con/sin formato
+      WHERE translate(rut, '.', '') = translate($1, '.', '')
     `;
     
     const personResult = await query(checkPersonQuery, [rut]);
@@ -883,6 +993,29 @@ router.get('/persona/:rut', async (req, res) => {
     const total = parseInt(countResult.rows[0].total);
     console.log(`✅ Encontrados ${result.rows.length} documentos para ${persona.nombres}`);
 
+    // Evitar duplicados en frontend: si un archivo está registrado en la BD
+    // (campo nombre_archivo) no lo incluimos también desde los archivos locales.
+    try {
+      const dbFileNames = new Set(result.rows.map(r => r.nombre_archivo).filter(Boolean));
+      if (dbFileNames.size > 0 && documentosLocales.length > 0) {
+        const before = documentosLocales.length;
+        documentosLocales = documentosLocales.filter(d => !dbFileNames.has(d.nombre_archivo));
+        const removed = before - documentosLocales.length;
+        if (removed > 0) {
+          console.log(`ℹ️ documentos_locales deduplicados: removidos ${removed} archivos que ya existen en BD para ${persona.rut}`);
+        }
+      }
+    } catch (dedupeErr) {
+      console.warn('⚠️ Error durante deduplicación de documentos locales:', dedupeErr.message);
+    }
+
+    // Split local documentos by folder for frontend convenience while keeping
+    // the original 'documentos_locales' array for backward compatibility.
+    const documentosLocalesSplit = {
+      documentos: documentosLocales.filter(d => d.carpeta === 'documentos'),
+      cursos_certificaciones: documentosLocales.filter(d => d.carpeta === 'cursos_certificaciones')
+    };
+
     res.json({
       success: true,
       data: {
@@ -893,7 +1026,8 @@ router.get('/persona/:rut', async (req, res) => {
           zona_geografica: persona.zona_geografica
         },
         documentos: result.rows,
-        documentos_locales: documentosLocales,
+        documentos_locales: documentosLocales, // legacy shape: flat array
+        documentos_locales_split: documentosLocalesSplit, // new split-by-folder shape
         pagination: {
           total,
           limit: parseInt(limit),
@@ -925,7 +1059,8 @@ router.post('/registrar-existente', async (req, res) => {
       fecha_emision,
       fecha_vencimiento,
       dias_validez,
-      institucion_emisora
+      institucion_emisora,
+      nombre_archivo_destino
     } = req.body;
 
     console.log('📄 POST /api/documentos/registrar-existente - Registrando documento existente');
@@ -995,7 +1130,8 @@ router.post('/registrar-existente', async (req, res) => {
     const checkPersonQuery = `
       SELECT rut, nombres, cargo 
       FROM mantenimiento.personal_disponible 
-      WHERE rut = $1
+      -- Normalizamos eliminando puntos para permitir búsquedas con/sin formato
+      WHERE translate(rut, '.', '') = translate($1, '.', '')
     `;
     const personResult = await query(checkPersonQuery, [rut_persona]);
 
@@ -1018,10 +1154,29 @@ router.post('/registrar-existente', async (req, res) => {
 
     // Obtener información del archivo
     const stats = fs.statSync(ruta_local);
-    const ext = path.extname(nombre_archivo);
-    const timestamp = Date.now();
-    const nuevoNombreArchivo = `${path.basename(nombre_archivo, ext)}_${timestamp}${ext}`;
-    const destinoLocal = path.join(__dirname, '../uploads/documentos', nuevoNombreArchivo);
+    const uploadDir = path.join(__dirname, '../uploads/documentos');
+    // Determine destination filename: if nombre_archivo_destino provided, sanitize and use it,
+    // otherwise fallback to original behavior (basename_timestamp.ext)
+    let nuevoNombreArchivo;
+    let destinoLocal;
+    if (nombre_archivo_destino) {
+      // If frontend provides a destination name, try to use it and overwrite any existing file
+      const { finalName, finalPath } = sanitizeAndResolveFilename(nombre_archivo_destino, nombre_archivo, uploadDir, { allowSuffix: false });
+      nuevoNombreArchivo = finalName;
+      destinoLocal = finalPath;
+      try {
+        if (fs.existsSync(destinoLocal)) {
+          fs.unlinkSync(destinoLocal);
+        }
+      } catch (e) {
+        console.warn('⚠️ No se pudo eliminar destino existente antes de copiar registrar-existente:', e.message);
+      }
+    } else {
+      const ext = path.extname(nombre_archivo);
+      const timestamp = Date.now();
+      nuevoNombreArchivo = `${path.basename(nombre_archivo, ext)}_${timestamp}${ext}`;
+      destinoLocal = path.join(__dirname, '../uploads/documentos', nuevoNombreArchivo);
+    }
 
     // Copiar archivo a uploads/documentos (backup local) solo si no está ya allí
     try {
@@ -1067,19 +1222,28 @@ router.post('/registrar-existente', async (req, res) => {
   const esCurso = ['certificado_curso', 'diploma'].includes(tipoNormalizado);
      
      if (esCurso) {
-       googleDrivePath = cursosCertificacionesDir ? path.join(cursosCertificacionesDir, nombre_archivo) : null;
+       googleDrivePath = cursosCertificacionesDir ? path.join(cursosCertificacionesDir, nuevoNombreArchivo) : null;
      } else {
-       googleDrivePath = userGoogleDriveDir ? path.join(userGoogleDriveDir, nombre_archivo) : null;
+       googleDrivePath = userGoogleDriveDir ? path.join(userGoogleDriveDir, nuevoNombreArchivo) : null;
      }
 
      // Solo copiar si el archivo NO está ya en Google Drive (evitar copiar a sí mismo)
      const archivoYaEnGoogleDrive = ruta_local.toLowerCase().startsWith('g:') || ruta_local.toLowerCase().startsWith('g:/');
      
-     if (googleDrivePath && !archivoYaEnGoogleDrive) {
+      if (googleDrivePath && !archivoYaEnGoogleDrive) {
        // Archivo viene de otra ubicación, copiarlo a Google Drive
        try {
-         fs.copyFileSync(ruta_local, googleDrivePath);
-         console.log(`📂 Archivo copiado a Google Drive: ${googleDrivePath}`);
+          // Remove numeric variants in Google Drive dir to avoid duplicates
+          try {
+            const ext2 = path.extname(nuevoNombreArchivo);
+            const nameOnly2 = path.basename(nuevoNombreArchivo, ext2);
+            if (esCurso && cursosCertificacionesDir) removeNumericVariants(cursosCertificacionesDir, nameOnly2, ext2);
+            if (!esCurso && userGoogleDriveDir) removeNumericVariants(userGoogleDriveDir, nameOnly2, ext2);
+          } catch (e) {
+            console.warn('⚠️ Error eliminando variantes en Google Drive antes de copiar:', e.message);
+          }
+          fs.copyFileSync(ruta_local, googleDrivePath);
+          console.log(`📂 Archivo copiado a Google Drive: ${googleDrivePath}`);
        } catch (copyErr) {
          console.error('⚠️ Error copiando a Google Drive:', copyErr.message);
          return res.status(500).json({
@@ -1103,7 +1267,8 @@ router.post('/registrar-existente', async (req, res) => {
       '.jpeg': 'image/jpeg',
       '.png': 'image/png'
     };
-    const tipoMime = mimeTypes[ext.toLowerCase()] || 'application/octet-stream';
+    const ext = (path.extname(nuevoNombreArchivo) || path.extname(nombre_archivo) || '').toLowerCase();
+    const tipoMime = mimeTypes[ext] || 'application/octet-stream';
 
     // Insertar en BD
     const insertQuery = `
@@ -1126,12 +1291,13 @@ router.post('/registrar-existente', async (req, res) => {
       RETURNING id, fecha_subida
     `;
 
+    // Insertar usando el RUT canonical encontrado en la tabla de personas
     const values = [
-      rut_persona,
+      persona.rut,
       nombre_documento,
       tipoNormalizado,
       nuevoNombreArchivo,
-      nombre_archivo,
+      nuevoNombreArchivo, // nombre_original ajustado para coincidir con el nombre final que se guardó
       tipoMime,
       stats.size,
       destinoLocal,
@@ -1142,6 +1308,13 @@ router.post('/registrar-existente', async (req, res) => {
       dias_validez || null,
       institucion_emisora || null
     ];
+
+    // DEBUG: registrar exactamente qué RUT se usará en la inserción (ayuda a detectar espacios/formatos)
+    try {
+      console.log('DEBUG: registrar-existente - persona.rut=', JSON.stringify(persona.rut), 'length=', String(persona.rut).length, 'charCodes=', String(persona.rut).split('').map(c=>c.charCodeAt(0)));
+    } catch (dbgErr) {
+      console.warn('DEBUG: no se pudo imprimir persona.rut (registrar-existente)', dbgErr.message);
+    }
 
     const result = await query(insertQuery, values);
     const documento = result.rows[0];
@@ -1220,19 +1393,40 @@ router.delete('/:id', async (req, res) => {
         deleteFile(documento.ruta_archivo);
       }
 
-      // Adicionalmente, intentar eliminar de la carpeta de Google Drive si existe
+      // Adicionalmente, intentar eliminar de la carpeta de Google Drive si existe.
+      // Hacemos la búsqueda robusta usando una forma normalizada del RUT (sin puntos)
+      // porque los nombres de carpeta en G: pueden contener el RUT sin puntos.
       const baseDir = 'G:/Unidades compartidas/Unidad de Apoyo/Personal';
       try {
         const dirs = fs.readdirSync(baseDir, { withFileTypes: true }).filter(d => d.isDirectory());
+        // Normalizar rut quitando puntos para comparar con nombres de carpeta
+        const normalizedRut = String(documento.rut_persona || '').replace(/\./g, '');
+        const candidates = [];
         for (const dir of dirs) {
-          if (dir.name.includes(documento.rut_persona)) {
-            const googleDriveFilePath = path.join(baseDir, dir.name, 'documentos', documento.nombre_archivo);
-            const googleDriveCursosPath = path.join(baseDir, dir.name, 'cursos_certificaciones', documento.nombre_archivo);
-            
-            deleteFile(googleDriveFilePath);
-            deleteFile(googleDriveCursosPath);
-            break;
+          const dirName = String(dir.name || '');
+          // Match si el nombre de la carpeta contiene el RUT en cualquiera de sus formas
+          if (dirName.includes(normalizedRut) || (documento.rut_persona && dirName.includes(documento.rut_persona))) {
+            candidates.push(path.join(baseDir, dir.name));
           }
+        }
+
+        // Si no encontramos candidatas basadas en el RUT, intentamos una búsqueda más amplia
+        // buscando cualquier carpeta que contenga los dígitos del RUT (por si hay formato distinto)
+        if (candidates.length === 0 && normalizedRut) {
+          for (const dir of dirs) {
+            const dirName = String(dir.name || '');
+            // buscar la secuencia de dígitos parcial (primeros 6 por ejemplo)
+            if (normalizedRut.length >= 6 && dirName.includes(normalizedRut.slice(0, 6))) {
+              candidates.push(path.join(baseDir, dir.name));
+            }
+          }
+        }
+
+        for (const userFolder of candidates) {
+          const googleDriveFilePath = path.join(userFolder, 'documentos', documento.nombre_archivo);
+          const googleDriveCursosPath = path.join(userFolder, 'cursos_certificaciones', documento.nombre_archivo);
+          deleteFile(googleDriveFilePath);
+          deleteFile(googleDriveCursosPath);
         }
       } catch (err) {
         console.warn('⚠️  Advertencia: No se pudo verificar/eliminar el archivo de Google Drive.', err.message);

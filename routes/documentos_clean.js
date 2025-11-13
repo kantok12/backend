@@ -626,7 +626,7 @@ router.post('/', uploadMultiple, handleUploadError, async (req, res) => {
         nombre_documento,
         tipo_documento,
           archivo.filename,
-          archivo.originalname,
+          archivo.filename, // nombre_original adjusted to match stored filename
           archivo.mimetype,
           archivo.size,
           archivo.path,
@@ -644,7 +644,7 @@ router.post('/', uploadMultiple, handleUploadError, async (req, res) => {
         documentosSubidos.push({
           id: documento.id,
           nombre_archivo: archivo.filename,
-          nombre_original: archivo.originalname,
+          nombre_original: archivo.filename,
           tipo_mime: archivo.mimetype,
           tamaño_bytes: archivo.size,
           fecha_subida: documento.fecha_subida

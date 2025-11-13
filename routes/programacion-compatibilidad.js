@@ -16,13 +16,8 @@ async function carteraExists(carteraId) {
 // Función para verificar si una persona existe
 async function personExists(rut) {
   try {
-    // Primero intentar búsqueda exacta
-    let result = await query('SELECT rut FROM mantenimiento.personal_disponible WHERE rut = $1', [rut]);
-    if (result.rows.length > 0) return true;
-    
-    // Si no encuentra, intentar sin puntos
-    const rutSinPuntos = rut.replace(/\./g, '');
-    result = await query('SELECT rut FROM mantenimiento.personal_disponible WHERE REPLACE(rut, \'.\', \') = $1', [rutSinPuntos]);
+    // Usar comparación normalizada (acepta con o sin puntos)
+    const result = await query(`SELECT rut FROM mantenimiento.personal_disponible WHERE translate(rut, '.', '') = translate($1, '.', '')`, [rut]);
     return result.rows.length > 0;
   } catch (err) {
     console.error('Error verificando persona:', err);
@@ -322,10 +317,10 @@ router.post('/', async (req, res) => {
     if (sabado) diasSeleccionados.push('sabado');
     if (domingo) diasSeleccionados.push('domingo');
 
-    // Eliminar asignaciones existentes para esta persona en esta semana
+    // Eliminar asignaciones existentes para esta persona en esta semana (comparación normalizada de RUT)
     await query(`
       DELETE FROM mantenimiento.programacion_compatibilidad 
-      WHERE rut = $1 AND cartera_id = $2 AND semana_inicio = $3
+      WHERE translate(rut, '.', '') = translate($1, '.', '') AND cartera_id = $2 AND semana_inicio = $3
     `, [rut, cartera_id, semanaInicio]);
 
     // Crear un registro por cada día seleccionado
