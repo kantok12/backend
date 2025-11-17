@@ -251,6 +251,44 @@ router.get('/minimo-personal/por-cliente', async (req, res) => {
   }
 });
 
+// GET /api/servicios/minimo-personal/simple
+// Devuelve una lista simple con { cliente_id, nombre_cliente, minimo_real }
+router.get('/minimo-personal/simple', async (req, res) => {
+  try {
+    console.log('📋 GET /api/servicios/minimo-personal/simple - Obteniendo nombre de cliente y mínimo (simple)');
+
+    const queryText = `
+      SELECT DISTINCT ON (mp.cliente_id)
+        mp.cliente_id,
+        cl.nombre AS nombre_cliente,
+        servicios.calcular_minimo_real(mp.id) AS minimo_real
+      FROM servicios.minimo_personal mp
+      LEFT JOIN servicios.clientes cl ON mp.cliente_id = cl.id
+      WHERE mp.cliente_id IS NOT NULL AND mp.activo = true
+      ORDER BY mp.cliente_id, mp.id DESC
+    `;
+
+    const result = await query(queryText);
+
+    const data = result.rows.map(r => ({
+      cliente_id: r.cliente_id,
+      nombre_cliente: r.nombre_cliente,
+      minimo_real: Number(r.minimo_real)
+    }));
+
+    res.json({
+      success: true,
+      message: 'Mínimos simples por cliente obtenidos exitosamente',
+      count: data.length,
+      data
+    });
+
+  } catch (error) {
+    console.error('❌ Error en GET /api/servicios/minimo-personal/simple:', error);
+    res.status(500).json({ success: false, message: 'Error interno del servidor', error: error.message });
+  }
+});
+
 // GET /api/servicios/minimo-personal/by-cliente/:cliente_id
 // Devuelve el mínimo (más reciente y activo) asociado a un cliente específico
 // NOTE: escape the backslash in the string literal so the route regex is registered correctly

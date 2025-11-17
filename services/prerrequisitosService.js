@@ -41,6 +41,7 @@ async function matchForCliente(clienteId, ruts = [], opts = {}) {
     cliente_id: r.cliente_id,
     tipo_original: r.tipo_documento,
     tipo_norm: normalizeTipo(r.tipo_documento),
+    descripcion: r.descripcion,
     dias_duracion: r.dias_duracion
   }));
 
@@ -112,12 +113,31 @@ async function matchForCliente(clienteId, ruts = [], opts = {}) {
     }
 
     const faltantes = requiredTypes.filter(t => !satisfied.has(t));
+    const required_count = requiredTypes.length;
+    const provided_count = satisfied.size;
     const matchesAll = requireAll ? (faltantes.length === 0) : (satisfied.size > 0);
+
+    // Build missing_docs with value+label
+    const missing_docs = faltantes.map(t => ({
+      value: t,
+      label: (prereqByTipo[t] && prereqByTipo[t].descripcion) ? prereqByTipo[t].descripcion : t,
+      required: true
+    }));
+
+    // Determine estado_acreditacion: 'all' | 'some' | 'none'
+    let estado_acreditacion = 'none';
+    if (provided_count >= required_count) estado_acreditacion = 'all';
+    else if (provided_count > 0) estado_acreditacion = 'some';
 
     results.push({
       rut,
       matchesAll,
-      faltantes,
+      required_count,
+      provided_count,
+      estado_acreditacion,
+      // Compatibilidad: devolver también `faltantes` como array de strings
+      faltantes: faltantes,
+      missing_docs,
       documentos: documentosResumen
     });
   }
