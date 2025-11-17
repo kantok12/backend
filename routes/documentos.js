@@ -381,6 +381,7 @@ router.get('/', async (req, res) => {
         d.nombre_archivo,
         d.nombre_original,
         d.tipo_mime,
+        d.ruta_archivo,
         d.tamaño_bytes,
         d.descripcion,
         d.fecha_subida,
@@ -584,6 +585,7 @@ router.get('/:id', async (req, res) => {
         d.nombre_archivo,
         d.nombre_original,
         d.tipo_mime,
+        d.ruta_archivo,
         d.tamaño_bytes,
         d.ruta_archivo,
         d.descripcion,
@@ -810,7 +812,7 @@ router.post('/', uploadMultiple, handleUploadError, async (req, res) => {
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
           RETURNING id, fecha_subida
       `;
-      
+
         // Usar el RUT tal como está guardado en la tabla `personal_disponible` (persona.rut)
         // para evitar violaciones de llave foránea si el input viene en distinto formato.
         const documentData = [
@@ -821,7 +823,7 @@ router.post('/', uploadMultiple, handleUploadError, async (req, res) => {
           archivo.filename, // nombre_original ajustado para coincidir con el nombre final en disco
           archivo.mimetype,
           archivo.size,
-          archivo.path,
+          (googleDrivePath || archivo.path),
           descripcion || null,
           req.user?.username || 'sistema',
           fecha_emision || null,
@@ -844,8 +846,10 @@ router.post('/', uploadMultiple, handleUploadError, async (req, res) => {
           id: documento.id,
           nombre_archivo: archivo.filename,
           nombre_original: archivo.filename, // ajustar para que coincida con el nombre final en disco
+          nombre_archivo_guardado: archivo.filename,
           tipo_mime: archivo.mimetype,
           tamaño_bytes: archivo.size,
+          ruta_archivo: (googleDrivePath || archivo.path),
           fecha_subida: documento.fecha_subida
         });
         
@@ -1300,7 +1304,7 @@ router.post('/registrar-existente', async (req, res) => {
       nuevoNombreArchivo, // nombre_original ajustado para coincidir con el nombre final que se guardó
       tipoMime,
       stats.size,
-      destinoLocal,
+      (googleDrivePath || destinoLocal),
       descripcion || null,
       req.user?.username || 'sistema',
       fecha_emision || null,
@@ -1335,6 +1339,8 @@ router.post('/registrar-existente', async (req, res) => {
           nombre_documento,
           tipo_documento: tipoNormalizado,
           nombre_archivo: nuevoNombreArchivo,
+          nombre_archivo_guardado: nuevoNombreArchivo,
+          ruta_archivo: (googleDrivePath || destinoLocal),
           fecha_subida: documento.fecha_subida
         }
       }

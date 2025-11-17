@@ -294,19 +294,29 @@ router.post('/notificaciones', async (req, res) => {
       });
     }
 
-    if (!['info', 'warning', 'error', 'success', 'critical'].includes(tipo)) {
+    // Allow custom notification types (e.g. 'auditoria_sistema'). Keep a
+    // lightweight validation but do not restrict to a fixed enum so the
+    // system can accept domain-specific tipos.
+    if (!tipo || typeof tipo !== 'string' || tipo.trim().length === 0 || tipo.length > 100) {
       return res.status(400).json({
         success: false,
-        message: 'tipo debe ser: info, warning, error, success, critical'
+        message: 'tipo debe ser una cadena no vacía de máximo 100 caracteres'
       });
     }
 
+    // Some DB schemas may not have an explicit `es_critico` column in
+    // `sistema.notificaciones`. To remain compatible, persist `es_critico`
+    // inside the `metadata` JSONB and only insert existing columns.
+    const metadataToStore = metadata || {};
+    if (es_critico) metadataToStore.es_critico = es_critico;
+    if (req.body.prioridad) metadataToStore.prioridad = req.body.prioridad;
+
     const result = await query(`
       INSERT INTO sistema.notificaciones (
-        tipo, titulo, mensaje, usuario_destino, es_critico, metadata, expira_en
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        tipo, titulo, mensaje, usuario_destino, metadata, expira_en
+      ) VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
-    `, [tipo, titulo, mensaje, usuario_destino, es_critico, metadata, expira_en]);
+    `, [tipo, titulo, mensaje, usuario_destino, metadataToStore, expira_en]);
 
     console.log(`✅ Notificación creada: ${result.rows[0].id}`);
 
@@ -323,6 +333,66 @@ router.post('/notificaciones', async (req, res) => {
       message: 'Error creando notificación',
       error: error.message
     });
+  }
+});
+
+// POST /api/auditoria/notificaciones/expiring - Crear notificaciones para documentos por vencer
+router.post('/notificaciones/expiring', async (req, res) => {
+  try {
+    const { days = 30 } = req.body;
+
+    console.log(`🔎 Buscando documentos que vencen en los próximos ${days} días...`);
+
+    const docs = await query(`
+      SELECT id, rut_persona, nombre_documento, nombre_archivo, fecha_vencimiento
+      FROM mantenimiento.documentos
+      WHERE activo = true
+        AND fecha_vencimiento IS NOT NULL
+        AND fecha_vencimiento <= CURRENT_DATE + ($1 || ' days')::interval
+        AND (estado_documento IS NULL OR estado_documento <> 'vencido')
+      ORDER BY fecha_vencimiento ASC
+    `, [days]);
+
+    if (!docs.rows.length) {
+      return res.json({ success: true, message: 'No hay documentos por vencer en el rango indicado', data: { count: 0 } });
+    }
+
+    let created = 0;
+    const createdItems = [];
+
+    for (const doc of docs.rows) {
+      // Evitar duplicar notificaciones para el mismo documento
+      const exists = await query(`
+        SELECT 1 FROM sistema.notificaciones n
+        WHERE (n.metadata->>'documento_id') = $1
+        LIMIT 1
+      `, [String(doc.id)]);
+
+      if (exists.rows.length > 0) continue;
+
+      const titulo = `Documento por vencer: ${doc.nombre_documento}`;
+      const mensaje = `El documento '${doc.nombre_documento}' (archivo: ${doc.nombre_archivo || 'sin archivo'}) vence el ${doc.fecha_vencimiento}`;
+      const metadataToStore = { documento_id: doc.id, rut_persona: doc.rut_persona, nombre_archivo: doc.nombre_archivo, notification_type: 'documento_por_vencer' };
+
+      // Use a permitted tipo value to avoid violating DB CHECK constraints
+      // (the detailed classification is kept inside metadata.notification_type)
+      const permittedTipo = 'warning';
+
+      const ins = await query(`
+        INSERT INTO sistema.notificaciones (tipo, titulo, mensaje, usuario_destino, metadata, expira_en)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING *
+      `, [permittedTipo, titulo, mensaje, null, metadataToStore, doc.fecha_vencimiento]);
+
+      created++;
+      createdItems.push(ins.rows[0]);
+    }
+
+    res.json({ success: true, message: 'Proceso completado', data: { scanned: docs.rows.length, created, items: createdItems } });
+
+  } catch (error) {
+    console.error('Error creando notificaciones de documentos por vencer:', error);
+    res.status(500).json({ success: false, message: 'Error procesando documentos por vencer', error: error.message });
   }
 });
 
