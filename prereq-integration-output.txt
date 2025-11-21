@@ -1,0 +1,276 @@
+﻿== /health ==
+{
+    "status":  "OK",
+    "message":  "Servidor funcionando correctamente",
+    "timestamp":  "2025-11-19T18:03:44.907Z",
+    "environment":  "development"
+}
+
+== GET /api/prerrequisitos/cliente/1 ==
+{
+    "success":  true,
+    "message":  "Prerrequisitos obtenidos exitosamente",
+    "data":  [
+                 {
+                     "id":  16,
+                     "cliente_id":  null,
+                     "tipo_documento":  "Carnet de Identidad",
+                     "descripcion":  null,
+                     "dias_duracion":  40,
+                     "created_at":  "2025-11-07T12:15:02.196Z",
+                     "updated_at":  "2025-11-07T12:15:06.258Z",
+                     "es_global":  true
+                 },
+                 {
+                     "id":  19,
+                     "cliente_id":  null,
+                     "tipo_documento":  "Contrato De trabajo",
+                     "descripcion":  null,
+                     "dias_duracion":  10000,
+                     "created_at":  "2025-11-12T12:54:45.266Z",
+                     "updated_at":  "2025-11-12T12:54:45.266Z",
+                     "es_global":  true
+                 }
+             ]
+}
+
+== POST /api/prerrequisitos/clientes/1/match ==
+{
+    "success":  true,
+    "data":  [
+                 {
+                     "rut":  "16924504-5",
+                     "matchesAll":  false,
+                     "required_count":  2,
+                     "provided_count":  1,
+                     "estado_acreditacion":  "some",
+                     "faltantes":  [
+                                       "carnet_identidad"
+                                   ],
+                     "missing_docs":  [
+                                          {
+                                              "value":  "carnet_identidad",
+                                              "label":  "carnet_identidad",
+                                              "required":  true
+                                          }
+                                      ],
+                     "documentos":  [
+                                        {
+                                            "id":  141,
+                                            "tipo_original":  "otro",
+                                            "tipo_normalizado":  "otro",
+                                            "fecha_vencimiento":  null,
+                                            "fecha_subida":  "2025-11-17T14:45:56.053Z",
+                                            "vencido":  false
+                                        },
+                                        {
+                                            "id":  140,
+                                            "tipo_original":  "certificado_seguridad",
+                                            "tipo_normalizado":  "otro",
+                                            "fecha_vencimiento":  null,
+                                            "fecha_subida":  "2025-11-17T13:47:49.765Z",
+                                            "vencido":  false
+                                        },
+                                        {
+                                            "id":  139,
+                                            "tipo_original":  "otro",
+                                            "tipo_normalizado":  "otro",
+                                            "fecha_vencimiento":  null,
+                                            "fecha_subida":  "2025-11-17T13:46:56.816Z",
+                                            "vencido":  false
+                                        },
+                                        {
+                                            "id":  138,
+                                            "tipo_original":  "licencia_conducir",
+                                            "tipo_normalizado":  "licencia_conducir",
+                                            "fecha_vencimiento":  null,
+                                            "fecha_subida":  "2025-11-17T13:46:42.920Z",
+                                            "vencido":  false
+                                        },
+                                        {
+                                            "id":  122,
+                                            "tipo_original":  "certificado_curso",
+                                            "tipo_normalizado":  "certificado_curso",
+                                            "fecha_vencimiento":  "2025-11-21T03:00:00.000Z",
+                                            "fecha_subida":  "2025-11-12T11:06:08.825Z",
+                                            "vencido":  false
+                                        }
+                                    ]
+                 }
+             ]
+}
+
+== GET /api/documentos/persona/16924504-5 ==
+{
+    "success":  true,
+    "data":  {
+                 "persona":  {
+                                 "rut":  "16924504-5",
+                                 "nombre":  "Morales Ortiz Xavier Mauricio",
+                                 "cargo":  "Ingeniero de Servicios",
+                                 "zona_geografica":  null
+                             },
+                 "documentos":  [
+                                    {
+                                        "id":  141,
+                                        "nombre_documento":  "Informe_panorámico.pdf",
+                                        "tipo_documento":  "otro",
+                                        "nombre_archivo":  "Informe_panormico.pdf",
+                                        "nombre_original":  "Informe_panormico.pdf",
+                                        "tipo_mime":  "application/pdf",
+                                        "tamaño_bytes":  "259342",
+                                        "descripcion":  null,
+                                        "fecha_subida":  "2025-11-17T14:45:56.053Z",
+                                        "subido_por":  "sistema",
+                                        "fecha_emision":  null,
+                                        "fecha_vencimiento":  null,
+                                        "dias_validez":  null,
+                                        "estado_documento":  "vigente",
+                                        "institucion_emisora":  null
+                                    },
+                                    {
+                                        "id":  140,
+                                        "nombre_documento":  "Páginas_y_pantallas_Ruta_de_página_y_clase_de_pantalla.pdf",
+                                        "tipo_documento":  "certificado_seguridad",
+                                        "nombre_archivo":  "Pginas_y_pantallas_Ruta_de_pgina_y_clase_de_pantalla.pdf",
+                                        "nombre_original":  "Pginas_y_pantallas_Ruta_de_pgina_y_clase_de_pantalla.pdf",
+                                        "tipo_mime":  "application/pdf",
+                                        "tamaño_bytes":  "146617",
+                                        "descripcion":  null,
+                                        "fecha_subida":  "2025-11-17T13:47:49.765Z",
+                                        "subido_por":  "sistema",
+                                        "fecha_emision":  null,
+                                        "fecha_vencimiento":  null,
+                                        "dias_validez":  null,
+                                        "estado_documento":  "vigente",
+                                        "institucion_emisora":  null
+                                    },
+                                    {
+                                        "id":  139,
+                                        "nombre_documento":  "01. Planificación Servicios Semana 37 (1).pdf",
+                                        "tipo_documento":  "otro",
+                                        "nombre_archivo":  "01._Planificacin_Servicios_Semana_37_(1).pdf",
+                                        "nombre_original":  "01._Planificacin_Servicios_Semana_37_(1).pdf",
+                                        "tipo_mime":  "application/pdf",
+                                        "tamaño_bytes":  "222813",
+                                        "descripcion":  null,
+                                        "fecha_subida":  "2025-11-17T13:46:56.816Z",
+                                        "subido_por":  "sistema",
+                                        "fecha_emision":  null,
+                                        "fecha_vencimiento":  null,
+                                        "dias_validez":  null,
+                                        "estado_documento":  "vigente",
+                                        "institucion_emisora":  null
+                                    },
+                                    {
+                                        "id":  138,
+                                        "nombre_documento":  "01. Planificación Servicios Semana 37 (1).pdf",
+                                        "tipo_documento":  "licencia_conducir",
+                                        "nombre_archivo":  "01._Planificacin_Servicios_Semana_37_(1).pdf",
+                                        "nombre_original":  "01._Planificacin_Servicios_Semana_37_(1).pdf",
+                                        "tipo_mime":  "application/pdf",
+                                        "tamaño_bytes":  "222813",
+                                        "descripcion":  null,
+                                        "fecha_subida":  "2025-11-17T13:46:42.920Z",
+                                        "subido_por":  "sistema",
+                                        "fecha_emision":  null,
+                                        "fecha_vencimiento":  null,
+                                        "dias_validez":  null,
+                                        "estado_documento":  "vigente",
+                                        "institucion_emisora":  null
+                                    },
+                                    {
+                                        "id":  122,
+                                        "nombre_documento":  "d",
+                                        "tipo_documento":  "certificado_curso",
+                                        "nombre_archivo":  "d.pdf",
+                                        "nombre_original":  "d.pdf",
+                                        "tipo_mime":  "application/pdf",
+                                        "tamaño_bytes":  "556711",
+                                        "descripcion":  null,
+                                        "fecha_subida":  "2025-11-12T11:06:08.825Z",
+                                        "subido_por":  "sistema",
+                                        "fecha_emision":  "2025-11-13T03:00:00.000Z",
+                                        "fecha_vencimiento":  "2025-11-21T03:00:00.000Z",
+                                        "dias_validez":  8,
+                                        "estado_documento":  "vigente",
+                                        "institucion_emisora":  "a"
+                                    }
+                                ],
+                 "documentos_locales":  [
+
+                                        ],
+                 "documentos_locales_split":  {
+                                                  "documentos":  [
+
+                                                                 ],
+                                                  "cursos_certificaciones":  [
+
+                                                                             ]
+                                              },
+                 "pagination":  {
+                                    "total":  5,
+                                    "limit":  50,
+                                    "offset":  0,
+                                    "hasMore":  false
+                                }
+             }
+}
+
+== GET /api/prerrequisitos/clientes/1/cumplen ==
+{
+    "success":  true,
+    "message":  "OK",
+    "data":  [
+                 {
+                     "persona":  {
+                                     "rut":  "20.011.078-1",
+                                     "nombres":  "Claudio Nicolas Muñoz Herrera",
+                                     "cargo":  "Ingeniero en confiablidad",
+                                     "zona_geografica":  "Valparaiso"
+                                 },
+                     "documentos":  [
+                                        {
+                                            "id":  98,
+                                            "tipo_original":  "cv",
+                                            "tipo_normalizado":  "otro",
+                                            "fecha_vencimiento":  "2025-11-15T03:00:00.000Z",
+                                            "fecha_subida":  "2025-11-11T12:17:38.406Z",
+                                            "vencido":  true
+                                        },
+                                        {
+                                            "id":  71,
+                                            "tipo_original":  "otro",
+                                            "tipo_normalizado":  "otro",
+                                            "fecha_vencimiento":  "2025-11-27T03:00:00.000Z",
+                                            "fecha_subida":  "2025-11-10T13:49:27.247Z",
+                                            "vencido":  false
+                                        },
+                                        {
+                                            "id":  55,
+                                            "tipo_original":  "carnet de identidad",
+                                            "tipo_normalizado":  "carnet_identidad",
+                                            "fecha_vencimiento":  "2026-01-07T03:00:00.000Z",
+                                            "fecha_subida":  "2025-11-07T12:15:52.612Z",
+                                            "vencido":  false
+                                        },
+                                        {
+                                            "id":  54,
+                                            "tipo_original":  "prueba",
+                                            "tipo_normalizado":  "otro",
+                                            "fecha_vencimiento":  "2026-01-07T03:00:00.000Z",
+                                            "fecha_subida":  "2025-11-07T12:13:44.565Z",
+                                            "vencido":  false
+                                        },
+                                        {
+                                            "id":  53,
+                                            "tipo_original":  "examen_preocupacional",
+                                            "tipo_normalizado":  "otro",
+                                            "fecha_vencimiento":  "2025-12-07T03:00:00.000Z",
+                                            "fecha_subida":  "2025-11-07T12:13:07.733Z",
+                                            "vencido":  false
+                                        }
+                                    ]
+                 }
+             ]
+}

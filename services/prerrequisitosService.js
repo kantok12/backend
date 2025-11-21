@@ -114,8 +114,9 @@ async function matchForCliente(clienteId, ruts = [], opts = {}) {
 
     const faltantes = requiredTypes.filter(t => !satisfied.has(t));
     const required_count = requiredTypes.length;
-    const provided_count = satisfied.size;
-    const matchesAll = requireAll ? (faltantes.length === 0) : (satisfied.size > 0);
+    // Count how many REQUIRED types are actually satisfied (intersection)
+    const provided_count = requiredTypes.filter(t => satisfied.has(t)).length;
+    const matchesAll = requireAll ? (faltantes.length === 0) : (provided_count > 0);
 
     // Build missing_docs with value+label
     const missing_docs = faltantes.map(t => ({
