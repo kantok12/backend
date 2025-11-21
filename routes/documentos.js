@@ -896,24 +896,24 @@ router.get('/persona/:rut', async (req, res) => {
     
     console.log(`📄 GET /api/documentos/persona/${rut} - Obteniendo documentos por RUT`);
     
-    // Verificar que la persona existe
+    // Intentar recuperar la persona registrada, pero no exigirla.
+    // Antes el endpoint devolvía 404 si la persona no existía en `personal_disponible`.
+    // Para que la UI pueda listar documentos incluso si la persona no está registrada,
+    // ahora continuamos aunque no encontremos la fila en `personal_disponible`.
     const checkPersonQuery = `
       SELECT rut, nombres, cargo, zona_geografica 
       FROM mantenimiento.personal_disponible 
       -- Normalizamos eliminando puntos para permitir búsquedas con/sin formato
       WHERE translate(rut, '.', '') = translate($1, '.', '')
     `;
-    
+
     const personResult = await query(checkPersonQuery, [rut]);
-    
+    let persona = null;
     if (personResult.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: `No se encontró personal con RUT: ${rut}`
-      });
+      console.log(`ℹ️ GET /api/documentos/persona/${rut} - persona no encontrada en personal_disponible, continuando a buscar documentos en BD`);
+    } else {
+      persona = personResult.rows[0];
     }
-    
-    const persona = personResult.rows[0];
 
     // Buscar documentos en carpeta Google Drive enlazada
     const baseDir = 'G:/Unidades compartidas/Unidad de Apoyo/Personal';
@@ -995,7 +995,7 @@ router.get('/persona/:rut', async (req, res) => {
     `;
     const countResult = await query(countQuery, queryParams.slice(0, -2));
     const total = parseInt(countResult.rows[0].total);
-    console.log(`✅ Encontrados ${result.rows.length} documentos para ${persona.nombres}`);
+    console.log(`✅ Encontrados ${result.rows.length} documentos para RUT ${rut}` + (persona ? ` (persona: ${persona.nombres})` : ' (persona no registrada)'));
 
     // Evitar duplicados en frontend: si un archivo está registrado en la BD
     // (campo nombre_archivo) no lo incluimos también desde los archivos locales.
@@ -1023,12 +1023,12 @@ router.get('/persona/:rut', async (req, res) => {
     res.json({
       success: true,
       data: {
-        persona: {
+        persona: persona ? {
           rut: persona.rut,
           nombre: persona.nombres,
           cargo: persona.cargo,
           zona_geografica: persona.zona_geografica
-        },
+        } : null,
         documentos: result.rows,
         documentos_locales: documentosLocales, // legacy shape: flat array
         documentos_locales_split: documentosLocalesSplit, // new split-by-folder shape

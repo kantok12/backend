@@ -239,6 +239,52 @@ router.post('/clientes/:clienteId/match', [
   }
 });
 
+// --- Compatibilidad: GET aliases para clientes/match (acepta ?rut=... o ?rut=a&rut=b)
+// GET /api/prerrequisitos/clientes/:clienteId/match?rut=...  (convenience alias para frontend)
+router.get('/clientes/:clienteId/match', async (req, res) => {
+  try {
+    const { clienteId } = req.params;
+    const queryRuts = req.query.rut;
+    if (!queryRuts) {
+      return res.status(400).json({ success: false, message: 'El parámetro rut es requerido (query).' });
+    }
+
+    const ruts = Array.isArray(queryRuts) ? queryRuts : [queryRuts];
+    const requireAll = req.query.requireAll !== 'false';
+    const includeGlobal = req.query.includeGlobal !== 'false';
+
+    const results = await matchForCliente(parseInt(clienteId, 10), ruts, { requireAll, includeGlobal });
+
+    res.json({ success: true, data: results });
+  } catch (error) {
+    console.error('❌ Error en GET clientes/:clienteId/match:', error);
+    res.status(500).json({ success: false, message: 'Error interno del servidor', error: error.message });
+  }
+});
+
+// Compatibilidad: GET /api/prerrequisitos/clientes/:clienteId?rut=...&match=1 -> ejecutar matching
+router.get('/clientes/:clienteId', async (req, res, next) => {
+  try {
+    // Si vienen query params para match, delegamos al servicio de match
+    if (req.query.rut && req.query.match) {
+      const { clienteId } = req.params;
+      const queryRuts = req.query.rut;
+      const ruts = Array.isArray(queryRuts) ? queryRuts : [queryRuts];
+      const requireAll = req.query.requireAll !== 'false';
+      const includeGlobal = req.query.includeGlobal !== 'false';
+
+      const results = await matchForCliente(parseInt(clienteId, 10), ruts, { requireAll, includeGlobal });
+      return res.json({ success: true, data: results });
+    }
+
+    // Si no se solicita match, delegar al siguiente handler (no interferimos)
+    return next();
+  } catch (error) {
+    console.error('❌ Error en GET clientes/:clienteId (alias):', error);
+    res.status(500).json({ success: false, message: 'Error interno del servidor', error: error.message });
+  }
+});
+
 // GET /api/prerrequisitos/clientes/:clienteId/cumplen - Obtener personas que cumplen TODOS los prerrequisitos
 router.get('/clientes/:clienteId/cumplen', async (req, res) => {
   try {

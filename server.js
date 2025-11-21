@@ -117,6 +117,25 @@ app.use('/api/profile-photos', profilePhotosRoutes);
 app.use('/api/prerrequisitos', prerrequisitosRoutes);
 // Alias para compatibilidad con frontend (ortografía alternativa)
 app.use('/api/prerequisitos', prerrequisitosRoutes);
+
+// Compatibilidad rápida: exponer GET /api/clientes/:clienteId/match?rut=... que delega al servicio de prerrequisitos
+app.get('/api/clientes/:clienteId/match', async (req, res) => {
+  try {
+    const { clienteId } = req.params;
+    const queryRuts = req.query.rut;
+    if (!queryRuts) return res.status(400).json({ success: false, message: 'El parámetro rut es requerido (query).' });
+    const ruts = Array.isArray(queryRuts) ? queryRuts : [queryRuts];
+    const requireAll = req.query.requireAll !== 'false';
+    const includeGlobal = req.query.includeGlobal !== 'false';
+
+    const { matchForCliente } = require('./services/prerrequisitosService');
+    const results = await matchForCliente(parseInt(clienteId, 10), ruts, { requireAll, includeGlobal });
+    res.json({ success: true, data: results });
+  } catch (error) {
+    console.error('❌ Error alias GET /api/clientes/:clienteId/match:', error);
+    res.status(500).json({ success: false, message: 'Error interno del servidor', error: error.message });
+  }
+});
 app.use('/api/asignaciones', asignacionesRoutes);
 app.use('/api/programacion', programacionRoutes);
 app.use('/api/programacion-optimizada', programacionOptimizadaRoutes);

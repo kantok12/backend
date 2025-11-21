@@ -136,10 +136,40 @@ router.post('/persona/:rut/clientes', async (req, res) => {
     }
 
     const shouldEnforce = enforce === false ? false : true;
+    const requiredCount = requisitosUsados.filter(r => r.obligatorio).length;
+    const providedCount = cumplidos.length;
+
     if (shouldEnforce && faltantes.length > 0) {
+      // Crear etiquetas legibles para el frontend
+      const labelMap = {
+        licencia_conducir: 'Licencia de conducir',
+        certificado_seguridad: 'Certificado de seguridad',
+        certificado_medico: 'Certificado médico',
+        carnet_identidad: 'Carnet de identidad',
+        otro: 'Otros documentos'
+      };
+
+      const requiredCount = requisitosUsados.filter(r => r.obligatorio).length;
+      const providedCount = cumplidos.length;
+
+      const missing = faltantes.map(f => ({
+        type: f.tipo_documento,
+        label: labelMap[f.tipo_documento] || f.tipo_documento,
+        required: !!f.obligatorio
+      }));
+
       return res.status(409).json({
         success: false,
-        message: 'No cumple prerrequisitos obligatorios para este cliente',
+        code: 'PREREQUISITOS_INCOMPATIBLES',
+        message: 'No es posible asignar el cliente porque faltan documentos obligatorios.',
+        payload: {
+          cliente_id: cliente_id,
+          rut: rut,
+          required_count: requiredCount,
+          provided_count: providedCount,
+          missing: missing
+        },
+        // Mantener `validacion` para compatibilidad con consumidores existentes
         validacion: { requisitos: requisitosUsados, cumplidos, faltantes, vencidos: [], por_vencer: [] }
       });
     }
@@ -150,7 +180,20 @@ router.post('/persona/:rut/clientes', async (req, res) => {
       ON CONFLICT (rut, cliente_id) DO NOTHING
     `, [rut, cliente_id]);
 
-    res.status(201).json({ success: true, message: 'Cliente asignado', validacion: { requisitos: requisitosUsados, cumplidos, faltantes, vencidos: [], por_vencer: [] } });
+    // Responder con payload consistente para el frontend
+    res.status(201).json({
+      success: true,
+      code: 'PREREQUISITOS_OK',
+      message: 'Cliente asignado correctamente.',
+      payload: {
+        cliente_id: cliente_id,
+        rut: rut,
+        required_count: requiredCount,
+        provided_count: providedCount,
+        missing: []
+      },
+      validacion: { requisitos: requisitosUsados, cumplidos, faltantes, vencidos: [], por_vencer: [] }
+    });
   } catch (err) {
     console.error('Error asignando cliente:', err);
     res.status(500).json({ success: false, message: 'Error asignando cliente', error: err.message });
