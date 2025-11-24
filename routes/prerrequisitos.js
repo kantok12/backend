@@ -130,6 +130,30 @@ router.post('/', [
   }
 });
 
+// GET /api/prerrequisitos/clientes - Listar todos los prerrequisitos por cliente (incluye globales: cliente_id = null)
+router.get('/clientes', async (req, res) => {
+  try {
+    const result = await query(`
+      SELECT id, cliente_id, tipo_documento, descripcion, dias_duracion, created_at, updated_at
+      FROM mantenimiento.cliente_prerrequisitos
+      ORDER BY cliente_id NULLS FIRST, tipo_documento
+    `);
+
+    // Agrupar por cliente_id
+    const grouped = {};
+    for (const row of result.rows) {
+      const key = row.cliente_id === null ? 'global' : String(row.cliente_id);
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(row);
+    }
+
+    res.json({ success: true, data: grouped });
+  } catch (error) {
+    console.error('❌ Error obteniendo todos los prerrequisitos por cliente:', error);
+    res.status(500).json({ success: false, message: 'Error interno del servidor', error: error.message });
+  }
+});
+
 // PUT /api/prerrequisitos/:id - Actualizar un prerrequisito
 router.put('/:id', [
   body('tipo_documento').notEmpty().withMessage('El tipo de documento es requerido.'),
@@ -222,12 +246,13 @@ router.post('/clientes/:clienteId/match', [
     const { ruts, requireAll = true, includeGlobal = true } = req.body;
 
     // Llamar al servicio
-    const results = await matchForCliente(parseInt(clienteId, 10), ruts, { requireAll, includeGlobal });
-
-    res.json({
-      success: true,
-      data: results
-    });
+    try {
+      const results = await matchForCliente(parseInt(clienteId, 10), ruts, { requireAll, includeGlobal });
+      return res.json({ success: true, data: results });
+    } catch (e) {
+      if (e.code === 'PAYLOAD_TOO_LARGE') return res.status(413).json({ success: false, message: 'Too many RUTs in request' });
+      throw e;
+    }
 
   } catch (error) {
     console.error('❌ Error en matching de prerrequisitos:', error);
@@ -253,9 +278,13 @@ router.get('/clientes/:clienteId/match', async (req, res) => {
     const requireAll = req.query.requireAll !== 'false';
     const includeGlobal = req.query.includeGlobal !== 'false';
 
-    const results = await matchForCliente(parseInt(clienteId, 10), ruts, { requireAll, includeGlobal });
-
-    res.json({ success: true, data: results });
+    try {
+      const results = await matchForCliente(parseInt(clienteId, 10), ruts, { requireAll, includeGlobal });
+      res.json({ success: true, data: results });
+    } catch (e) {
+      if (e.code === 'PAYLOAD_TOO_LARGE') return res.status(413).json({ success: false, message: 'Too many RUTs in request' });
+      throw e;
+    }
   } catch (error) {
     console.error('❌ Error en GET clientes/:clienteId/match:', error);
     res.status(500).json({ success: false, message: 'Error interno del servidor', error: error.message });
@@ -302,6 +331,28 @@ router.get('/clientes/:clienteId/cumplen', async (req, res) => {
     res.json({ success: true, message: result.message || 'OK', data: result.data });
   } catch (error) {
     console.error('❌ Error en GET /api/prerrequisitos/clientes/:clienteId/cumplen:', error);
+    res.status(500).json({ success: false, message: 'Error interno del servidor', error: error.message });
+  }
+});
+
+// GET /api/prerrequisitos/clientes/:clienteId/parciales - Obtener personas que cumplen algunos pero no todos los prerrequisitos
+router.get('/clientes/:clienteId/parciales', async (req, res) => {
+  try {
+    const { clienteId } = req.params;
+    const includeGlobal = req.query.includeGlobal !== 'false';
+    const limit = parseInt(req.query.limit) || 1000;
+    const offset = parseInt(req.query.offset) || 0;
+
+    const { getPersonasQueCumplenAlgunos } = require('../services/prerrequisitosService');
+    const result = await getPersonasQueCumplenAlgunos(parseInt(clienteId, 10), { includeGlobal, limit, offset });
+
+    if (!result || !result.data) {
+      return res.json({ success: true, message: result.message || 'No data', data: [] });
+    }
+
+    res.json({ success: true, message: result.message || 'OK', data: result.data });
+  } catch (error) {
+    console.error('❌ Error en GET /api/prerrequisitos/clientes/:clienteId/parciales:', error);
     res.status(500).json({ success: false, message: 'Error interno del servidor', error: error.message });
   }
 });

@@ -1,0 +1,4 @@
+[
+  { "tipo_documento": "licencia_conducir", "obligatorio": true, "dias_validez": 365 },
+  { "tipo_documento": "certificado_seguridad", "obligatorio": true, "dias_validez": 365 }
+]

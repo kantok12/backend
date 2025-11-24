@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { query } = require('../config/database');
+const { matchForRut } = require('../services/prerequisitosService');
 
 async function personExists(rut) {
   const r = await query('SELECT rut FROM mantenimiento.personal_disponible WHERE rut = $1', [rut]);
@@ -158,6 +159,14 @@ router.post('/persona/:rut/clientes', async (req, res) => {
         required: !!f.obligatorio
       }));
 
+      // Also compute a full matchResult using the prerequisitos service for frontend consumers
+      let matchResult = null;
+      try {
+        matchResult = await matchForRut(cliente_id, rut);
+      } catch (e) {
+        console.warn('No se pudo obtener matchResult desde el servicio:', e.message);
+      }
+
       return res.status(409).json({
         success: false,
         code: 'PREREQUISITOS_INCOMPATIBLES',
@@ -169,6 +178,7 @@ router.post('/persona/:rut/clientes', async (req, res) => {
           provided_count: providedCount,
           missing: missing
         },
+        data: matchResult,
         // Mantener `validacion` para compatibilidad con consumidores existentes
         validacion: { requisitos: requisitosUsados, cumplidos, faltantes, vencidos: [], por_vencer: [] }
       });

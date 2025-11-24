@@ -1,0 +1,4 @@
+[
+  { "id": 55, "tipo_documento": "carnet de identidad", "tipo_normalizado": "carnet_identidad", "fecha_vencimiento": "2026-01-07T03:00:00.000Z", "vencido": false },
+  { "id": 71, "tipo_documento": "otro", "tipo_normalizado": "otro", "fecha_vencimiento": "2025-11-27T03:00:00.000Z", "vencido": false }
+]

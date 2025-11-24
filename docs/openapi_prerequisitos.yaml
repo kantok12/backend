@@ -1,0 +1,55 @@
+openapi: 3.0.0
+info:
+  title: Prerrequisitos API
+  version: 1.0.0
+
+paths:
+  /prerequisitos/clientes/{clienteId}/match:
+    get:
+      summary: Match prerrequisitos for single RUT (query param)
+      parameters:
+        - in: path
+          name: clienteId
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: rut
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Match result for one or more RUTs
+          content:
+            application/json:
+              schema:
+                type: object
+    post:
+      summary: Match prerrequisitos for a list of RUTs
+      parameters:
+        - in: path
+          name: clienteId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ruts:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Array of match results
+          content:
+            application/json:
+              schema:
+                type: object
+        '413':
+          description: Payload Too Large
