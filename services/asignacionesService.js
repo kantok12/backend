@@ -9,20 +9,25 @@ const prerrequisitosService = require('./prerrequisitosService');
  */
 async function asignarPersonal(clienteId, rut) {
   try {
-    // Verificar si el personal cumple con los requisitos del endpoint mach
-    const cumpleRequisitos = await prerrequisitosService.matchForCliente(clienteId, rut);
+    // Verificar si el personal cumple con los requisitos usando el wrapper machForCliente
+    const matchResult = await prerrequisitosService.machForCliente(parseInt(clienteId, 10), rut, { includeGlobal: true });
 
-    if (!cumpleRequisitos) {
-      return { success: false, message: 'El personal no cumple con los requisitos para este cliente.' };
+    if (!matchResult || !matchResult.success) {
+      // Si el servicio no devolvió datos válidos
+      return { success: false, message: 'No se pudo verificar los prerrequisitos para este RUT.' };
+    }
+
+    if (!matchResult.data || !matchResult.data.cumple) {
+      return { success: false, message: 'El personal no cumple con los requisitos para este cliente.', details: matchResult.data };
     }
 
     // Verificar si el personal ya tiene una asignación
-    const [asignacionExistente] = await db.query(
+    const asignRes = await db.query(
       'SELECT * FROM servicios.asignacion WHERE rut = $1 AND cliente_id = $2',
       [rut, clienteId]
     );
 
-    if (asignacionExistente) {
+    if (asignRes && asignRes.rows && asignRes.rows.length > 0) {
       return { success: false, message: 'El personal ya tiene una asignación con este cliente.' };
     }
 

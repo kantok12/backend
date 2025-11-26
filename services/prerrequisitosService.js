@@ -48,15 +48,18 @@ async function matchForCliente(clienteId, ruts = [], opts = {}) {
   // Build set of required types
   const requiredTypes = [...new Set(prereqs.map(p => p.tipo_norm))];
 
-  if (!ruts || ruts.length === 0) return [];
+  if (!ruts || (Array.isArray(ruts) && ruts.length === 0) || (!Array.isArray(ruts) && String(ruts).trim() === '')) return [];
+
+  // Normalize ruts to always be an array of strings so we can use ANY($1::text[])
+  const rutArray = Array.isArray(ruts) ? ruts : [ruts];
 
   // 2. Cargar documentos para los ruts en batch
   // NOTE: some DB schemas may not have an `activo` boolean column on documentos.
   // To avoid "no existe la columna 'activo'" errors we fetch documents by rut
   // and rely on downstream logic (isVencido) to determine validity.
   const docsRes = await query(
-    `SELECT * FROM mantenimiento.documentos WHERE rut_persona = $1 ORDER BY fecha_subida DESC`,
-    [ruts]
+    `SELECT * FROM mantenimiento.documentos WHERE rut_persona = ANY($1::text[]) ORDER BY fecha_subida DESC`,
+    [rutArray]
   );
   const docs = docsRes.rows;
 
@@ -75,7 +78,7 @@ async function matchForCliente(clienteId, ruts = [], opts = {}) {
   }
 
   const results = [];
-  for (const rut of ruts) {
+  for (const rut of rutArray) {
     const personDocs = (docsByRut[rut] || []).map(d => {
       const tipoRaw = d.tipo_documento || d.nombre_documento || '';
       const tipo_norm = normalizeTipo(tipoRaw);
@@ -329,5 +332,42 @@ async function getPersonasQueCumplenAlgunos(clienteId, opts = {}) {
   return { message: 'OK', data: results };
 }
 
-module.exports = { matchForCliente, isVencido, getPersonasQueCumplen, getPersonasQueCumplenAlgunos };
+// Convenience wrapper for single-rut checks used by routes (mach)
+async function machForCliente(clienteId, rut, opts = {}) {
+  const results = await matchForCliente(clienteId, [rut], opts);
+  const r = (results && results[0]) ? results[0] : null;
+
+  // Build persona info (try to enrich from personal_disponible)
+  let persona = { rut, nombres: 'Nombre no disponible', cargo: 'Cargo no disponible', zona_geografica: null };
+  try {
+    const res = await query('SELECT rut, nombres, cargo, zona_geografica FROM mantenimiento.personal_disponible WHERE rut = $1', [rut]);
+    if (res && res.rows && res.rows[0]) persona = res.rows[0];
+  } catch (e) {
+    // ignore enrichment errors
+  }
+
+  if (!r) {
+    return { success: false, message: 'No data for rut', data: { persona } };
+  }
+
+  const cumple = !!r.matchesAll;
+  const message = cumple ? 'Match completo' : 'No match - faltan prerrequisitos';
+
+  return {
+    success: true,
+    message,
+    data: {
+      persona,
+      cumple,
+      required_count: r.required_count,
+      provided_count: r.provided_count,
+      faltantes: r.faltantes,
+      missing_docs: r.missing_docs,
+      documentos: r.documentos,
+      estado_acreditacion: r.estado_acreditacion
+    }
+  };
+}
+
+module.exports = { matchForCliente, machForCliente, isVencido, getPersonasQueCumplen, getPersonasQueCumplenAlgunos };
 
