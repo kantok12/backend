@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../config/database');
 const { matchForRut } = require('../services/prerequisitosService');
+const asignacionesService = require('../services/asignacionesService');
 
 async function personExists(rut) {
   const r = await query('SELECT rut FROM mantenimiento.personal_disponible WHERE rut = $1', [rut]);
@@ -307,6 +308,28 @@ router.get('/nodos/:id/personal', async (req, res) => {
   } catch (err) {
     console.error('Error listando personal por nodo:', err);
     res.status(500).json({ success: false, message: 'Error listando personal', error: err.message });
+  }
+});
+
+/**
+ * POST /api/asignaciones/:clienteId
+ * Asigna personal a un cliente específico si cumple con los requisitos.
+ */
+router.post('/:clienteId', async (req, res) => {
+  const { clienteId } = req.params;
+  const { rut } = req.body;
+
+  try {
+    const resultado = await asignacionesService.asignarPersonal(clienteId, rut);
+
+    if (!resultado.success) {
+      return res.status(400).json({ message: resultado.message });
+    }
+
+    res.status(200).json({ message: resultado.message });
+  } catch (error) {
+    console.error('Error en el endpoint de asignaciones:', error);
+    res.status(500).json({ message: 'Error interno del servidor.' });
   }
 });
 
