@@ -1111,8 +1111,8 @@ router.post('/registrar-existente', async (req, res) => {
       'laboral': 'certificado_laboral',
       'vencimiento': 'certificado_vencimiento',
       // Abreviaturas frecuentes
-      'cv': 'otro',
-      'c.v.': 'otro',
+      'cv': 'cv',
+      'c.v.': 'cv',
       // Cédula/DNI/etc. no tiene categoría propia en la CHECK -> usar 'otro'
       'cedula': 'otro',
       'cédula': 'otro',

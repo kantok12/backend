@@ -3,7 +3,7 @@ const { query } = require('../config/database');
 const { body, validationResult } = require('express-validator');
 
 const router = express.Router();
-const { matchForCliente } = require('../services/prerrequisitosService');
+const { matchForCliente, machForCliente } = require('../services/prerrequisitosService');
 const { getPersonasQueCumplen } = require('../services/prerrequisitosService');
 
 // Middleware para validar errores
@@ -354,6 +354,74 @@ router.get('/clientes/:clienteId/parciales', async (req, res) => {
   } catch (error) {
     console.error('❌ Error en GET /api/prerrequisitos/clientes/:clienteId/parciales:', error);
     res.status(500).json({ success: false, message: 'Error interno del servidor', error: error.message });
+  }
+});
+
+// POST /api/prerrequisitos/clientes/:clienteId/mach - Verificar si una persona cumple con TODOS los prerrequisitos
+router.post('/clientes/:clienteId/mach', [
+  body('rut').notEmpty().withMessage('El RUT es requerido.'),
+  body('includeGlobal').optional().isBoolean(),
+  handleValidationErrors
+], async (req, res) => {
+  try {
+    const { clienteId } = req.params;
+    const { rut, includeGlobal = true } = req.body;
+
+    console.log(`🔍 POST /api/prerrequisitos/clientes/${clienteId}/mach - Verificando match completo para RUT: ${rut}`);
+
+    const result = await machForCliente(parseInt(clienteId, 10), rut, { includeGlobal });
+
+    if (!result.success) {
+      return res.status(404).json(result);
+    }
+
+    console.log(`✅ Match result for ${rut}: ${result.data.cumple ? 'CUMPLE' : 'NO CUMPLE'}`);
+
+    res.json(result);
+
+  } catch (error) {
+    console.error('❌ Error en POST /api/prerrequisitos/clientes/:clienteId/mach:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/prerrequisitos/clientes/:clienteId/mach - Alias GET para verificar match (útil para frontend)
+router.get('/clientes/:clienteId/mach', async (req, res) => {
+  try {
+    const { clienteId } = req.params;
+    const { rut, includeGlobal = true } = req.query;
+
+    if (!rut) {
+      return res.status(400).json({
+        success: false,
+        message: 'El parámetro rut es requerido en query string.'
+      });
+    }
+
+    console.log(`🔍 GET /api/prerrequisitos/clientes/${clienteId}/mach - Verificando match completo para RUT: ${rut}`);
+    console.log(`🔍 includeGlobal: ${includeGlobal}, type: ${typeof includeGlobal}`);
+
+    const result = await machForCliente(parseInt(clienteId, 10), rut, { includeGlobal });
+
+    if (!result.success) {
+      return res.status(404).json(result);
+    }
+
+    console.log(`✅ Match result for ${rut}: ${result.data.cumple ? 'CUMPLE' : 'NO CUMPLE'}`);
+
+    res.json(result);
+
+  } catch (error) {
+    console.error('❌ Error en GET /api/prerrequisitos/clientes/:clienteId/mach:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
   }
 });
 

@@ -329,5 +329,117 @@ async function getPersonasQueCumplenAlgunos(clienteId, opts = {}) {
   return { message: 'OK', data: results };
 }
 
-module.exports = { matchForCliente, isVencido, getPersonasQueCumplen, getPersonasQueCumplenAlgunos };
+// Función para verificar si una persona específica cumple con TODOS los prerrequisitos de un cliente
+async function machForCliente(clienteId, rut, opts = {}) {
+  const includeGlobal = opts.includeGlobal !== undefined ? opts.includeGlobal : true;
+
+  console.log(`🔍 machForCliente - clienteId: ${clienteId}, rut: ${rut}, includeGlobal: ${includeGlobal}`);
+
+  // 1. Cargar prerrequisitos del cliente (y globales si solicitado)
+  const prereqParams = [clienteId];
+  let prereqQuery = `SELECT id, cliente_id, tipo_documento, descripcion, dias_duracion FROM mantenimiento.cliente_prerrequisitos WHERE cliente_id = $1`;
+  if (includeGlobal) {
+    prereqQuery = `SELECT id, cliente_id, tipo_documento, descripcion, dias_duracion FROM mantenimiento.cliente_prerrequisitos WHERE cliente_id = $1 OR cliente_id IS NULL`;
+  }
+  const prereqRes = await query(prereqQuery, prereqParams);
+  const prereqs = prereqRes.rows.map(r => ({
+    id: r.id,
+    cliente_id: r.cliente_id,
+    tipo_original: r.tipo_documento,
+    tipo_norm: normalizeTipo(r.tipo_documento),
+    descripcion: r.descripcion,
+    dias_duracion: r.dias_duracion
+  }));
+
+  if (prereqs.length === 0) {
+    return {
+      success: false,
+      message: 'No prerequisites defined for this client',
+      data: null
+    };
+  }
+
+  // 2. Obtener documentos de la persona
+  const docsQuery = `
+    SELECT
+      d.id, d.nombre_documento, d.tipo_documento, d.fecha_subida,
+      d.fecha_vencimiento, d.dias_validez, d.estado_documento
+    FROM mantenimiento.documentos d
+    WHERE d.rut_persona = $1
+  `;
+  const docsRes = await query(docsQuery, [rut]);
+  const documentos = docsRes.rows.map(d => ({
+    id: d.id,
+    tipo_original: d.tipo_documento,
+    tipo_norm: normalizeTipo(d.tipo_documento),
+    fecha_subida: d.fecha_subida,
+    fecha_vencimiento: d.fecha_vencimiento,
+    dias_validez: d.dias_validez,
+    estado_documento: d.estado_documento,
+    vencido: isVencido(d, null) // Se calculará después con el prerrequisito específico
+  }));
+
+  // 3. Obtener info de la persona
+  const personQuery = `
+    SELECT rut, nombres, cargo, zona_geografica
+    FROM mantenimiento.personal_disponible
+    WHERE rut = $1
+  `;
+  const personRes = await query(personQuery, [rut]);
+  const persona = personRes.rows[0] || { rut, nombres: 'Nombre no disponible', cargo: 'Cargo no disponible', zona_geografica: null };
+
+  // 4. Verificar cumplimiento de cada prerrequisito
+  const requiredTypes = [...new Set(prereqs.map(p => p.tipo_norm))];
+  const providedTypes = new Set();
+  const documentosValidos = [];
+
+  for (const prereq of prereqs) {
+    // Buscar documentos que coincidan con este prerrequisito
+    const matchingDocs = documentos.filter(doc =>
+      doc.tipo_norm === prereq.tipo_norm && !isVencido(doc, prereq)
+    );
+
+    if (matchingDocs.length > 0) {
+      providedTypes.add(prereq.tipo_norm);
+      // Agregar el primer documento válido encontrado
+      documentosValidos.push({
+        ...matchingDocs[0],
+        tipo_requerido: prereq.tipo_original,
+        descripcion_requerida: prereq.descripcion
+      });
+    }
+  }
+
+  // 5. Determinar si cumple con TODOS los prerrequisitos
+  const faltantes = requiredTypes.filter(type => !providedTypes.has(type));
+  const cumple = faltantes.length === 0;
+
+  return {
+    success: true,
+    message: cumple ? 'Match completo - cumple con todos los prerrequisitos' : 'No match - faltan prerrequisitos',
+    data: {
+      persona: {
+        rut: persona.rut,
+        nombres: persona.nombres,
+        cargo: persona.cargo,
+        zona_geografica: persona.zona_geografica
+      },
+      cumple,
+      provided_count: providedTypes.size,
+      required_count: requiredTypes.length,
+      faltantes: faltantes.map(tipo => {
+        const prereq = prereqs.find(p => p.tipo_norm === tipo);
+        return prereq ? prereq.tipo_original : tipo;
+      }),
+      documentos: documentosValidos,
+      prerrequisitos_requeridos: prereqs.map(p => ({
+        tipo_documento: p.tipo_original,
+        descripcion: p.descripcion,
+        es_global: p.cliente_id === null
+      }))
+    }
+  };
+}
+
+module.exports = { matchForCliente, isVencido, getPersonasQueCumplen, getPersonasQueCumplenAlgunos, machForCliente };
 
