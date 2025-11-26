@@ -321,12 +321,22 @@ router.post('/:clienteId', async (req, res) => {
 
   try {
     const resultado = await asignacionesService.asignarPersonal(clienteId, rut);
-
     if (!resultado.success) {
-      return res.status(400).json({ message: resultado.message });
+      // Mapear códigos del servicio a estados HTTP y payloads front-friendly
+      if (resultado.code === 'PREREQUISITOS_INCOMPATIBLES') {
+        return res.status(409).json({ success: false, code: resultado.code, message: resultado.message, details: resultado.details });
+      }
+      if (resultado.code === 'ALREADY_ASSIGNED') {
+        return res.status(409).json({ success: false, code: resultado.code, message: resultado.message });
+      }
+      if (resultado.code === 'CHECK_FAILED') {
+        return res.status(500).json({ success: false, code: resultado.code, message: resultado.message });
+      }
+
+      return res.status(400).json({ success: false, message: resultado.message });
     }
 
-    res.status(200).json({ message: resultado.message });
+    res.status(201).json({ success: true, code: 'ASSIGNED', message: resultado.message });
   } catch (error) {
     console.error('Error en el endpoint de asignaciones:', error);
     res.status(500).json({ message: 'Error interno del servidor.' });

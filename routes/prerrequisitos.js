@@ -319,16 +319,52 @@ router.get('/clientes/:clienteId/cumplen', async (req, res) => {
   try {
     const { clienteId } = req.params;
     const includeGlobal = req.query.includeGlobal !== 'false';
-    const limit = parseInt(req.query.limit) || 1000;
+    const limit = (typeof req.query.limit !== 'undefined' && req.query.limit !== null && req.query.limit !== '') ? parseInt(req.query.limit, 10) : null;
     const offset = parseInt(req.query.offset) || 0;
 
-    const result = await getPersonasQueCumplen(parseInt(clienteId, 10), { includeGlobal, limit, offset });
+    // New implementation: fetch ruts from personal_disponible, use matchForCliente in batches
+    // and return matches with persona info.
+    const pdQuery = `
+      SELECT rut, nombres, cargo, zona_geografica
+      FROM mantenimiento.personal_disponible
+      ORDER BY nombres
+      ${limit ? 'LIMIT $1 OFFSET $2' : ''}
+    `;
 
-    if (!result || !result.data) {
-      return res.json({ success: true, message: result.message || 'No data', data: [] });
+    const pdParams = limit ? [limit, offset] : [];
+    const pdRes = await query(pdQuery, pdParams);
+    const rows = pdRes.rows || [];
+    const ruts = rows.map(r => r.rut);
+
+    const matches = [];
+    const batchSize = 250;
+    for (let i = 0; i < ruts.length; i += batchSize) {
+      const slice = ruts.slice(i, i + batchSize);
+      const batchResults = await matchForCliente(parseInt(clienteId, 10), slice, { requireAll: true, includeGlobal });
+      for (const resItem of batchResults) {
+        const fulfilled = (resItem.cumple === true) || (resItem.matchesAll === true);
+        if (fulfilled) {
+          // find persona row
+          const personaRow = rows.find(rr => rr.rut === resItem.rut) || {};
+          resItem.persona = {
+            rut: resItem.rut,
+            nombres: personaRow.nombres || 'Nombre no disponible',
+            cargo: personaRow.cargo || 'Cargo no disponible',
+            zona_geografica: personaRow.zona_geografica || null
+          };
+          matches.push(resItem);
+        }
+      }
     }
 
-    res.json({ success: true, message: result.message || 'OK', data: result.data });
+    return res.json({
+      success: true,
+      message: matches.length > 0 ? 'OK' : 'No matches',
+      data: {
+        total: matches.length,
+        matches
+      }
+    });
   } catch (error) {
     console.error('❌ Error en GET /api/prerrequisitos/clientes/:clienteId/cumplen:', error);
     res.status(500).json({ success: false, message: 'Error interno del servidor', error: error.message });
@@ -340,7 +376,7 @@ router.get('/clientes/:clienteId/parciales', async (req, res) => {
   try {
     const { clienteId } = req.params;
     const includeGlobal = req.query.includeGlobal !== 'false';
-    const limit = parseInt(req.query.limit) || 1000;
+    const limit = (typeof req.query.limit !== 'undefined' && req.query.limit !== null && req.query.limit !== '') ? parseInt(req.query.limit, 10) : null;
     const offset = parseInt(req.query.offset) || 0;
 
     const { getPersonasQueCumplenAlgunos } = require('../services/prerrequisitosService');

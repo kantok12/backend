@@ -106,20 +106,49 @@ module.exports = { matchForRut, matchBatch, matchForCliente };
 
 async function getPersonasQueCumplen(clienteId, options = {}) {
   // Naive implementation: paginate over `mantenimiento.personal_disponible` and use matchForRut
-  const limit = options.limit || 1000;
+  // If limit is null/undefined, fetch all rows (no LIMIT/OFFSET)
+  const limit = (options.limit === undefined || options.limit === null) ? null : options.limit;
   const offset = options.offset || 0;
-  // Fetch RUTs from personal_disponible
-  const r = await query(`SELECT rut FROM mantenimiento.personal_disponible ORDER BY nombres LIMIT $1 OFFSET $2`, [limit, offset]);
-  const ruts = r.rows.map(row => row.rut);
+  let r;
+  if (limit === null) {
+    r = await query(`
+      SELECT rut, nombres, cargo, zona_geografica
+      FROM mantenimiento.personal_disponible
+      ORDER BY nombres
+    `);
+  } else {
+    // Fetch RUTs from personal_disponible with pagination
+    r = await query(`
+      SELECT rut, nombres, cargo, zona_geografica
+      FROM mantenimiento.personal_disponible
+      ORDER BY nombres
+      LIMIT $1 OFFSET $2
+    `, [limit, offset]);
+  }
+
+  const rows = r.rows;
   const results = [];
-  for (const rut of ruts) {
+
+  for (const row of rows) {
+    const rut = row.rut;
     try {
       const match = await matchForRut(clienteId, rut);
-      if (match && match.cumple) results.push(match);
+      if (match) {
+        // Attach persona info for frontend: nombres, cargo, zona_geografica
+        match.persona = {
+          rut: rut,
+          nombres: row.nombres || 'Nombre no disponible',
+          cargo: row.cargo || 'Cargo no disponible',
+          zona_geografica: row.zona_geografica || null
+        };
+        // Support different shapes returned by match functions (cumple || matchesAll)
+        if (match.cumple || match.matchesAll) results.push(match);
+      }
     } catch (e) {
       console.warn('Error matching rut in getPersonasQueCumplen:', rut, e.message);
     }
   }
+
   return { message: 'OK', data: results };
 }
 

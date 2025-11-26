@@ -14,11 +14,11 @@ async function asignarPersonal(clienteId, rut) {
 
     if (!matchResult || !matchResult.success) {
       // Si el servicio no devolvió datos válidos
-      return { success: false, message: 'No se pudo verificar los prerrequisitos para este RUT.' };
+      return { success: false, code: 'CHECK_FAILED', message: 'No se pudo verificar los prerrequisitos para este RUT.' };
     }
 
     if (!matchResult.data || !matchResult.data.cumple) {
-      return { success: false, message: 'El personal no cumple con los requisitos para este cliente.', details: matchResult.data };
+      return { success: false, code: 'PREREQUISITOS_INCOMPATIBLES', message: 'El personal no cumple con los requisitos para este cliente.', details: matchResult.data };
     }
 
     // Verificar si el personal ya tiene una asignación
@@ -28,7 +28,7 @@ async function asignarPersonal(clienteId, rut) {
     );
 
     if (asignRes && asignRes.rows && asignRes.rows.length > 0) {
-      return { success: false, message: 'El personal ya tiene una asignación con este cliente.' };
+      return { success: false, code: 'ALREADY_ASSIGNED', message: 'El personal ya tiene una asignación con este cliente.' };
     }
 
     // Registrar la nueva asignación

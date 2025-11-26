@@ -1,6 +1,11 @@
 const { query } = require('../config/database');
 const { normalizeTipo } = require('../lib/tipoDocumento');
 
+function normalizeRut(rut) {
+  if (!rut) return '';
+  return String(rut).replace(/\./g, '').trim();
+}
+
 // Helper para determinar si un documento está vencido según reglas
 function isVencido(doc, prerrequisito) {
   // doc: object with fecha_vencimiento (Date|null), fecha_subida (Date|null)
@@ -52,21 +57,22 @@ async function matchForCliente(clienteId, ruts = [], opts = {}) {
 
   // Normalize ruts to always be an array of strings so we can use ANY($1::text[])
   const rutArray = Array.isArray(ruts) ? ruts : [ruts];
+  const rutArrayNorm = rutArray.map(normalizeRut);
 
-  // 2. Cargar documentos para los ruts en batch
+  // 2. Cargar documentos para los ruts en batch (comparando rut sin puntos)
   // NOTE: some DB schemas may not have an `activo` boolean column on documentos.
-  // To avoid "no existe la columna 'activo'" errors we fetch documents by rut
+  // To avoid "no existe la columna 'activo'" errors we fetch documents by normalized rut
   // and rely on downstream logic (isVencido) to determine validity.
   const docsRes = await query(
-    `SELECT * FROM mantenimiento.documentos WHERE rut_persona = ANY($1::text[]) ORDER BY fecha_subida DESC`,
-    [rutArray]
+    `SELECT * FROM mantenimiento.documentos WHERE translate(rut_persona, '.', '') = ANY($1::text[]) ORDER BY fecha_subida DESC`,
+    [rutArrayNorm]
   );
   const docs = docsRes.rows;
 
   // Group documents by rut
   const docsByRut = {};
   for (const d of docs) {
-    const rut = d.rut_persona;
+    const rut = normalizeRut(d.rut_persona);
     if (!docsByRut[rut]) docsByRut[rut] = [];
     docsByRut[rut].push(d);
   }
@@ -79,7 +85,8 @@ async function matchForCliente(clienteId, ruts = [], opts = {}) {
 
   const results = [];
   for (const rut of rutArray) {
-    const personDocs = (docsByRut[rut] || []).map(d => {
+    const rutNorm = normalizeRut(rut);
+    const personDocs = (docsByRut[rutNorm] || []).map(d => {
       const tipoRaw = d.tipo_documento || d.nombre_documento || '';
       const tipo_norm = normalizeTipo(tipoRaw);
       return Object.assign({}, d, { tipo_norm });
@@ -190,11 +197,12 @@ async function getPersonasQueCumplen(clienteId, opts = {}) {
   // 3. Obtener documentos de estos ruts
   // Avoid referencing a non-existent `activo` column; pull all docs for these ruts
   // and let `isVencido` and `estado_documento` determine eligibility.
-  const docsRes = await query(`SELECT * FROM mantenimiento.documentos WHERE rut_persona = ANY($1::text[]) ORDER BY fecha_subida DESC`, [ruts]);
+  const rutsNorm = ruts.map(normalizeRut);
+  const docsRes = await query(`SELECT * FROM mantenimiento.documentos WHERE translate(rut_persona, '.', '') = ANY($1::text[]) ORDER BY fecha_subida DESC`, [rutsNorm]);
   const docs = docsRes.rows;
   const docsByRut = {};
   for (const d of docs) {
-    const rut = d.rut_persona;
+    const rut = normalizeRut(d.rut_persona);
     if (!docsByRut[rut]) docsByRut[rut] = [];
     docsByRut[rut].push(d);
   }
@@ -296,11 +304,12 @@ async function getPersonasQueCumplenAlgunos(clienteId, opts = {}) {
   if (ruts.length === 0) return { message: 'No personnel found', data: [] };
 
   // 3. Obtener documentos de estos ruts
-  const docsRes = await query(`SELECT * FROM mantenimiento.documentos WHERE rut_persona = ANY($1::text[]) ORDER BY fecha_subida DESC`, [ruts]);
+  const rutsNorm = ruts.map(normalizeRut);
+  const docsRes = await query(`SELECT * FROM mantenimiento.documentos WHERE translate(rut_persona, '.', '') = ANY($1::text[]) ORDER BY fecha_subida DESC`, [rutsNorm]);
   const docs = docsRes.rows;
   const docsByRut = {};
   for (const d of docs) {
-    const rut = d.rut_persona;
+    const rut = normalizeRut(d.rut_persona);
     if (!docsByRut[rut]) docsByRut[rut] = [];
     docsByRut[rut].push({
       tipo: normalizeTipo(d.tipo_documento || d.nombre_documento || ''),
