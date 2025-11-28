@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { query } = require('../config/database');
+const carpetasPersonal = require('./carpetas-personal');
 
 // GET /personal-disponible - listar todo el personal disponible (con paginación opcional)
 router.get('/', async (req, res) => {
@@ -275,6 +276,24 @@ router.post('/', async (req, res) => {
       created_at || null
     ].slice(0,28));
 
+    // Intentar crear/verificar carpeta en unidad compartida
+    (async () => {
+      try {
+        const nombresVal = (nombres || result.rows[0].nombres || '').toString();
+        const rutVal = (rut || result.rows[0].rut || '').toString();
+        if (carpetasPersonal && typeof carpetasPersonal.crearCarpetaPersonal === 'function') {
+          const carpetaRes = await carpetasPersonal.crearCarpetaPersonal(rutVal, nombresVal);
+          if (carpetaRes && carpetaRes.success) {
+            console.log(`✅ Carpeta creada/verificada para ${nombresVal} (${rutVal}): ${carpetaRes.path}`);
+          } else {
+            console.warn(`⚠️ No se pudo crear/verificar carpeta para ${nombresVal} (${rutVal}):`, carpetaRes && carpetaRes.error ? carpetaRes.error : carpetaRes);
+          }
+        }
+      } catch (err) {
+        console.error('Error creando carpeta para personal tras inserción:', err);
+      }
+    })();
+
     res.status(201).json({
       success: true,
       message: 'Personal disponible creado exitosamente',
@@ -407,11 +426,29 @@ router.put('/:rut', async (req, res) => {
       });
     }
 
-    res.json({
-      success: true,
-      message: 'Personal disponible actualizado exitosamente',
-      data: result.rows[0]
-    });
+      // Intentar crear/verificar carpeta en unidad compartida (no bloquear respuesta)
+      (async () => {
+        try {
+          const nombresVal = (nombres || result.rows[0].nombres || '').toString();
+          const rutVal = rut;
+          if (carpetasPersonal && typeof carpetasPersonal.crearCarpetaPersonal === 'function') {
+            const carpetaRes = await carpetasPersonal.crearCarpetaPersonal(rutVal, nombresVal);
+            if (carpetaRes && carpetaRes.success) {
+              console.log(`✅ Carpeta creada/verificada para ${nombresVal} (${rutVal}): ${carpetaRes.path}`);
+            } else {
+              console.warn(`⚠️ No se pudo crear/verificar carpeta para ${nombresVal} (${rutVal}):`, carpetaRes && carpetaRes.error ? carpetaRes.error : carpetaRes);
+            }
+          }
+        } catch (err) {
+          console.error('Error creando carpeta para personal tras actualización:', err);
+        }
+      })();
+
+      res.json({
+        success: true,
+        message: 'Personal disponible actualizado exitosamente',
+        data: result.rows[0]
+      });
 
   } catch (error) {
     console.error('Error al actualizar personal disponible:', error);

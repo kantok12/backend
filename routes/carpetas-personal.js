@@ -1,5 +1,6 @@
 const express = require('express');
 const fs = require('fs').promises;
+const fsSync = require('fs');
 const path = require('path');
 const multer = require('multer');
 const { query } = require('../config/database');
@@ -8,6 +9,12 @@ const router = express.Router();
 
 // Ruta base para las carpetas del personal (Google Drive)
 const BASE_PATH = 'G:\\Unidades compartidas\\Unidad de Apoyo\\Personal';
+
+function sanitizeFolderName(name) {
+  if (!name) return '';
+  // Remove characters invalid for Windows filenames and trim
+  return name.replace(/[<>:\\"/\\|?*\x00-\x1F]/g, '').trim();
+}
 
 /**
  * Función para obtener información del personal por RUT
@@ -91,16 +98,26 @@ async function crearSubcarpetas(carpetaPersonal) {
 // Configuración de multer para subida de archivos
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const rut = req.params.rut;
+    const rut = req.params.rut || 'unknown';
     const subcarpeta = req.body.subcarpeta || 'documentos';
-    const carpetaDestino = path.join(BASE_PATH, `${req.body.nombres} - ${rut}`, subcarpeta);
-    cb(null, carpetaDestino);
+    const nombresRaw = req.body.nombres || '';
+    const nombreCarpeta = `${sanitizeFolderName(nombresRaw)} - ${rut}`.trim();
+    const carpetaDestino = path.join(BASE_PATH, nombreCarpeta, subcarpeta);
+
+    try {
+      if (!fsSync.existsSync(carpetaDestino)) {
+        fsSync.mkdirSync(carpetaDestino, { recursive: true });
+      }
+      cb(null, carpetaDestino);
+    } catch (err) {
+      cb(err);
+    }
   },
   filename: function (req, file, cb) {
     const timestamp = Date.now();
-    const nombreOriginal = file.originalname;
+    const nombreOriginal = file.originalname || 'file';
     const extension = path.extname(nombreOriginal);
-    const nombreSinExtension = path.basename(nombreOriginal, extension);
+    const nombreSinExtension = path.basename(nombreOriginal, extension).replace(/[^a-zA-Z0-9-_. ]/g, '');
     const nombreArchivo = `${nombreSinExtension}_${timestamp}${extension}`;
     cb(null, nombreArchivo);
   }
@@ -431,43 +448,109 @@ router.post('/crear-subcarpetas-todas', async (req, res) => {
 });
 
 // POST /api/carpetas-personal/:rut/subir - Subir archivo a carpeta específica
-router.post('/:rut/subir', upload.single('archivo'), async (req, res) => {
-  try {
-    const { rut } = req.params;
-    const { subcarpeta } = req.body;
-    
-    if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: 'No se proporcionó archivo'
-      });
-    }
-    
-    console.log(`📤 Archivo subido para RUT: ${rut}`);
-    console.log(`   Archivo: ${req.file.originalname}`);
-    console.log(`   Subcarpeta: ${subcarpeta || 'documentos'}`);
-    console.log(`   Ruta: ${req.file.path}`);
-    
-    res.json({
-      success: true,
-      message: 'Archivo subido exitosamente',
-      data: {
-        archivo_original: req.file.originalname,
-        archivo_guardado: req.file.filename,
-        ruta: req.file.path,
-        tamaño: req.file.size,
-        subcarpeta: subcarpeta || 'documentos'
+router.post('/:rut/subir', (req, res) => {
+  // Primero, obtener información del personal y crear/verificar carpeta
+  (async () => {
+    try {
+      const { rut } = req.params;
+      const personalInfo = await obtenerPersonalPorRut(rut);
+      if (!personalInfo.success) {
+        return res.status(404).json({ success: false, message: personalInfo.message });
       }
-    });
-    
-  } catch (error) {
-    console.error('Error subiendo archivo:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error subiendo archivo',
-      error: error.message
-    });
-  }
+
+      const { nombres } = personalInfo.data;
+      // Crear/verificar carpeta principal y subcarpetas
+      const crearRes = await crearCarpetaPersonal(rut, nombres);
+      if (!crearRes.success) {
+        console.warn('No se pudo crear/verificar carpeta antes de la subida:', crearRes.error || crearRes.message);
+      }
+
+      // Llamar al handler de multer y continuar con la subida
+      upload.single('archivo')(req, res, function (err) {
+        if (err) {
+          console.error('Error en multer al subir archivo:', err);
+          if (err instanceof multer.MulterError) {
+            return res.status(400).json({ success: false, message: err.message, code: err.code });
+          }
+          return res.status(400).json({ success: false, message: err.message });
+        }
+
+        (async () => {
+          try {
+            if (!req.file) {
+              return res.status(400).json({ success: false, message: 'No se proporcionó archivo' });
+            }
+
+            const { subcarpeta } = req.body;
+            console.log(`📤 Archivo subido para RUT: ${rut}`);
+            console.log(`   Archivo: ${req.file.originalname}`);
+            console.log(`   Subcarpeta: ${subcarpeta || 'documentos'}`);
+            console.log(`   Ruta: ${req.file.path}`);
+
+            // Guardar metadata en la tabla mantenimiento.documentos
+            try {
+              const nombreDocumento = req.body.nombre_documento || (req.file.originalname || 'Archivo subido');
+              const tipoDocumento = req.body.tipo_documento || 'upload';
+              const fechaEmision = req.body.fecha_emision || null;
+              const fechaVencimiento = req.body.fecha_vencimiento || null;
+              const diasValidez = req.body.dias_validez || null;
+              const institucion = req.body.institucion_emisora || null;
+              const subidoPor = req.body.subido_por || req.body.usuario || 'sistema';
+
+              const insertResult = await query(`
+                INSERT INTO mantenimiento.documentos (
+                  rut_persona, nombre_documento, tipo_documento, nombre_archivo, nombre_original,
+                  tipo_mime, tamaño_bytes, ruta_archivo, descripcion, subido_por,
+                  fecha_emision, fecha_vencimiento, dias_validez, institucion_emisora
+                ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+                RETURNING *
+              `, [
+                rut,
+                nombreDocumento,
+                tipoDocumento,
+                req.file.filename,
+                req.file.originalname,
+                req.file.mimetype,
+                req.file.size,
+                req.file.path,
+                req.body.descripcion || null,
+                subidoPor,
+                fechaEmision,
+                fechaVencimiento,
+                diasValidez,
+                institucion
+              ]);
+
+              console.log('✅ Metadata guardada en mantenimiento.documentos ID:', insertResult.rows[0].id);
+            } catch (dbErr) {
+              console.error('❌ Error guardando metadata en mantenimiento.documentos:', dbErr);
+              // No hacemos rollback del archivo físico; solo registramos el error
+            }
+
+            res.json({
+              success: true,
+              message: 'Archivo subido exitosamente',
+              data: {
+                archivo_original: req.file.originalname,
+                archivo_guardado: req.file.filename,
+                ruta: req.file.path,
+                tamaño: req.file.size,
+                subcarpeta: subcarpeta || 'documentos'
+              }
+            });
+
+          } catch (innerErr) {
+            console.error('Error procesando archivo subido:', innerErr);
+            res.status(500).json({ success: false, message: 'Error procesando archivo', error: innerErr.message });
+          }
+        })();
+      });
+
+    } catch (error) {
+      console.error('Error preparando subida de archivo:', error);
+      res.status(500).json({ success: false, message: 'Error preparando subida', error: error.message });
+    }
+  })();
 });
 
 // GET /api/carpetas-personal/:rut/descargar/:archivo - Descargar archivo
@@ -558,5 +641,8 @@ router.delete('/:rut/archivo/:archivo', async (req, res) => {
     });
   }
 });
+
+// Exponer función para que otros módulos puedan crear/verificar carpetas
+router.crearCarpetaPersonal = crearCarpetaPersonal;
 
 module.exports = router;

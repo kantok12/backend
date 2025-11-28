@@ -1,5 +1,6 @@
 const express = require('express');
 const fs = require('fs').promises;
+const fsSync = require('fs');
 const path = require('path');
 const multer = require('multer');
 const { query } = require('../config/database');
@@ -513,24 +514,53 @@ router.get('/estadisticas/resumen', async (req, res) => {
 // Configuración de multer para subida de documentos de Belray
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const belrayId = req.params.id;
+    const belrayIdRaw = req.params.id || 'unknown';
+    const belrayId = String(belrayIdRaw).replace(/[^a-zA-Z0-9_-]/g, '');
     const carpetaDestino = path.join(BELRAY_DOCS_PATH, `Belray_${belrayId}`);
-    cb(null, carpetaDestino);
+    try {
+      if (!fsSync.existsSync(carpetaDestino)) {
+        fsSync.mkdirSync(carpetaDestino, { recursive: true });
+      }
+      cb(null, carpetaDestino);
+    } catch (err) {
+      cb(err);
+    }
   },
   filename: function (req, file, cb) {
     const timestamp = Date.now();
     const nombreOriginal = file.originalname;
     const extension = path.extname(nombreOriginal);
-    const nombreSinExtension = path.basename(nombreOriginal, extension);
+    const nombreSinExtension = path.basename(nombreOriginal, extension).replace(/[^a-zA-Z0-9-_\. ]/g, '');
     const nombreArchivo = `${nombreSinExtension}_${timestamp}${extension}`;
     cb(null, nombreArchivo);
   }
 });
 
-const upload = multer({ 
+// Allowed MIME types and extensions (adjust as needed)
+const allowedMimeTypes = [
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/plain'
+];
+const allowedExt = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx', '.xls', '.xlsx', '.txt'];
+
+const upload = multer({
   storage: storage,
   limits: {
     fileSize: 50 * 1024 * 1024 // 50MB límite
+  },
+  fileFilter: function (req, file, cb) {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowedMimeTypes.includes(file.mimetype) && allowedExt.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Tipo de archivo no permitido'));
+    }
   }
 });
 
@@ -610,40 +640,53 @@ router.get('/:id/documentos', async (req, res) => {
 });
 
 // POST /api/belray/:id/documentos/subir - Subir documento a empresa Belray
-router.post('/:id/documentos/subir', upload.single('archivo'), async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: 'No se proporcionó archivo'
-      });
+router.post('/:id/documentos/subir', (req, res) => {
+  // Use the upload handler and catch multer errors here
+  upload.single('archivo')(req, res, async function (err) {
+    if (err) {
+      console.error('Multer error subiendo documento:', err);
+      if (err instanceof multer.MulterError) {
+        return res.status(400).json({ success: false, message: err.message, code: err.code });
+      }
+      return res.status(400).json({ success: false, message: err.message });
     }
 
-    console.log(`📤 Documento subido para Belray ID: ${id}`);
-    console.log(`   Archivo: ${req.file.originalname}`);
-    console.log(`   Ruta: ${req.file.path}`);
+    try {
+      const { id } = req.params;
 
-    res.json({
-      success: true,
-      message: 'Documento subido exitosamente',
-      data: {
-        archivo_original: req.file.originalname,
-        archivo_guardado: req.file.filename,
-        ruta: req.file.path,
-        tamaño: req.file.size
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: 'No se proporcionó archivo'
+        });
       }
-    });
 
-  } catch (error) {
-    console.error('Error subiendo documento:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error subiendo documento',
-      error: error.message
-    });
-  }
+      console.log(`📤 Documento subido para Belray ID: ${id}`);
+      console.log(`   Archivo: ${req.file.originalname}`);
+      console.log(`   Ruta: ${req.file.path}`);
+
+      // NOTE: Consider saving metadata to DB (filename, originalname, path, size, uploaded_by, etc.)
+
+      res.json({
+        success: true,
+        message: 'Documento subido exitosamente',
+        data: {
+          archivo_original: req.file.originalname,
+          archivo_guardado: req.file.filename,
+          ruta: req.file.path,
+          tamaño: req.file.size
+        }
+      });
+
+    } catch (error) {
+      console.error('Error subiendo documento:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error subiendo documento',
+        error: error.message
+      });
+    }
+  });
 });
 
 // GET /api/belray/:id/documentos/descargar/:archivo - Descargar documento
