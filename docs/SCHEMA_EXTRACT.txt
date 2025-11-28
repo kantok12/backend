@@ -1,0 +1,715 @@
+-- Esquema extraído (no es un CREATE TABLE completo, resumen de columnas y constraints)
+
+-- Tabla: mantenimiento.belray
+  id integer NOT NULL DEFAULT nextval('mantenimiento.belray_id_seq'::regclass)
+  nombre character varying NOT NULL
+  descripcion text
+  observaciones text
+  giro character varying
+  numero_telefono character varying
+  direccion text
+  razon_social character varying
+  rut_empresa character varying
+  comuna character varying
+  correo_electronico character varying
+  representante_legal character varying
+  gerente_general character varying
+  numero_trabajadores_obra integer
+  organismo_admin_ley_16744 character varying
+  numero_adherentes integer
+  tasa_siniestralidad_generica numeric
+  tasa_siniestralidad_adicional numeric
+  experto_prevencion_riesgos character varying
+  supervisor_coordinador_obra character varying
+
+-- Tabla: mantenimiento.cliente_prerrequisitos
+  id integer NOT NULL DEFAULT nextval('mantenimiento.cliente_prerrequisitos_id_seq'::regclass)
+  cliente_id integer
+  tipo_documento character varying NOT NULL
+  descripcion text
+  created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP
+  updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP
+  dias_duracion integer
+
+-- Tabla: mantenimiento.clientes
+  id integer NOT NULL DEFAULT nextval('mantenimiento.clientes_id_seq'::regclass)
+  nombre character varying NOT NULL
+  cartera_id integer NOT NULL
+  descripcion text
+  activo boolean DEFAULT true
+  fecha_creacion timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+  fecha_actualizacion timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+
+-- Tabla: mantenimiento.cursos
+  id integer NOT NULL
+  rut_persona text NOT NULL
+  nombre_curso character varying NOT NULL
+  fecha_inicio date
+  fecha_fin date
+  estado character varying DEFAULT 'completado'::character varying
+  institucion character varying
+  descripcion text
+  fecha_creacion timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+  fecha_actualizacion timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+  activo boolean DEFAULT true
+  fecha_vencimiento date
+-- FK: fk_curso_persona (rut_persona) -> mantenimiento.personal_disponible(rut)
+
+-- Tabla: mantenimiento.documentos
+  id integer NOT NULL
+  rut_persona text NOT NULL
+  nombre_documento character varying NOT NULL
+  tipo_documento character varying NOT NULL
+  nombre_archivo character varying NOT NULL
+  nombre_original character varying NOT NULL
+  tipo_mime character varying NOT NULL
+  tamaño_bytes bigint NOT NULL
+  ruta_archivo text NOT NULL
+  descripcion text
+  fecha_subida timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+  subido_por character varying
+  activo boolean DEFAULT true
+  fecha_emision date
+  fecha_vencimiento date
+  dias_validez integer
+  estado_documento character varying DEFAULT 'vigente'::character varying
+  institucion_emisora character varying
+-- FK: fk_documento_persona (rut_persona) -> mantenimiento.personal_disponible(rut)
+
+-- Tabla: mantenimiento.estado_unificado
+  id bigint NOT NULL
+  origen text NOT NULL
+  origen_id bigint
+  nombre text NOT NULL
+  descripcion text
+  activo boolean DEFAULT true
+  created_at timestamp with time zone DEFAULT now()
+
+-- Tabla: mantenimiento.estados
+  id integer NOT NULL
+  nombre character varying
+  descripcion text
+  activo boolean DEFAULT true
+
+-- Tabla: mantenimiento.nodos
+  id integer NOT NULL DEFAULT nextval('mantenimiento.nodos_id_seq'::regclass)
+  nombre character varying NOT NULL
+  cliente_id integer NOT NULL
+  ubicacion character varying
+  descripcion text
+  activo boolean DEFAULT true
+  fecha_creacion timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+  fecha_actualizacion timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+-- FK: nodos_cliente_id_fkey (cliente_id) -> mantenimiento.clientes(id)
+
+-- Tabla: mantenimiento.nombres
+  rut character varying NOT NULL
+  nombre character varying NOT NULL
+  sexo character
+  fecha_nacimiento date
+  licencia_conducir character varying
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+  updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+
+-- Tabla: mantenimiento.personal_carteras
+  id integer NOT NULL DEFAULT nextval('mantenimiento.personal_carteras_id_seq'::regclass)
+  rut character varying NOT NULL
+  cartera_id bigint NOT NULL
+  created_at timestamp without time zone DEFAULT now()
+
+-- Tabla: mantenimiento.personal_clientes
+  id integer NOT NULL DEFAULT nextval('mantenimiento.personal_clientes_id_seq'::regclass)
+  rut character varying NOT NULL
+  cliente_id bigint NOT NULL
+  created_at timestamp without time zone DEFAULT now()
+
+-- Tabla: mantenimiento.personal_disponible
+  rut text NOT NULL
+  sexo character varying NOT NULL
+  fecha_nacimiento date NOT NULL
+  licencia_conducir character varying NOT NULL
+  cargo character varying NOT NULL
+  estado_id integer NOT NULL
+  documentacion_id bigint
+  nombres character varying
+  id integer NOT NULL DEFAULT nextval('mantenimiento.personal_disponible_id_seq'::regclass)
+  estado_civil character varying
+  pais character varying
+  region character varying
+  comuna character varying
+  ciudad character varying
+  telefono character varying
+  correo_electronico character varying
+  contacto_emergencia text
+  talla_ropa character varying
+  talla_pantalon character varying
+  talla_zapato character varying
+  id_centro_costo character varying
+  centro_costo character varying
+  sede character varying
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+  profesion text
+  telefono_2 text
+  fecha_inicio_contrato date
+  id_area text
+  area text
+  supervisor text
+  nombre_contacto_emergencia text
+  vinculo_contacto_emergencia text
+  telefono_contacto_emergencia text
+  tipo_asistencia text
+-- FK: personal_disponible_estado_id_fkey (estado_id) -> mantenimiento.estados(id)
+
+-- Tabla: mantenimiento.personal_disponible_backup
+  rut text
+  sexo character varying
+  fecha_nacimiento date
+  licencia_conducir character varying
+  talla_zapatos character varying
+  talla_pantalones character varying
+  cargo character varying
+  estado_id integer
+  documentacion_id bigint
+  nombres character varying
+  id integer
+  estado_civil character varying
+  pais character varying
+  region character varying
+  comuna character varying
+  ciudad character varying
+  telefono character varying
+  correo_electronico character varying
+  contacto_emergencia text
+  talla_ropa character varying
+  talla_pantalon character varying
+  talla_zapato character varying
+  id_centro_costo character varying
+  centro_costo character varying
+  sede character varying
+  created_at timestamp without time zone
+  profesion text
+  telefono_2 text
+  fecha_inicio_contrato date
+  id_area text
+  area text
+  supervisor text
+  nombre_contacto_emergencia text
+  vinculo_contacto_emergencia text
+  telefono_contacto_emergencia text
+  vencimiento_examen_altura_fisica date
+  vencimiento_examen_gran_altura_geografica date
+  vencimiento_examen_vehiculo_liviano date
+  vencimiento_cedula date
+  vencimiento_licencia_profesional date
+  tipo_asistencia text
+
+-- Tabla: mantenimiento.personal_disponible_backup_1764332366966
+  rut text
+  sexo character varying
+  fecha_nacimiento date
+  licencia_conducir character varying
+  cargo character varying
+  estado_id integer
+  documentacion_id bigint
+  nombres character varying
+  id integer
+  estado_civil character varying
+  pais character varying
+  region character varying
+  comuna character varying
+  ciudad character varying
+  telefono character varying
+  correo_electronico character varying
+  contacto_emergencia text
+  talla_ropa character varying
+  talla_pantalon character varying
+  talla_zapato character varying
+  id_centro_costo character varying
+  centro_costo character varying
+  sede character varying
+  created_at timestamp without time zone
+  profesion text
+  telefono_2 text
+  fecha_inicio_contrato date
+  id_area text
+  area text
+  supervisor text
+  nombre_contacto_emergencia text
+  vinculo_contacto_emergencia text
+  telefono_contacto_emergencia text
+  tipo_asistencia text
+
+-- Tabla: mantenimiento.personal_disponible_backup_1764332464733
+  rut text
+  sexo character varying
+  fecha_nacimiento date
+  licencia_conducir character varying
+  cargo character varying
+  estado_id integer
+  documentacion_id bigint
+  nombres character varying
+  id integer
+  estado_civil character varying
+  pais character varying
+  region character varying
+  comuna character varying
+  ciudad character varying
+  telefono character varying
+  correo_electronico character varying
+  contacto_emergencia text
+  talla_ropa character varying
+  talla_pantalon character varying
+  talla_zapato character varying
+  id_centro_costo character varying
+  centro_costo character varying
+  sede character varying
+  created_at timestamp without time zone
+  profesion text
+  telefono_2 text
+  fecha_inicio_contrato date
+  id_area text
+  area text
+  supervisor text
+  nombre_contacto_emergencia text
+  vinculo_contacto_emergencia text
+  telefono_contacto_emergencia text
+  tipo_asistencia text
+
+-- Tabla: mantenimiento.personal_disponible_backup_1764332599812
+  rut text
+  sexo character varying
+  fecha_nacimiento date
+  licencia_conducir character varying
+  cargo character varying
+  estado_id integer
+  documentacion_id bigint
+  nombres character varying
+  id integer
+  estado_civil character varying
+  pais character varying
+  region character varying
+  comuna character varying
+  ciudad character varying
+  telefono character varying
+  correo_electronico character varying
+  contacto_emergencia text
+  talla_ropa character varying
+  talla_pantalon character varying
+  talla_zapato character varying
+  id_centro_costo character varying
+  centro_costo character varying
+  sede character varying
+  created_at timestamp without time zone
+  profesion text
+  telefono_2 text
+  fecha_inicio_contrato date
+  id_area text
+  area text
+  supervisor text
+  nombre_contacto_emergencia text
+  vinculo_contacto_emergencia text
+  telefono_contacto_emergencia text
+  tipo_asistencia text
+
+-- Tabla: mantenimiento.personal_disponible_backup_1764332642142
+  rut text
+  sexo character varying
+  fecha_nacimiento date
+  licencia_conducir character varying
+  cargo character varying
+  estado_id integer
+  documentacion_id bigint
+  nombres character varying
+  id integer
+  estado_civil character varying
+  pais character varying
+  region character varying
+  comuna character varying
+  ciudad character varying
+  telefono character varying
+  correo_electronico character varying
+  contacto_emergencia text
+  talla_ropa character varying
+  talla_pantalon character varying
+  talla_zapato character varying
+  id_centro_costo character varying
+  centro_costo character varying
+  sede character varying
+  created_at timestamp without time zone
+  profesion text
+  telefono_2 text
+  fecha_inicio_contrato date
+  id_area text
+  area text
+  supervisor text
+  nombre_contacto_emergencia text
+  vinculo_contacto_emergencia text
+  telefono_contacto_emergencia text
+  tipo_asistencia text
+
+-- Tabla: mantenimiento.personal_disponible_backup_1764332682916
+  rut text
+  sexo character varying
+  fecha_nacimiento date
+  licencia_conducir character varying
+  cargo character varying
+  estado_id integer
+  documentacion_id bigint
+  nombres character varying
+  id integer
+  estado_civil character varying
+  pais character varying
+  region character varying
+  comuna character varying
+  ciudad character varying
+  telefono character varying
+  correo_electronico character varying
+  contacto_emergencia text
+  talla_ropa character varying
+  talla_pantalon character varying
+  talla_zapato character varying
+  id_centro_costo character varying
+  centro_costo character varying
+  sede character varying
+  created_at timestamp without time zone
+  profesion text
+  telefono_2 text
+  fecha_inicio_contrato date
+  id_area text
+  area text
+  supervisor text
+  nombre_contacto_emergencia text
+  vinculo_contacto_emergencia text
+  telefono_contacto_emergencia text
+  tipo_asistencia text
+
+-- Tabla: mantenimiento.personal_disponible_backup_20251128_082057
+  rut text
+  sexo character varying
+  fecha_nacimiento date
+  licencia_conducir character varying
+  talla_zapatos character varying
+  talla_pantalones character varying
+  cargo character varying
+  estado_id integer
+  documentacion_id bigint
+  nombres character varying
+  id integer
+  estado_civil character varying
+  pais character varying
+  region character varying
+  comuna character varying
+  ciudad character varying
+  telefono character varying
+  correo_electronico character varying
+  contacto_emergencia text
+  talla_ropa character varying
+  talla_pantalon character varying
+  talla_zapato character varying
+  id_centro_costo character varying
+  centro_costo character varying
+  sede character varying
+  created_at timestamp without time zone
+  profesion text
+  telefono_2 text
+  fecha_inicio_contrato date
+  id_area text
+  area text
+  supervisor text
+  nombre_contacto_emergencia text
+  vinculo_contacto_emergencia text
+  telefono_contacto_emergencia text
+  vencimiento_examen_altura_fisica date
+  vencimiento_examen_gran_altura_geografica date
+  vencimiento_examen_vehiculo_liviano date
+  vencimiento_cedula date
+  vencimiento_licencia_profesional date
+  tipo_asistencia text
+
+-- Tabla: mantenimiento.personal_estados
+  id bigint NOT NULL
+  rut text NOT NULL
+  estado_id integer NOT NULL
+  cargo text
+  activo boolean DEFAULT true
+  comentario text
+  desde timestamp with time zone DEFAULT now()
+  hasta timestamp with time zone
+  created_at timestamp with time zone DEFAULT now()
+-- FK: personal_estados_rut_fkey (rut) -> mantenimiento.personal_disponible(rut)
+-- FK: personal_estados_estado_id_fkey (estado_id) -> mantenimiento.estados(id)
+
+-- Tabla: mantenimiento.personal_nodos
+  id integer NOT NULL DEFAULT nextval('mantenimiento.personal_nodos_id_seq'::regclass)
+  rut character varying NOT NULL
+  nodo_id bigint NOT NULL
+  created_at timestamp without time zone DEFAULT now()
+
+-- Tabla: mantenimiento.prerrequisitos_clientes
+  id integer NOT NULL DEFAULT nextval('mantenimiento.prerrequisitos_clientes_id_seq'::regclass)
+  cliente_id bigint NOT NULL
+  tipo_documento character varying NOT NULL
+  obligatorio boolean NOT NULL DEFAULT true
+  dias_validez integer
+  created_at timestamp without time zone DEFAULT now()
+
+-- Tabla: mantenimiento.programacion_compatibilidad
+  id integer NOT NULL DEFAULT nextval('mantenimiento.programacion_compatibilidad_id_seq'::regclass)
+  rut character varying NOT NULL
+  cartera_id integer NOT NULL
+  cliente_id integer
+  nodo_id integer
+  semana_inicio date NOT NULL
+  semana_fin date NOT NULL
+  lunes boolean DEFAULT false
+  martes boolean DEFAULT false
+  miercoles boolean DEFAULT false
+  jueves boolean DEFAULT false
+  viernes boolean DEFAULT false
+  sabado boolean DEFAULT false
+  domingo boolean DEFAULT false
+  horas_estimadas integer DEFAULT 8
+  observaciones text
+  estado character varying DEFAULT 'activo'::character varying
+  created_at timestamp without time zone DEFAULT now()
+  updated_at timestamp without time zone DEFAULT now()
+  dia_semana character varying
+
+-- Tabla: mantenimiento.programacion_historial
+  id integer NOT NULL DEFAULT nextval('mantenimiento.programacion_historial_id_seq'::regclass)
+  programacion_id integer NOT NULL
+  rut character varying NOT NULL
+  cartera_id bigint NOT NULL
+  accion character varying NOT NULL
+  cambios jsonb
+  fecha_accion timestamp without time zone DEFAULT now()
+  usuario character varying DEFAULT 'sistema'::character varying
+
+-- Tabla: mantenimiento.programacion_historial_optimizado
+  id integer NOT NULL DEFAULT nextval('mantenimiento.programacion_historial_optimizado_id_seq'::regclass)
+  programacion_id integer NOT NULL
+  rut character varying NOT NULL
+  cartera_id bigint NOT NULL
+  fecha_trabajo date NOT NULL
+  accion character varying NOT NULL
+  cambios jsonb
+  fecha_accion timestamp without time zone DEFAULT now()
+  usuario character varying DEFAULT 'sistema'::character varying
+
+-- Tabla: mantenimiento.programacion_optimizada
+  id integer NOT NULL DEFAULT nextval('mantenimiento.programacion_optimizada_id_seq'::regclass)
+  rut character varying NOT NULL
+  cartera_id bigint NOT NULL
+  cliente_id bigint
+  nodo_id bigint
+  fecha_trabajo date NOT NULL
+  dia_semana character varying NOT NULL
+  horas_estimadas integer DEFAULT 8
+  horas_reales integer
+  observaciones text
+  estado character varying DEFAULT 'programado'::character varying
+  created_at timestamp without time zone DEFAULT now()
+  updated_at timestamp without time zone DEFAULT now()
+  created_by character varying DEFAULT 'sistema'::character varying
+
+-- Tabla: mantenimiento.programacion_semanal
+  id integer NOT NULL DEFAULT nextval('mantenimiento.programacion_semanal_id_seq'::regclass)
+  rut character varying NOT NULL
+  cartera_id bigint NOT NULL
+  cliente_id bigint
+  nodo_id bigint
+  semana_inicio date NOT NULL
+  semana_fin date NOT NULL
+  lunes boolean DEFAULT false
+  martes boolean DEFAULT false
+  miercoles boolean DEFAULT false
+  jueves boolean DEFAULT false
+  viernes boolean DEFAULT false
+  sabado boolean DEFAULT false
+  domingo boolean DEFAULT false
+  horas_estimadas integer DEFAULT 8
+  observaciones text
+  estado character varying DEFAULT 'programado'::character varying
+  created_at timestamp without time zone DEFAULT now()
+  updated_at timestamp without time zone DEFAULT now()
+  created_by character varying DEFAULT 'sistema'::character varying
+  fecha_trabajo date
+  dia_semana character varying
+  horas_reales integer
+
+-- Tabla: mantenimiento.semanas_trabajo
+  id integer NOT NULL DEFAULT nextval('mantenimiento.semanas_trabajo_id_seq'::regclass)
+  semana_inicio date NOT NULL
+  semana_fin date NOT NULL
+  año integer NOT NULL
+  semana_numero integer NOT NULL
+  activa boolean DEFAULT true
+  created_at timestamp without time zone DEFAULT now()
+
+-- Tabla: mantenimiento.ubicacion_geografica
+  id integer NOT NULL DEFAULT nextval('mantenimiento.ubicacion_geografica_id_seq'::regclass)
+  nombre character varying NOT NULL
+  tipo character varying NOT NULL
+  codigo character varying
+  activo boolean DEFAULT true
+  fecha_creacion timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+  fecha_actualizacion timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+
+-- Tabla: public.mantenimiento.personal_disponible_backup_20251128_081722
+  rut text
+  sexo character varying
+  fecha_nacimiento date
+  licencia_conducir character varying
+  talla_zapatos character varying
+  talla_pantalones character varying
+  talla_poleras character varying
+  cargo character varying
+  estado_id integer
+  comentario_estado text
+  zona_geografica text
+  documentacion_id bigint
+  nombres character varying
+  id integer
+  estado_civil character varying
+  pais character varying
+  region character varying
+  comuna character varying
+  ciudad character varying
+  telefono character varying
+  correo_electronico character varying
+  correo_personal character varying
+  contacto_emergencia text
+  talla_ropa character varying
+  talla_pantalon character varying
+  talla_zapato character varying
+  id_centro_costo character varying
+  centro_costo character varying
+  sede character varying
+  created_at timestamp without time zone
+
+-- Tabla: servicios.acuerdos
+  id integer NOT NULL DEFAULT nextval('servicios.acuerdos_id_seq'::regclass)
+  minimo_personal_id integer NOT NULL
+  tipo_acuerdo character varying NOT NULL
+  valor_modificacion integer NOT NULL
+  fecha_inicio date NOT NULL
+  fecha_fin date
+  motivo text
+  aprobado_por character varying
+  estado character varying DEFAULT 'activo'::character varying
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+  updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+  created_by character varying DEFAULT 'sistema'::character varying
+-- FK: fk_acuerdo_minimo (minimo_personal_id) -> servicios.minimo_personal(id)
+
+-- Tabla: servicios.carteras
+  id bigint NOT NULL
+  name text NOT NULL
+  created_at timestamp with time zone DEFAULT now()
+
+-- Tabla: servicios.clientes
+  id bigint NOT NULL
+  nombre text NOT NULL
+  cartera_id bigint
+  created_at timestamp with time zone DEFAULT now()
+  region_id bigint
+-- FK: clientes_region_id_fkey (region_id) -> servicios.ubicacion_geografica(id)
+-- FK: clientes_cartera_id_fkey (cartera_id) -> servicios.carteras(id)
+
+-- Tabla: servicios.is
+  id bigint NOT NULL
+  engineer_name text NOT NULL
+  cartera_id bigint NOT NULL
+  created_at timestamp with time zone DEFAULT now()
+-- FK: is_cartera_id_fkey (cartera_id) -> servicios.carteras(id)
+
+-- Tabla: servicios.minimo_personal
+  id integer NOT NULL DEFAULT nextval('servicios.minimo_personal_id_seq'::regclass)
+  cartera_id integer NOT NULL
+  cliente_id integer
+  nodo_id integer
+  minimo_base integer NOT NULL DEFAULT 1
+  descripcion text
+  activo boolean DEFAULT true
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+  updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+  created_by character varying DEFAULT 'sistema'::character varying
+-- FK: fk_minimo_cartera (cartera_id) -> servicios.carteras(id)
+-- FK: fk_minimo_cliente (cliente_id) -> servicios.clientes(id)
+-- FK: fk_minimo_nodo (nodo_id) -> servicios.nodos(id)
+
+-- Tabla: servicios.nodos
+  id bigint NOT NULL
+  nombre text NOT NULL
+  cliente_id bigint
+  created_at timestamp with time zone DEFAULT now()
+-- FK: nodos_cliente_id_fkey (cliente_id) -> servicios.clientes(id)
+
+-- Tabla: servicios.ubicacion_geografica
+  id bigint NOT NULL
+  nombre text NOT NULL
+  created_at timestamp with time zone DEFAULT now()
+
+-- Tabla: sistema.auditoria_log
+  id bigint NOT NULL DEFAULT nextval('sistema.auditoria_log_id_seq'::regclass)
+  tabla_afectada character varying NOT NULL
+  operacion character varying NOT NULL
+  registro_id character varying NOT NULL
+  datos_anteriores jsonb
+  datos_nuevos jsonb
+  usuario character varying
+  ip_address inet
+  user_agent text
+  timestamp timestamp with time zone DEFAULT now()
+  es_critico boolean DEFAULT false
+  notificado boolean DEFAULT false
+  contexto text
+  endpoint character varying
+
+-- Tabla: sistema.configuracion_auditoria
+  id integer NOT NULL DEFAULT nextval('sistema.configuracion_auditoria_id_seq'::regclass)
+  tabla character varying NOT NULL
+  auditar_insert boolean DEFAULT true
+  auditar_update boolean DEFAULT true
+  auditar_delete boolean DEFAULT true
+  es_critico boolean DEFAULT false
+  campos_sensibles ARRAY
+  notificar_usuarios ARRAY
+  activo boolean DEFAULT true
+  created_at timestamp with time zone DEFAULT now()
+  updated_at timestamp with time zone DEFAULT now()
+
+-- Tabla: sistema.notificaciones
+  id bigint NOT NULL DEFAULT nextval('sistema.notificaciones_id_seq'::regclass)
+  auditoria_id bigint
+  tipo character varying NOT NULL
+  titulo character varying NOT NULL
+  mensaje text NOT NULL
+  usuario_destino character varying
+  leida boolean DEFAULT false
+  timestamp timestamp with time zone DEFAULT now()
+  expira_en timestamp with time zone
+  metadata jsonb
+  es_critico boolean DEFAULT false
+-- FK: notificaciones_auditoria_id_fkey (auditoria_id) -> sistema.auditoria_log(id)
+
+-- Tabla: sistema.usuarios
+  id bigint NOT NULL DEFAULT nextval('sistema.usuarios_id_seq'::regclass)
+  email character varying NOT NULL
+  password character varying NOT NULL
+  nombre character varying NOT NULL
+  apellido character varying NOT NULL
+  rol character varying NOT NULL DEFAULT 'usuario'::character varying
+  activo boolean NOT NULL DEFAULT true
+  email_verificado boolean NOT NULL DEFAULT false
+  ultimo_login timestamp with time zone
+  intentos_login_fallidos integer DEFAULT 0
+  bloqueado_hasta timestamp with time zone
+  token_reset_password character varying
+  token_reset_expires timestamp with time zone
+  created_at timestamp with time zone DEFAULT now()
+  updated_at timestamp with time zone DEFAULT now()
+  rut character varying
+  cargo character varying
+  cartera_id integer
+  profile_image_url character varying
