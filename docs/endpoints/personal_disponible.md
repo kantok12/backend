@@ -129,7 +129,7 @@ Ejemplo completo (sintético):
   "supervisor": "Carlos Gómez",
   "nombre_contacto_emergencia": "María Pérez",
   "vinculo_contacto_emergencia": "Hermana",
-  "telefono_contacto_emergencia": "+56987654321",
+  "telefono_contacto_emergencia": "+56987654321", 
   "tipo_asistencia": "Presencial"
 }
 ```
