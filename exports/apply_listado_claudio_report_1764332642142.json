@@ -1,0 +1,588 @@
+{
+  "timestamp": "2025-11-28T12:24:02.295Z",
+  "rows": 145,
+  "created": 0,
+  "updated": 0,
+  "errors": [
+    {
+      "row": "13682719-7",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "17354442-1",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "15789048-4",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "20390679-K",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19838046-6",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "18202458-9",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "15560003-9",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "20227477-3",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "20181372-7",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "18260358-9",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19727528-6",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "9421862-4",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "21312534-6",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "18852826-0",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "21160051-9",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19058504-2",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19886105-7",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "15918497-8",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19130703-8",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "17646237-K",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "17043570-2",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "18917587-6",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "18375869-1",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "20880656-4",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19887445-0",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19039400-K",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "18079702-5",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "20182969-0",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "16756190-K",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19219362-1",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "15818576-8",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19940069-K",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19445412-0",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "20040524-2",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "20067931-8",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19665329-5",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19066062-1",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "17952688-3",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "20729622-8",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "15740140-8",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "18037744-1",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19613228-7",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "13982984-0",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19358170-6",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19020815-K",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "13984759-8",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "16271735-9",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "21116563-4",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "18853484-8",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "17300390-0",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "20369965-4",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "12036820-6",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19582313-8",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19846486-4",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19124812-0",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "18617926-9",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19281102-3",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "17835132-K",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19926961-5",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19267969-9",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19316600-8",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19129820-9",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "10978973-9",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19189535-5",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "16673044-9",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "20540930-0",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "15079777-2",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "20813565-1",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "18853843-6",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "18386052-6",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "18798586-2",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "8546019-6",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "15760995-5",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19741830-3",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "15972421-2",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "17790704-9",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "18770009-4",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "20204930-3",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "20381631-6",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "14140542-K",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "7685732-6",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "17160816-3",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "15765434-9",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "20722191-0",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "12266464-3",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "20011078-1",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "18256522-9",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19228889-4",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "15609647-4",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "18973789-0",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "20222493-8",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19453262-8",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "20182299-8",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "20223643-K",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "18367315-7",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "18142318-8",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19275722-3",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "17479813-3",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "16548954-3",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "16093545-6",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "16026557-4",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "17413346-8",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "20359941-2",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19320040-0",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "20551954-8",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "16195292-3",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "16117827-6",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "15930744-1",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19933341-0",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "15782806-1",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "18565358-7",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19131478-6",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "20320662-3",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19982142-3",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "16500874-K",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19155245-8",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19055456-2",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "21096262-K",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "16911510-9",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "18112887-9",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "17399528-8",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "15806687-4",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "20804350-1",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19559742-1",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "15066798-4",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "14414892-4",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "17473543-3",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "20559985-1",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "14358182-9",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "18830715-9",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "16890409-6",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "19945809-4",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "21195087-0",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "18544721-9",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "17791299-9",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "21364997-3",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "21057049-7",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "20526859-6",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "16990232-1",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "17239648-8",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "20377186-K",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "13713721-6",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "21235268-3",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "18722667-8",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    },
+    {
+      "row": "17237841-2",
+      "error": "el valor nulo en la columna «estado_id» de la relación «personal_disponible» viola la restricción de no nulo"
+    }
+  ]
+}

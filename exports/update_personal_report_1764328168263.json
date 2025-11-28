@@ -1,0 +1,14 @@
+{
+  "timestamp": "2025-11-28T11:09:28.365Z",
+  "source": "C:\\Users\\BR CO-WORK 1\\Documents\\GitHub\\backend\\exports\\listado_claudio_full_rows.json",
+  "total_rows_in_file": 147,
+  "parsed_rows": 147,
+  "total_existing_found": 145,
+  "to_update_count": 0,
+  "not_found_count": 2,
+  "not_found": [
+    "ListadodeEmpleado-s",
+    "Ru-t"
+  ],
+  "updates_preview": []
+}

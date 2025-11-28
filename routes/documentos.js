@@ -209,7 +209,7 @@ router.get('/vencidos', async (req, res) => {
         d.activo,
         pd.nombres as nombre_persona,
         pd.cargo,
-        pd.zona_geografica,
+        pd.sede as zona_geografica,
         CASE 
           WHEN d.fecha_vencimiento < CURRENT_DATE THEN 'vencido'
           WHEN d.fecha_vencimiento <= CURRENT_DATE + INTERVAL '30 days' THEN 'por_vencer'
@@ -286,7 +286,7 @@ router.get('/vencer', async (req, res) => {
         d.activo,
         pd.nombres as nombre_persona,
         pd.cargo,
-        pd.zona_geografica,
+        pd.sede as zona_geografica,
         CASE 
           WHEN d.fecha_vencimiento < CURRENT_DATE THEN 'vencido'
           WHEN d.fecha_vencimiento <= CURRENT_DATE + INTERVAL '7 days' THEN 'vencer_7_dias'
@@ -393,7 +393,7 @@ router.get('/', async (req, res) => {
         d.institucion_emisora,
         pd.nombres as nombre_persona,
         pd.cargo,
-        pd.zona_geografica
+        pd.sede as zona_geografica,
       FROM mantenimiento.documentos d
       LEFT JOIN mantenimiento.personal_disponible pd ON d.rut_persona = pd.rut
       ${whereClause}
@@ -689,7 +689,7 @@ router.post('/', uploadMultiple, handleUploadError, async (req, res) => {
     
     // Verificar que la persona existe
     const checkPersonQuery = `
-      SELECT rut, nombres, cargo, zona_geografica 
+      SELECT rut, nombres, cargo, sede as zona_geografica
       FROM mantenimiento.personal_disponible 
       -- Normalizamos eliminando puntos para permitir búsquedas con/sin formato (ej. 20.011.078-1 vs 20011078-1)
       WHERE translate(rut, '.', '') = translate($1, '.', '')
@@ -901,7 +901,7 @@ router.get('/persona/:rut', async (req, res) => {
     // Para que la UI pueda listar documentos incluso si la persona no está registrada,
     // ahora continuamos aunque no encontremos la fila en `personal_disponible`.
     const checkPersonQuery = `
-      SELECT rut, nombres, cargo, zona_geografica 
+      SELECT rut, nombres, cargo, sede as zona_geografica
       FROM mantenimiento.personal_disponible 
       -- Normalizamos eliminando puntos para permitir búsquedas con/sin formato
       WHERE translate(rut, '.', '') = translate($1, '.', '')

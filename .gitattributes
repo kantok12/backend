@@ -1,2 +1,17 @@
+# Normalize EOL to LF for source files to avoid CRLF conversion warnings
+* text=auto
+
+# Force LF for JSON, JS and SQL files (keep exports JSON files normalized)
+*.json text eol=lf
+*.js text eol=lf
+*.sql text eol=lf
+exports/* text eol=lf
+
+# Keep binary files untouched
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.zip binary
+*.xlsx binary
 # Auto detect text files and perform LF normalization
 * text=auto

@@ -183,7 +183,24 @@ router.post('/', async (req, res) => {
       estado_id,
       zona_geografica,
       nombres,
-      comentario_estado
+      comentario_estado,
+      documentacion_id,
+      estado_civil,
+      pais,
+      region,
+      comuna,
+      ciudad,
+      telefono,
+      correo_electronico,
+      correo_personal,
+      contacto_emergencia,
+      talla_ropa,
+      talla_pantalon,
+      talla_zapato,
+      id_centro_costo,
+      centro_costo,
+      sede,
+      created_at
     } = req.body;
 
     // Validaciones
@@ -215,11 +232,14 @@ router.post('/', async (req, res) => {
 
     const queryText = `
       INSERT INTO mantenimiento.personal_disponible (
-        rut, sexo, fecha_nacimiento, licencia_conducir, 
-        talla_zapatos, talla_pantalones, talla_poleras, 
-        cargo, estado_id, zona_geografica, nombres, comentario_estado
+        rut, sexo, fecha_nacimiento, licencia_conducir,
+        talla_zapatos, talla_pantalones, talla_poleras, talla_ropa, talla_pantalon, talla_zapato,
+        cargo, estado_id, zona_geografica, nombres, comentario_estado,
+        documentacion_id, estado_civil, pais, region, comuna, ciudad,
+        telefono, correo_electronico, correo_personal, contacto_emergencia,
+        id_centro_costo, centro_costo, sede, created_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28)
       RETURNING *
     `;
 
@@ -231,12 +251,29 @@ router.post('/', async (req, res) => {
       talla_zapatos || '',
       talla_pantalones || '',
       talla_poleras || '',
+      talla_ropa || null,
+      talla_pantalon || null,
+      talla_zapato || null,
       cargo,
       estado_id,
       zona_geografica || null,
       nombres || null,
-      comentario_estado || null
-    ]);
+      comentario_estado || null,
+      documentacion_id || null,
+      estado_civil || null,
+      pais || null,
+      region || null,
+      comuna || null,
+      ciudad || null,
+      telefono || null,
+      correo_electronico || null,
+      correo_personal || null,
+      contacto_emergencia || null,
+      id_centro_costo || null,
+      centro_costo || null,
+      sede || null,
+      created_at || null
+    ].slice(0,28));
 
     res.status(201).json({
       success: true,
@@ -269,7 +306,23 @@ router.put('/:rut', async (req, res) => {
       estado_id,
       zona_geografica,
       nombres,
-      comentario_estado
+      comentario_estado,
+      documentacion_id,
+      estado_civil,
+      pais,
+      region,
+      comuna,
+      ciudad,
+      telefono,
+      correo_electronico,
+      correo_personal,
+      contacto_emergencia,
+      talla_ropa,
+      talla_pantalon,
+      talla_zapato,
+      id_centro_costo,
+      centro_costo,
+      sede
     } = req.body;
 
     // Validaciones
@@ -290,12 +343,28 @@ router.put('/:rut', async (req, res) => {
         talla_zapatos = $4, 
         talla_pantalones = $5, 
         talla_poleras = $6,
-        cargo = $7, 
-        estado_id = $8, 
-        zona_geografica = $9,
-        nombres = $10,
-        comentario_estado = $11
-      WHERE rut = $12
+        talla_ropa = $7,
+        talla_pantalon = $8,
+        talla_zapato = $9,
+        cargo = $10, 
+        estado_id = $11, 
+        zona_geografica = $12,
+        nombres = $13,
+        comentario_estado = $14,
+        documentacion_id = $15,
+        estado_civil = $16,
+        pais = $17,
+        region = $18,
+        comuna = $19,
+        ciudad = $20,
+        telefono = $21,
+        correo_electronico = $22,
+        correo_personal = $23,
+        contacto_emergencia = $24,
+        id_centro_costo = $25,
+        centro_costo = $26,
+        sede = $27
+      WHERE rut = $28
       RETURNING *
     `;
 
@@ -306,11 +375,27 @@ router.put('/:rut', async (req, res) => {
       talla_zapatos || '',
       talla_pantalones || '',
       talla_poleras || '',
+      talla_ropa || null,
+      talla_pantalon || null,
+      talla_zapato || null,
       cargo,
       estado_id,
       zona_geografica || null,
       nombres || null,
       comentario_estado || null,
+      documentacion_id || null,
+      estado_civil || null,
+      pais || null,
+      region || null,
+      comuna || null,
+      ciudad || null,
+      telefono || null,
+      correo_electronico || null,
+      correo_personal || null,
+      contacto_emergencia || null,
+      id_centro_costo || null,
+      centro_costo || null,
+      sede || null,
       rut
     ]);
 
@@ -345,10 +430,7 @@ router.get('/por-cliente/:cliente_id', async (req, res) => {
   try {
     const queryText = `
       SELECT 
-        pd.rut,
-        pd.nombres,
-        pd.cargo,
-        pd.zona_geografica,
+        pd.*,
         e.nombre as estado_nombre
       FROM 
         mantenimiento.personal_disponible pd
@@ -420,16 +502,13 @@ router.get('/verify-import', async (req, res) => {
     
     // Obtener últimos registros importados (asumiendo que tienen comentario_estado con 'Importado:')
     const recentImportsQuery = `
-      SELECT 
-        rut,
-        sexo,
-        fecha_nacimiento,
-        cargo,
-        zona_geografica,
-        comentario_estado
-      FROM mantenimiento.personal_disponible 
-      WHERE comentario_estado LIKE 'Importado:%'
-      ORDER BY rut
+      SELECT
+        pd.*,
+        e.nombre as estado_nombre
+      FROM mantenimiento.personal_disponible pd
+      LEFT JOIN mantenimiento.estados e ON pd.estado_id = e.id
+      WHERE pd.comentario_estado LIKE 'Importado:%'
+      ORDER BY pd.rut
       LIMIT 10
     `;
     
