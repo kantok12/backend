@@ -58,6 +58,34 @@ router.get('/cliente/:cliente_id', async (req, res) => {
   }
 });
 
+// GET /api/prerrequisitos/cliente/:cliente_id/solo - Listar prerrequisitos solo del cliente (excluye globales)
+router.get('/cliente/:cliente_id/solo', async (req, res) => {
+  try {
+    const { cliente_id } = req.params;
+
+    const result = await query(`
+      SELECT id, cliente_id, tipo_documento, descripcion, dias_duracion, created_at, updated_at
+      FROM mantenimiento.cliente_prerrequisitos
+      WHERE cliente_id = $1
+      ORDER BY tipo_documento
+    `, [cliente_id]);
+
+    res.json({
+      success: true,
+      message: `Prerrequisitos específicos del cliente ${cliente_id} obtenidos exitosamente`,
+      data: result.rows
+    });
+
+  } catch (error) {
+    console.error('❌ Error obteniendo prerrequisitos específicos del cliente:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
 // GET /api/prerrequisitos/globales - Listar solo los prerrequisitos globales
 router.get('/globales', async (req, res) => {
     try {
