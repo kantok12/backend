@@ -271,11 +271,11 @@ router.post('/clientes/:clienteId/match', [
 ], async (req, res) => {
   try {
     const { clienteId } = req.params;
-    const { ruts, requireAll = true, includeGlobal = true } = req.body;
+    const { ruts, requireAll = true, includeGlobal = true, ignore_vencidos = true } = req.body;
 
     // Llamar al servicio
     try {
-      const results = await matchForCliente(parseInt(clienteId, 10), ruts, { requireAll, includeGlobal });
+      const results = await matchForCliente(parseInt(clienteId, 10), ruts, { requireAll, includeGlobal, ignore_vencidos });
       return res.json({ success: true, data: results });
     } catch (e) {
       if (e.code === 'PAYLOAD_TOO_LARGE') return res.status(413).json({ success: false, message: 'Too many RUTs in request' });
@@ -305,9 +305,15 @@ router.get('/clientes/:clienteId/match', async (req, res) => {
     const ruts = Array.isArray(queryRuts) ? queryRuts : [queryRuts];
     const requireAll = req.query.requireAll !== 'false';
     const includeGlobal = req.query.includeGlobal !== 'false';
+    const ignoreVencidos = req.query.ignore_vencidos === 'true' || req.query.ignore_vencidos === '1';
+    // Backend filters (query params):
+    // - onlyCompletos=true  => return only those with missing_count === 0
+    // - max_missing=N       => return matches with missing_count <= N
+    const onlyCompletos = req.query.onlyCompletos === 'true' || req.query.onlyCompletos === '1';
+    const maxMissing = (typeof req.query.max_missing !== 'undefined' && req.query.max_missing !== '') ? parseInt(req.query.max_missing, 10) : null;
 
     try {
-      const results = await matchForCliente(parseInt(clienteId, 10), ruts, { requireAll, includeGlobal });
+      const results = await matchForCliente(parseInt(clienteId, 10), ruts, { requireAll, includeGlobal, ignore_vencidos: ignoreVencidos });
       res.json({ success: true, data: results });
     } catch (e) {
       if (e.code === 'PAYLOAD_TOO_LARGE') return res.status(413).json({ success: false, message: 'Too many RUTs in request' });
@@ -329,8 +335,9 @@ router.get('/clientes/:clienteId', async (req, res, next) => {
       const ruts = Array.isArray(queryRuts) ? queryRuts : [queryRuts];
       const requireAll = req.query.requireAll !== 'false';
       const includeGlobal = req.query.includeGlobal !== 'false';
+      const ignoreVencidosAlias = req.query.ignore_vencidos === 'true' || req.query.ignore_vencidos === '1';
 
-      const results = await matchForCliente(parseInt(clienteId, 10), ruts, { requireAll, includeGlobal });
+      const results = await matchForCliente(parseInt(clienteId, 10), ruts, { requireAll, includeGlobal, ignore_vencidos: ignoreVencidosAlias });
       return res.json({ success: true, data: results });
     }
 
@@ -349,11 +356,16 @@ router.get('/clientes/:clienteId/cumplen', async (req, res) => {
     const includeGlobal = req.query.includeGlobal !== 'false';
     const limit = (typeof req.query.limit !== 'undefined' && req.query.limit !== null && req.query.limit !== '') ? parseInt(req.query.limit, 10) : null;
     const offset = parseInt(req.query.offset) || 0;
-
+    // Backend filters (query params):
+    // - onlyCompletos=true  => return only those with missing_count === 0
+    // - max_missing=N       => return matches with missing_count <= N
+    const onlyCompletos = req.query.onlyCompletos === 'true' || req.query.onlyCompletos === '1';
+    const maxMissing = (typeof req.query.max_missing !== 'undefined' && req.query.max_missing !== '') ? parseInt(req.query.max_missing, 10) : null;
+    const ignoreVencidos = req.query.ignore_vencidos === 'true' || req.query.ignore_vencidos === '1';
     // New implementation: fetch ruts from personal_disponible, use matchForCliente in batches
     // and return matches with persona info.
     const pdQuery = `
-      SELECT rut, nombres, cargo, zona_geografica
+      SELECT rut, nombres, cargo, sede as zona_geografica
       FROM mantenimiento.personal_disponible
       ORDER BY nombres
       ${limit ? 'LIMIT $1 OFFSET $2' : ''}
@@ -368,29 +380,51 @@ router.get('/clientes/:clienteId/cumplen', async (req, res) => {
     const batchSize = 250;
     for (let i = 0; i < ruts.length; i += batchSize) {
       const slice = ruts.slice(i, i + batchSize);
-      const batchResults = await matchForCliente(parseInt(clienteId, 10), slice, { requireAll: true, includeGlobal });
+      const batchResults = await matchForCliente(parseInt(clienteId, 10), slice, { requireAll: true, includeGlobal, ignore_vencidos: ignoreVencidos });
       for (const resItem of batchResults) {
-        const fulfilled = (resItem.cumple === true) || (resItem.matchesAll === true);
-        if (fulfilled) {
-          // find persona row
-          const personaRow = rows.find(rr => rr.rut === resItem.rut) || {};
-          resItem.persona = {
-            rut: resItem.rut,
-            nombres: personaRow.nombres || 'Nombre no disponible',
-            cargo: personaRow.cargo || 'Cargo no disponible',
-            zona_geografica: personaRow.zona_geografica || null
-          };
-          matches.push(resItem);
-        }
+        // compute missing count from possible shapes (faltantes or missing_docs)
+        let missingCount = 0;
+        if (Array.isArray(resItem.faltantes)) missingCount = resItem.faltantes.length;
+        else if (Array.isArray(resItem.missing_docs)) missingCount = resItem.missing_docs.length;
+
+        // find persona row (may be undefined)
+        const personaRow = rows.find(rr => rr.rut === resItem.rut) || {};
+
+        // attach enriched metadata to each match item
+        resItem.persona = {
+          rut: resItem.rut,
+          nombres: personaRow.nombres || 'Nombre no disponible',
+          cargo: personaRow.cargo || 'Cargo no disponible',
+          zona_geografica: personaRow.sede || personaRow.zona_geografica || null
+        };
+        resItem.missing_count = missingCount;
+        resItem.classification = missingCount === 0 ? 'all' : `missing_${missingCount}`;
+
+        matches.push(resItem);
       }
     }
 
+    // Apply optional backend-level filters
+    let filtered = matches;
+    if (onlyCompletos) {
+      filtered = filtered.filter(m => m.missing_count === 0);
+    } else if (!isNaN(maxMissing) && maxMissing !== null) {
+      filtered = filtered.filter(m => m.missing_count <= maxMissing);
+    }
+
+    const completos = filtered.filter(m => m.missing_count === 0);
+    const parciales = filtered.filter(m => m.missing_count > 0);
+
     return res.json({
       success: true,
-      message: matches.length > 0 ? 'OK' : 'No matches',
+      message: (filtered.length) > 0 ? 'OK' : 'No matches',
       data: {
-        total: matches.length,
-        matches
+        total_before_filter: matches.length,
+        total: filtered.length,
+        completos_count: completos.length,
+        parciales_count: parciales.length,
+        completos,
+        parciales
       }
     });
   } catch (error) {

@@ -33,6 +33,7 @@ async function matchForCliente(clienteId, ruts = [], opts = {}) {
   // opts: { requireAll: true/false, includeGlobal: true/false }
   const requireAll = opts.requireAll !== undefined ? opts.requireAll : true;
   const includeGlobal = opts.includeGlobal !== undefined ? opts.includeGlobal : true;
+  const ignoreVencidos = opts.ignore_vencidos !== undefined ? opts.ignore_vencidos : true;
 
   // 1. Cargar prerrequisitos del cliente (y globales si apply)
   const prereqParams = [clienteId];
@@ -92,33 +93,35 @@ async function matchForCliente(clienteId, ruts = [], opts = {}) {
       return Object.assign({}, d, { tipo_norm });
     });
 
-    // Determine which required types are satisfied by valid documents
+    // Determine which required types are satisfied by documents (respecting ignoreVencidos)
     const satisfied = new Set();
     const documentosResumen = [];
+    // usedByTipo: map tipo_norm -> doc used to satisfy that tipo (first valid found, docs are ordered by fecha_subida desc)
+    const usedByTipo = {};
 
     for (const d of personDocs) {
       const prereq = prereqByTipo[d.tipo_norm] || null;
       const venc = isVencido(d, prereq);
-      if (!venc) {
+      const isValidDoc = !(venc && ignoreVencidos);
+
+      // Always push into resumen (with vencido flag)
+      const docSummary = {
+        id: d.id,
+        tipo_original: d.tipo_documento || d.nombre_documento,
+        tipo_normalizado: d.tipo_norm,
+        fecha_vencimiento: d.fecha_vencimiento,
+        fecha_subida: d.fecha_subida,
+        vencido: venc
+      };
+      documentosResumen.push(docSummary);
+
+      // If document is considered valid by policy, count it toward satisfied types
+      if (isValidDoc) {
         satisfied.add(d.tipo_norm);
-        documentosResumen.push({
-          id: d.id,
-          tipo_original: d.tipo_documento || d.nombre_documento,
-          tipo_normalizado: d.tipo_norm,
-          fecha_vencimiento: d.fecha_vencimiento,
-          fecha_subida: d.fecha_subida,
-          vencido: venc
-        });
-      } else {
-        // include vencido documents also in resumen but mark vencido
-        documentosResumen.push({
-          id: d.id,
-          tipo_original: d.tipo_documento || d.nombre_documento,
-          tipo_normalizado: d.tipo_norm,
-          fecha_vencimiento: d.fecha_vencimiento,
-          fecha_subida: d.fecha_subida,
-          vencido: venc
-        });
+        // If this tipo is a required type and we haven't recorded a used doc for it yet, record this one
+        if (requiredTypes.includes(d.tipo_norm) && !usedByTipo[d.tipo_norm]) {
+          usedByTipo[d.tipo_norm] = docSummary;
+        }
       }
     }
 
@@ -126,6 +129,7 @@ async function matchForCliente(clienteId, ruts = [], opts = {}) {
     const required_count = requiredTypes.length;
     // Count how many REQUIRED types are actually satisfied (intersection)
     const provided_count = requiredTypes.filter(t => satisfied.has(t)).length;
+    const provided_valid_count = Object.keys(usedByTipo).length;
     const matchesAll = requireAll ? (faltantes.length === 0) : (provided_count > 0);
 
     // Build missing_docs with value+label
@@ -145,11 +149,13 @@ async function matchForCliente(clienteId, ruts = [], opts = {}) {
       matchesAll,
       required_count,
       provided_count,
+      provided_valid_count,
       estado_acreditacion,
       // Compatibilidad: devolver también `faltantes` como array de strings
       faltantes: faltantes,
       missing_docs,
-      documentos: documentosResumen
+      documentos: documentosResumen,
+      documentos_usados: Object.values(usedByTipo)
     });
   }
 
@@ -370,9 +376,11 @@ async function machForCliente(clienteId, rut, opts = {}) {
       cumple,
       required_count: r.required_count,
       provided_count: r.provided_count,
+      provided_valid_count: r.provided_valid_count || 0,
       faltantes: r.faltantes,
       missing_docs: r.missing_docs,
       documentos: r.documentos,
+      documentos_usados: r.documentos_usados || [],
       estado_acreditacion: r.estado_acreditacion
     }
   };

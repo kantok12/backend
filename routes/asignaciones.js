@@ -104,84 +104,46 @@ router.post('/persona/:rut/clientes', async (req, res) => {
     if (!(await personExists(rut))) return res.status(404).json({ success: false, message: 'Persona no encontrada' });
     if (!(await clienteExists(cliente_id))) return res.status(404).json({ success: false, message: 'Cliente no encontrado' });
 
-    // Validar prerrequisitos antes de asignar (enforce por defecto true)
-    const requisitos = (await query(`
-      SELECT tipo_documento, obligatorio, dias_validez
-      FROM mantenimiento.prerrequisitos_clientes
-      WHERE cliente_id = $1
-    `, [cliente_id])).rows;
-
-    let requisitosUsados = requisitos;
-    if (requisitosUsados.length === 0) {
-      requisitosUsados = [
-        { tipo_documento: 'licencia_conducir', obligatorio: true, dias_validez: 365 },
-        { tipo_documento: 'certificado_seguridad', obligatorio: true, dias_validez: 365 },
-        { tipo_documento: 'certificado_medico', obligatorio: false, dias_validez: 365 }
-      ];
+    // Validar prerrequisitos usando el servicio centralizado (más robusto)
+    // El servicio de prerrequisitos puede devolver dos formas:
+    // 1) objeto plano { cumple, required_count, provided_count, ... } (matchForRut)
+    // 2) wrapper { success: true, data: { cumple, required_count, ... } } (machForCliente/match wrappers)
+    let matchResultRaw = null;
+    try {
+      matchResultRaw = await matchForRut(cliente_id, rut);
+    } catch (e) {
+      console.warn('No se pudo obtener matchResult desde el servicio:', e.message);
+      return res.status(500).json({ success: false, code: 'CHECK_FAILED', message: 'No se pudo verificar los prerrequisitos para este RUT.' });
     }
 
-    const docs = (await query(`
-      SELECT id, tipo_documento
-      FROM mantenimiento.documentos
-      WHERE rut_persona = $1 AND activo = true
-    `, [rut])).rows;
-
-    const cumplidos = [];
-    const faltantes = [];
-    for (const reqq of requisitosUsados) {
-      const match = docs.find(d => d.tipo_documento === reqq.tipo_documento);
-      if (match) {
-        cumplidos.push({ tipo_documento: reqq.tipo_documento, documento_id: match.id });
-      } else if (reqq.obligatorio) {
-        faltantes.push({ tipo_documento: reqq.tipo_documento, obligatorio: true });
-      }
+    // Normalize result into `validation` object that always contains the check fields
+    let validation = null;
+    if (matchResultRaw && typeof matchResultRaw === 'object' && matchResultRaw.success !== undefined) {
+      validation = matchResultRaw.data || {};
+    } else {
+      validation = matchResultRaw || {};
     }
 
     const shouldEnforce = enforce === false ? false : true;
-    const requiredCount = requisitosUsados.filter(r => r.obligatorio).length;
-    const providedCount = cumplidos.length;
+    const cumple = validation.cumple === true || validation.matchesAll === true;
 
-    if (shouldEnforce && faltantes.length > 0) {
-      // Crear etiquetas legibles para el frontend
-      const labelMap = {
-        licencia_conducir: 'Licencia de conducir',
-        certificado_seguridad: 'Certificado de seguridad',
-        certificado_medico: 'Certificado médico',
-        carnet_identidad: 'Carnet de identidad',
-        otro: 'Otros documentos'
+    // Si el servicio indica que no cumple y enforcement está activado, responder 409 con detalles
+    if (shouldEnforce && !cumple) {
+      const payload = {
+        cliente_id: cliente_id,
+        rut: rut,
+        required_count: validation.required_count || 0,
+        provided_count: validation.provided_count || 0,
+        missing: validation.faltantes || validation.missing_docs || []
       };
-
-      const requiredCount = requisitosUsados.filter(r => r.obligatorio).length;
-      const providedCount = cumplidos.length;
-
-      const missing = faltantes.map(f => ({
-        type: f.tipo_documento,
-        label: labelMap[f.tipo_documento] || f.tipo_documento,
-        required: !!f.obligatorio
-      }));
-
-      // Also compute a full matchResult using the prerequisitos service for frontend consumers
-      let matchResult = null;
-      try {
-        matchResult = await matchForRut(cliente_id, rut);
-      } catch (e) {
-        console.warn('No se pudo obtener matchResult desde el servicio:', e.message);
-      }
 
       return res.status(409).json({
         success: false,
         code: 'PREREQUISITOS_INCOMPATIBLES',
         message: 'No es posible asignar el cliente porque faltan documentos obligatorios.',
-        payload: {
-          cliente_id: cliente_id,
-          rut: rut,
-          required_count: requiredCount,
-          provided_count: providedCount,
-          missing: missing
-        },
-        data: matchResult,
-        // Mantener `validacion` para compatibilidad con consumidores existentes
-        validacion: { requisitos: requisitosUsados, cumplidos, faltantes, vencidos: [], por_vencer: [] }
+        payload,
+        data: matchResultRaw,
+        validacion: validation
       });
     }
 
@@ -191,19 +153,21 @@ router.post('/persona/:rut/clientes', async (req, res) => {
       ON CONFLICT (rut, cliente_id) DO NOTHING
     `, [rut, cliente_id]);
 
-    // Responder con payload consistente para el frontend
+    // Build consistent payload for success using the validation info
+    const successPayload = {
+      cliente_id: cliente_id,
+      rut: rut,
+      required_count: validation.required_count || 0,
+      provided_count: validation.provided_count || 0,
+      missing: []
+    };
+
     res.status(201).json({
       success: true,
       code: 'PREREQUISITOS_OK',
       message: 'Cliente asignado correctamente.',
-      payload: {
-        cliente_id: cliente_id,
-        rut: rut,
-        required_count: requiredCount,
-        provided_count: providedCount,
-        missing: []
-      },
-      validacion: { requisitos: requisitosUsados, cumplidos, faltantes, vencidos: [], por_vencer: [] }
+      payload: successPayload,
+      validacion: validation
     });
   } catch (err) {
     console.error('Error asignando cliente:', err);
