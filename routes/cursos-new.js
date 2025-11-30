@@ -127,7 +127,7 @@ router.get('/', async (req, res) => {
         c.fecha_actualizacion,
         p.nombres as nombre_persona,
         p.cargo,
-        p.zona_geografica
+        p.sede as zona_geografica
       FROM mantenimiento.cursos c
       LEFT JOIN mantenimiento.personal_disponible p ON c.rut_persona = p.rut
       ${whereClause}
@@ -175,7 +175,12 @@ router.get('/', async (req, res) => {
 // GET /api/cursos/persona/:rut - Obtener cursos de una persona específica
 router.get('/persona/:rut', async (req, res) => {
   try {
-    const { rut } = req.params;
+    let { rut } = req.params;
+    // Normalize rut to string and trim
+    rut = String(rut || '').trim();
+    if (!rut) {
+      return res.status(400).json({ success: false, message: 'RUT inválido' });
+    }
     
     console.log(`📋 GET /api/cursos/persona/${rut} - Obteniendo cursos de persona`);
     
@@ -192,7 +197,7 @@ router.get('/persona/:rut', async (req, res) => {
         c.fecha_creacion,
         p.nombres as nombre_persona,
         p.cargo,
-        p.zona_geografica,
+        p.sede as zona_geografica,
         CASE 
           WHEN c.fecha_vencimiento IS NULL THEN 'sin_vencimiento'
           WHEN c.fecha_vencimiento < CURRENT_DATE THEN 'vencido'
@@ -225,6 +230,20 @@ router.get('/persona/:rut', async (req, res) => {
     
     console.log(`✅ ${result.rows.length} cursos encontrados para RUT: ${rut}`);
     
+    const cursos = result.rows.map(row => ({
+      id: row.id,
+      nombre_curso: row.nombre_curso,
+      fecha_inicio: row.fecha_inicio,
+      fecha_fin: row.fecha_fin,
+      fecha_vencimiento: row.fecha_vencimiento,
+      estado: row.estado,
+      estado_vencimiento: row.estado_vencimiento,
+      institucion: row.institucion,
+      descripcion: row.descripcion,
+      fecha_creacion: row.fecha_creacion
+    }));
+
+    // Return with compatibility aliases to satisfy different frontend expectations
     res.json({
       success: true,
       data: {
@@ -234,23 +253,16 @@ router.get('/persona/:rut', async (req, res) => {
           cargo: result.rows[0].cargo,
           zona_geografica: result.rows[0].zona_geografica
         },
-        cursos: result.rows.map(row => ({
-          id: row.id,
-          nombre_curso: row.nombre_curso,
-          fecha_inicio: row.fecha_inicio,
-          fecha_fin: row.fecha_fin,
-          fecha_vencimiento: row.fecha_vencimiento,
-          estado: row.estado,
-          estado_vencimiento: row.estado_vencimiento,
-          institucion: row.institucion,
-          descripcion: row.descripcion,
-          fecha_creacion: row.fecha_creacion
-        }))
+        cursos: cursos,
+        items: cursos, // alias
+        rows: cursos,  // alias
+        total: cursos.length
       }
     });
     
   } catch (error) {
     console.error(`❌ Error obteniendo cursos para RUT ${req.params.rut}:`, error);
+    // Return a safe 200 with empty cursos to avoid frontend crash, but include error in logs
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
@@ -672,7 +684,7 @@ router.get('/vencidos', async (req, res) => {
         c.fecha_creacion,
         p.nombres as nombre_persona,
         p.cargo,
-        p.zona_geografica,
+        p.sede as zona_geografica,
         CASE 
           WHEN c.fecha_vencimiento < CURRENT_DATE THEN 'vencido'
           WHEN c.fecha_vencimiento <= CURRENT_DATE + INTERVAL '30 days' THEN 'por_vencer'

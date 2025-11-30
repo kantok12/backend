@@ -1030,6 +1030,10 @@ router.get('/persona/:rut', async (req, res) => {
           zona_geografica: persona.zona_geografica
         } : null,
         documentos: result.rows,
+        // compatibility aliases for frontend variations
+        mis_documentos: result.rows,
+        items: result.rows,
+        rows: result.rows,
         documentos_locales: documentosLocales, // legacy shape: flat array
         documentos_locales_split: documentosLocalesSplit, // new split-by-folder shape
         pagination: {
@@ -1037,7 +1041,8 @@ router.get('/persona/:rut', async (req, res) => {
           limit: parseInt(limit),
           offset: parseInt(offset),
           hasMore: (parseInt(offset) + parseInt(limit)) < total
-        }
+        },
+        total: total
       }
     });
   } catch (error) {
