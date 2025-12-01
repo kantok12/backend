@@ -177,7 +177,6 @@ router.post('/', async (req, res) => {
       sexo,
       fecha_nacimiento,
       licencia_conducir,
-      talla_zapatos,
       talla_pantalones,
       talla_poleras,
       cargo,
@@ -314,35 +313,34 @@ router.post('/', async (req, res) => {
 router.put('/:rut', async (req, res) => {
   try {
     const { rut } = req.params;
+    // Support both flat body and a wrapper { personalData: { ... } }
+    const payload = req.body && req.body.personalData ? req.body.personalData : req.body || {};
+
+    // Normalize common frontend keys to backend column names
+    const correo_electronico = payload.correo_electronico || payload.email || payload.mail || null;
+    const telefono = payload.telefono || payload.phone || payload.telefono_movil || null;
+    const contacto_emergencia = payload.contacto_emergencia || payload.contactoEmergencia || payload.emergencyContact || null;
+
     const {
       sexo,
       fecha_nacimiento,
       licencia_conducir,
-      talla_zapatos,
-      talla_pantalones,
-      talla_poleras,
       cargo,
       estado_id,
-      zona_geografica,
       nombres,
-      comentario_estado,
       documentacion_id,
       estado_civil,
       pais,
       region,
       comuna,
       ciudad,
-      telefono,
-      correo_electronico,
-      correo_personal,
-      contacto_emergencia,
       talla_ropa,
       talla_pantalon,
       talla_zapato,
       id_centro_costo,
       centro_costo,
       sede
-    } = req.body;
+    } = payload;
 
     // Validaciones
     if (!sexo || !fecha_nacimiento || !licencia_conducir || !cargo || !estado_id) {
@@ -359,31 +357,25 @@ router.put('/:rut', async (req, res) => {
         sexo = $1, 
         fecha_nacimiento = $2, 
         licencia_conducir = $3,
-        talla_zapatos = $4, 
-        talla_pantalones = $5, 
-        talla_poleras = $6,
-        talla_ropa = $7,
-        talla_pantalon = $8,
-        talla_zapato = $9,
-        cargo = $10, 
-        estado_id = $11, 
-        zona_geografica = $12,
-        nombres = $13,
-        comentario_estado = $14,
-        documentacion_id = $15,
-        estado_civil = $16,
-        pais = $17,
-        region = $18,
-        comuna = $19,
-        ciudad = $20,
-        telefono = $21,
-        correo_electronico = $22,
-        correo_personal = $23,
-        contacto_emergencia = $24,
-        id_centro_costo = $25,
-        centro_costo = $26,
-        sede = $27
-      WHERE rut = $28
+        cargo = $4, 
+        estado_id = $5,
+        nombres = $6,
+        documentacion_id = $7,
+        estado_civil = $8,
+        pais = $9,
+        region = $10,
+        comuna = $11,
+        ciudad = $12,
+        telefono = $13,
+        correo_electronico = $14,
+        contacto_emergencia = $15,
+        talla_ropa = $16,
+        talla_pantalon = $17,
+        talla_zapato = $18,
+        id_centro_costo = $19,
+        centro_costo = $20,
+        sede = $21
+      WHERE rut = $22
       RETURNING *
     `;
 
@@ -391,17 +383,9 @@ router.put('/:rut', async (req, res) => {
       sexo,
       fecha_nacimiento,
       licencia_conducir,
-      talla_zapatos || '',
-      talla_pantalones || '',
-      talla_poleras || '',
-      talla_ropa || null,
-      talla_pantalon || null,
-      talla_zapato || null,
       cargo,
       estado_id,
-      zona_geografica || null,
       nombres || null,
-      comentario_estado || null,
       documentacion_id || null,
       estado_civil || null,
       pais || null,
@@ -410,8 +394,10 @@ router.put('/:rut', async (req, res) => {
       ciudad || null,
       telefono || null,
       correo_electronico || null,
-      correo_personal || null,
       contacto_emergencia || null,
+      talla_ropa || null,
+      talla_pantalon || null,
+      talla_zapato || null,
       id_centro_costo || null,
       centro_costo || null,
       sede || null,
