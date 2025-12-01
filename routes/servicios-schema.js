@@ -286,13 +286,15 @@ router.get('/clientes/:id', async (req, res) => {
         cl.cartera_id,
         cl.created_at,
         cl.region_id,
+        cl.metodo_subida_documentos,
+        cl.config_subida_documentos,
         c.name as cartera_nombre,
         COUNT(n.id) as total_nodos
       FROM servicios.clientes cl
       LEFT JOIN servicios.carteras c ON cl.cartera_id = c.id
       LEFT JOIN servicios.nodos n ON cl.id = n.cliente_id
       WHERE cl.id = $1
-      GROUP BY cl.id, cl.nombre, cl.cartera_id, cl.created_at, cl.region_id, c.name
+      GROUP BY cl.id, cl.nombre, cl.cartera_id, cl.created_at, cl.region_id, cl.metodo_subida_documentos, cl.config_subida_documentos, c.name
     `, [id]);
 
     if (result.rows.length === 0) {
@@ -336,7 +338,7 @@ router.get('/clientes/:id', async (req, res) => {
 // POST /api/servicios/clientes - crear nuevo cliente
 router.post('/clientes', async (req, res) => {
   try {
-    const { nombre, cartera_id, region_id } = req.body;
+    const { nombre, cartera_id, region_id, metodo_subida_documentos, config_subida_documentos } = req.body;
 
     // Validaciones
     if (!nombre || !cartera_id) {
@@ -344,6 +346,16 @@ router.post('/clientes', async (req, res) => {
         success: false,
         error: 'Datos inválidos',
         message: 'Los campos nombre y cartera_id son requeridos'
+      });
+    }
+
+    // Validar método de subida si se proporciona
+    const metodosValidos = ['portal_web', 'email', 'carpeta_compartida', 'plataforma_externa', 'presencial'];
+    if (metodo_subida_documentos && !metodosValidos.includes(metodo_subida_documentos)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Método de subida inválido',
+        message: `El método debe ser uno de: ${metodosValidos.join(', ')}`
       });
     }
 
@@ -368,10 +380,20 @@ router.post('/clientes', async (req, res) => {
     }
 
     const result = await query(`
-      INSERT INTO servicios.clientes (nombre, cartera_id, region_id, created_at)
-      VALUES ($1, $2, $3, NOW())
+      INSERT INTO servicios.clientes (nombre, cartera_id, region_id, metodo_subida_documentos, config_subida_documentos, created_at)
+      VALUES ($1, $2, $3, $4, $5, NOW())
       RETURNING *
-    `, [nombre, cartera_id, region_id || null]);
+    `, [
+      nombre, 
+      cartera_id, 
+      region_id || null,
+      metodo_subida_documentos || 'portal_web',
+      config_subida_documentos ? JSON.stringify(config_subida_documentos) : JSON.stringify({
+        descripcion: 'Portal web interno del sistema',
+        url: '/documentos/upload',
+        activo: true
+      })
+    ]);
 
     res.status(201).json({
       success: true,
@@ -384,6 +406,164 @@ router.post('/clientes', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error al crear cliente',
+      message: error.message
+    });
+  }
+});
+
+// PUT /api/servicios/clientes/:id/metodo-subida - actualizar método de subida de documentos
+router.put('/clientes/:id/metodo-subida', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { metodo_subida_documentos, config_subida_documentos, usuario_modificacion } = req.body;
+
+    // Validar que al menos uno de los campos esté presente
+    if (!metodo_subida_documentos && !config_subida_documentos) {
+      return res.status(400).json({
+        success: false,
+        error: 'Datos inválidos',
+        message: 'Debe proporcionar metodo_subida_documentos o config_subida_documentos'
+      });
+    }
+
+    // Validar método de subida si se proporciona
+    const metodosValidos = ['portal_web', 'email', 'carpeta_compartida', 'plataforma_externa', 'presencial'];
+    if (metodo_subida_documentos && !metodosValidos.includes(metodo_subida_documentos)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Método de subida inválido',
+        message: `El método debe ser uno de: ${metodosValidos.join(', ')}`
+      });
+    }
+
+    // Verificar que el cliente existe y obtener valores actuales
+    const clienteActual = await query(
+      'SELECT metodo_subida_documentos, config_subida_documentos FROM servicios.clientes WHERE id = $1',
+      [id]
+    );
+
+    if (clienteActual.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Cliente no encontrado',
+        message: `No existe cliente con ID ${id}`
+      });
+    }
+
+    const valoresAnteriores = clienteActual.rows[0];
+
+    // Construir query de actualización dinámica
+    const updateFields = [];
+    const updateValues = [];
+    let paramIndex = 1;
+
+    if (metodo_subida_documentos) {
+      updateFields.push(`metodo_subida_documentos = $${paramIndex}`);
+      updateValues.push(metodo_subida_documentos);
+      paramIndex++;
+    }
+
+    if (config_subida_documentos) {
+      updateFields.push(`config_subida_documentos = $${paramIndex}`);
+      updateValues.push(JSON.stringify(config_subida_documentos));
+      paramIndex++;
+    }
+
+    updateValues.push(id);
+
+    // Actualizar cliente
+    const result = await query(`
+      UPDATE servicios.clientes
+      SET ${updateFields.join(', ')}
+      WHERE id = $${paramIndex}
+      RETURNING *
+    `, updateValues);
+
+    // Registrar en historial
+    await query(`
+      INSERT INTO servicios.clientes_metodo_subida_historial 
+        (cliente_id, metodo_anterior, metodo_nuevo, config_anterior, config_nueva, usuario_modificacion, fecha_modificacion)
+      VALUES ($1, $2, $3, $4, $5, $6, NOW())
+    `, [
+      id,
+      valoresAnteriores.metodo_subida_documentos,
+      metodo_subida_documentos || valoresAnteriores.metodo_subida_documentos,
+      valoresAnteriores.config_subida_documentos,
+      config_subida_documentos ? JSON.stringify(config_subida_documentos) : valoresAnteriores.config_subida_documentos,
+      usuario_modificacion || 'sistema'
+    ]);
+
+    res.json({
+      success: true,
+      message: 'Método de subida actualizado exitosamente',
+      data: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error('Error al actualizar método de subida:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al actualizar método de subida',
+      message: error.message
+    });
+  }
+});
+
+// GET /api/servicios/clientes/:id/historial-metodo-subida - obtener historial de cambios
+router.get('/clientes/:id/historial-metodo-subida', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const limit = Number(req.query.limit) || 50;
+    const offset = Number(req.query.offset) || 0;
+
+    // Verificar que el cliente existe
+    const clienteCheck = await query('SELECT id FROM servicios.clientes WHERE id = $1', [id]);
+    if (clienteCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Cliente no encontrado',
+        message: `No existe cliente con ID ${id}`
+      });
+    }
+
+    const result = await query(`
+      SELECT 
+        id,
+        metodo_anterior,
+        metodo_nuevo,
+        config_anterior,
+        config_nueva,
+        usuario_modificacion,
+        fecha_modificacion
+      FROM servicios.clientes_metodo_subida_historial
+      WHERE cliente_id = $1
+      ORDER BY fecha_modificacion DESC
+      LIMIT $2 OFFSET $3
+    `, [id, limit, offset]);
+
+    const countResult = await query(
+      'SELECT COUNT(*) FROM servicios.clientes_metodo_subida_historial WHERE cliente_id = $1',
+      [id]
+    );
+    const totalCount = parseInt(countResult.rows[0].count);
+
+    res.json({
+      success: true,
+      message: 'Historial obtenido exitosamente',
+      data: result.rows,
+      pagination: {
+        total: totalCount,
+        limit,
+        offset,
+        hasMore: offset + limit < totalCount
+      }
+    });
+
+  } catch (error) {
+    console.error('Error al obtener historial:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al obtener historial',
       message: error.message
     });
   }
