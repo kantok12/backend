@@ -1,0 +1,471 @@
+{
+  "generated_at": "2025-12-03T13:59:40.987Z",
+  "columns_found": [
+    "apellido",
+    "nombre",
+    "nombres"
+  ],
+  "metrics": {
+    "total": "153",
+    "con_nombres": "153",
+    "con_nombre": "153",
+    "con_apellido": "0",
+    "faltantes_desde_nombres": "153",
+    "tokens_1": "0",
+    "tokens_2": "0",
+    "tokens_3p": "153"
+  },
+  "diffs_sample_count": 50,
+  "diffs_sample": [
+    {
+      "rut": "16548954-3",
+      "apellido_ok": "Perez Rapu",
+      "nombre_ok": "Romina Harriet Ovahe",
+      "len": 5,
+      "nombres": "Perez Rapu Romina Harriet Ovahe",
+      "nombre_actual": "Perez Rapu Romina Harriet Ovahe",
+      "apellido_actual": null
+    },
+    {
+      "rut": "17239648-8",
+      "apellido_ok": "Zapata Araya",
+      "nombre_ok": "Isaias Francisco Ignacio",
+      "len": 5,
+      "nombres": "Zapata Araya Isaias Francisco Ignacio",
+      "nombre_actual": "Zapata Araya Isaias Francisco Ignacio",
+      "apellido_actual": null
+    },
+    {
+      "rut": "18367315-7",
+      "apellido_ok": "Pasten Barrionuevo",
+      "nombre_ok": "Devitt Cristofer Jesus",
+      "len": 5,
+      "nombres": "Pasten Barrionuevo Devitt Cristofer Jesus",
+      "nombre_actual": "Pasten Barrionuevo Devitt Cristofer Jesus",
+      "apellido_actual": null
+    },
+    {
+      "rut": "18973789-0",
+      "apellido_ok": "Olivares Perez",
+      "nombre_ok": "Victor Luis Gabriel",
+      "len": 5,
+      "nombres": "Olivares Perez Victor Luis Gabriel",
+      "nombre_actual": "Olivares Perez Victor Luis Gabriel",
+      "apellido_actual": null
+    },
+    {
+      "rut": "19124812-0",
+      "apellido_ok": "Gonzalez Vargas",
+      "nombre_ok": "Ian Ricardo Alfonso",
+      "len": 5,
+      "nombres": "Gonzalez Vargas Ian Ricardo Alfonso",
+      "nombre_actual": "Gonzalez Vargas Ian Ricardo Alfonso",
+      "apellido_actual": null
+    },
+    {
+      "rut": "19613228-7",
+      "apellido_ok": "Faundez Soto",
+      "nombre_ok": "Sebastian Alejandro Andres",
+      "len": 5,
+      "nombres": "Faundez Soto Sebastian Alejandro Andres",
+      "nombre_actual": "Faundez Soto Sebastian Alejandro Andres",
+      "apellido_actual": null
+    },
+    {
+      "rut": "12036820-6",
+      "apellido_ok": "Gonzalez Madariaga",
+      "nombre_ok": "Christian Andres",
+      "len": 4,
+      "nombres": "Gonzalez Madariaga Christian Andres",
+      "nombre_actual": "Gonzalez Madariaga Christian Andres",
+      "apellido_actual": null
+    },
+    {
+      "rut": "12266464-3",
+      "apellido_ok": "Muñoz Fernandez",
+      "nombre_ok": "Patricio Felipe",
+      "len": 4,
+      "nombres": "Muñoz Fernandez Patricio Felipe",
+      "nombre_actual": "Muñoz Fernandez Patricio Felipe",
+      "apellido_actual": null
+    },
+    {
+      "rut": "13682719-7",
+      "apellido_ok": "Aceval Quinteros",
+      "nombre_ok": "Daniel Rodrigo",
+      "len": 4,
+      "nombres": "Aceval Quinteros Daniel Rodrigo",
+      "nombre_actual": "Aceval Quinteros Daniel Rodrigo",
+      "apellido_actual": null
+    },
+    {
+      "rut": "13713721-6",
+      "apellido_ok": "Zapata Palma",
+      "nombre_ok": "Ruben Antonio",
+      "len": 4,
+      "nombres": "Zapata Palma Ruben Antonio",
+      "nombre_actual": "Zapata Palma Ruben Antonio",
+      "apellido_actual": null
+    },
+    {
+      "rut": "13982984-0",
+      "apellido_ok": "Fernandez Figueroa",
+      "nombre_ok": "Ovan Manuel",
+      "len": 4,
+      "nombres": "Fernandez Figueroa Ovan Manuel",
+      "nombre_actual": "Fernandez Figueroa Ovan Manuel",
+      "apellido_actual": null
+    },
+    {
+      "rut": "13984759-8",
+      "apellido_ok": "Gallardo Molina",
+      "nombre_ok": "Francisco Jose",
+      "len": 4,
+      "nombres": "Gallardo Molina Francisco Jose",
+      "nombre_actual": "Gallardo Molina Francisco Jose",
+      "apellido_actual": null
+    },
+    {
+      "rut": "14140542-K",
+      "apellido_ok": "Moraga Galleguillos",
+      "nombre_ok": "Francisco Javier",
+      "len": 4,
+      "nombres": "Moraga Galleguillos Francisco Javier",
+      "nombre_actual": "Moraga Galleguillos Francisco Javier",
+      "apellido_actual": null
+    },
+    {
+      "rut": "14358182-9",
+      "apellido_ok": "Vasquez Zambrano",
+      "nombre_ok": "Sergio Armando",
+      "len": 4,
+      "nombres": "Vasquez Zambrano Sergio Armando",
+      "nombre_actual": "Vasquez Zambrano Sergio Armando",
+      "apellido_actual": null
+    },
+    {
+      "rut": "14414892-4",
+      "apellido_ok": "Valencia Leiva",
+      "nombre_ok": "Luis Eduardo",
+      "len": 4,
+      "nombres": "Valencia Leiva Luis Eduardo",
+      "nombre_actual": "Valencia Leiva Luis Eduardo",
+      "apellido_actual": null
+    },
+    {
+      "rut": "15066798-4",
+      "apellido_ok": "Urbina Galindo",
+      "nombre_ok": "Angelo Jonathan",
+      "len": 4,
+      "nombres": "Urbina Galindo Angelo Jonathan",
+      "nombre_actual": "Urbina Galindo Angelo Jonathan",
+      "apellido_actual": null
+    },
+    {
+      "rut": "15079777-2",
+      "apellido_ok": "Jorquera Tello",
+      "nombre_ok": "Rodrigo Andres",
+      "len": 4,
+      "nombres": "Jorquera Tello Rodrigo Andres",
+      "nombre_actual": "Jorquera Tello Rodrigo Andres",
+      "apellido_actual": null
+    },
+    {
+      "rut": "15560003-9",
+      "apellido_ok": "Araya Espinosa",
+      "nombre_ok": "Corina Andrea",
+      "len": 4,
+      "nombres": "Araya Espinosa Corina Andrea",
+      "nombre_actual": "Araya Espinosa Corina Andrea",
+      "apellido_actual": null
+    },
+    {
+      "rut": "15609647-4",
+      "apellido_ok": "Nuñez Guzman",
+      "nombre_ok": "Christopher Alexander",
+      "len": 4,
+      "nombres": "Nuñez Guzman Christopher Alexander",
+      "nombre_actual": "Nuñez Guzman Christopher Alexander",
+      "apellido_actual": null
+    },
+    {
+      "rut": "15740140-8",
+      "apellido_ok": "Estay Gonzalez",
+      "nombre_ok": "Jenniffer Ana",
+      "len": 4,
+      "nombres": "Estay Gonzalez Jenniffer Ana",
+      "nombre_actual": "Estay Gonzalez Jenniffer Ana",
+      "apellido_actual": null
+    },
+    {
+      "rut": "15760995-5",
+      "apellido_ok": "Madariaga Sierra",
+      "nombre_ok": "Claudio Ignacio",
+      "len": 4,
+      "nombres": "Madariaga Sierra Claudio Ignacio",
+      "nombre_actual": "Madariaga Sierra Claudio Ignacio",
+      "apellido_actual": null
+    },
+    {
+      "rut": "15765434-9",
+      "apellido_ok": "Morales Fernandez",
+      "nombre_ok": "Jonathan Alexis",
+      "len": 4,
+      "nombres": "Morales Fernandez Jonathan Alexis",
+      "nombre_actual": "Morales Fernandez Jonathan Alexis",
+      "apellido_actual": null
+    },
+    {
+      "rut": "15782806-1",
+      "apellido_ok": "Romero Perez",
+      "nombre_ok": "Pedro Juan",
+      "len": 4,
+      "nombres": "Romero Perez Pedro Juan",
+      "nombre_actual": "Romero Perez Pedro Juan",
+      "apellido_actual": null
+    },
+    {
+      "rut": "15789048-4",
+      "apellido_ok": "Aguilar Trigo",
+      "nombre_ok": "Eduardo Manuel",
+      "len": 4,
+      "nombres": "Aguilar Trigo Eduardo Manuel",
+      "nombre_actual": "Aguilar Trigo Eduardo Manuel",
+      "apellido_actual": null
+    },
+    {
+      "rut": "15806687-4",
+      "apellido_ok": "Silva Sobarzo",
+      "nombre_ok": "Mauricio Andres",
+      "len": 4,
+      "nombres": "Silva Sobarzo Mauricio Andres",
+      "nombre_actual": "Silva Sobarzo Mauricio Andres",
+      "apellido_actual": null
+    },
+    {
+      "rut": "15818576-8",
+      "apellido_ok": "Contreras Villarroel",
+      "nombre_ok": "Jorge Eduardo",
+      "len": 4,
+      "nombres": "Contreras Villarroel Jorge Eduardo",
+      "nombre_actual": "Contreras Villarroel Jorge Eduardo",
+      "apellido_actual": null
+    },
+    {
+      "rut": "15918497-8",
+      "apellido_ok": "Besa Cea",
+      "nombre_ok": "Gary Felipe",
+      "len": 4,
+      "nombres": "Besa Cea Gary Felipe",
+      "nombre_actual": "Besa Cea Gary Felipe",
+      "apellido_actual": null
+    },
+    {
+      "rut": "15930744-1",
+      "apellido_ok": "Rodriguez Espinoza",
+      "nombre_ok": "Juan Pablo",
+      "len": 4,
+      "nombres": "Rodriguez Espinoza Juan Pablo",
+      "nombre_actual": "Rodriguez Espinoza Juan Pablo",
+      "apellido_actual": null
+    },
+    {
+      "rut": "15972421-2",
+      "apellido_ok": "Martinez Inostroza",
+      "nombre_ok": "Michael Estefani",
+      "len": 4,
+      "nombres": "Martinez Inostroza Michael Estefani",
+      "nombre_actual": "Martinez Inostroza Michael Estefani",
+      "apellido_actual": null
+    },
+    {
+      "rut": "16026557-4",
+      "apellido_ok": "Pinto Leiva",
+      "nombre_ok": "Rafael Luis",
+      "len": 4,
+      "nombres": "Pinto Leiva Rafael Luis",
+      "nombre_actual": "Pinto Leiva Rafael Luis",
+      "apellido_actual": null
+    },
+    {
+      "rut": "16093545-6",
+      "apellido_ok": "Perez Valdivia",
+      "nombre_ok": "Andres Alejandro",
+      "len": 4,
+      "nombres": "Perez Valdivia Andres Alejandro",
+      "nombre_actual": "Perez Valdivia Andres Alejandro",
+      "apellido_actual": null
+    },
+    {
+      "rut": "16117827-6",
+      "apellido_ok": "Riquelme Rivas",
+      "nombre_ok": "Walter Patrick",
+      "len": 4,
+      "nombres": "Riquelme Rivas Walter Patrick",
+      "nombre_actual": "Riquelme Rivas Walter Patrick",
+      "apellido_actual": null
+    },
+    {
+      "rut": "16195292-3",
+      "apellido_ok": "Riquelme Ampuero",
+      "nombre_ok": "Alejandro Jose",
+      "len": 4,
+      "nombres": "Riquelme Ampuero Alejandro Jose",
+      "nombre_actual": "Riquelme Ampuero Alejandro Jose",
+      "apellido_actual": null
+    },
+    {
+      "rut": "16271735-9",
+      "apellido_ok": "Godoy Azocar",
+      "nombre_ok": "Gonzalo Andres",
+      "len": 4,
+      "nombres": "Godoy Azocar Gonzalo Andres",
+      "nombre_actual": "Godoy Azocar Gonzalo Andres",
+      "apellido_actual": null
+    },
+    {
+      "rut": "16500874-K",
+      "apellido_ok": "Salazar Farias",
+      "nombre_ok": "Hernan Eduardo",
+      "len": 4,
+      "nombres": "Salazar Farias Hernan Eduardo",
+      "nombre_actual": "Salazar Farias Hernan Eduardo",
+      "apellido_actual": null
+    },
+    {
+      "rut": "16673044-9",
+      "apellido_ok": "Inostroza Epul",
+      "nombre_ok": "Javier Alexi",
+      "len": 4,
+      "nombres": "Inostroza Epul Javier Alexi",
+      "nombre_actual": "Inostroza Epul Javier Alexi",
+      "apellido_actual": null
+    },
+    {
+      "rut": "16756190-K",
+      "apellido_ok": "Cisternas Pacheco",
+      "nombre_ok": "Sebastian Andres",
+      "len": 4,
+      "nombres": "Cisternas Pacheco Sebastian Andres",
+      "nombre_actual": "Cisternas Pacheco Sebastian Andres",
+      "apellido_actual": null
+    },
+    {
+      "rut": "16890409-6",
+      "apellido_ok": "Venegas Bernal",
+      "nombre_ok": "Sebastian Matias",
+      "len": 4,
+      "nombres": "Venegas Bernal Sebastian Matias",
+      "nombre_actual": "Venegas Bernal Sebastian Matias",
+      "apellido_actual": null
+    },
+    {
+      "rut": "16911510-9",
+      "apellido_ok": "Seguel Robledo",
+      "nombre_ok": "Tamara Salome",
+      "len": 4,
+      "nombres": "Seguel Robledo Tamara Salome",
+      "nombre_actual": "Seguel Robledo Tamara Salome",
+      "apellido_actual": null
+    },
+    {
+      "rut": "16924504-5",
+      "apellido_ok": "Morales Ortiz",
+      "nombre_ok": "Xavier Mauricio",
+      "len": 4,
+      "nombres": "Morales Ortiz Xavier Mauricio",
+      "nombre_actual": "Morales Ortiz Xavier Mauricio",
+      "apellido_actual": null
+    },
+    {
+      "rut": "16944848-5",
+      "apellido_ok": "Sepulveda Baeza",
+      "nombre_ok": "Francisco Eduardo",
+      "len": 4,
+      "nombres": "Sepulveda Baeza Francisco Eduardo",
+      "nombre_actual": "Sepulveda Baeza Francisco Eduardo",
+      "apellido_actual": null
+    },
+    {
+      "rut": "16990232-1",
+      "apellido_ok": "Zambrano Duran",
+      "nombre_ok": "Francisco Javier",
+      "len": 4,
+      "nombres": "Zambrano Duran Francisco Javier",
+      "nombre_actual": "Zambrano Duran Francisco Javier",
+      "apellido_actual": null
+    },
+    {
+      "rut": "17043570-2",
+      "apellido_ok": "Campos Herrera",
+      "nombre_ok": "Jorge Andres",
+      "len": 4,
+      "nombres": "Campos Herrera Jorge Andres",
+      "nombre_actual": "Campos Herrera Jorge Andres",
+      "apellido_actual": null
+    },
+    {
+      "rut": "17160816-3",
+      "apellido_ok": "Morales Castro",
+      "nombre_ok": "Jorge Luis",
+      "len": 4,
+      "nombres": "Morales Castro Jorge Luis",
+      "nombre_actual": "Morales Castro Jorge Luis",
+      "apellido_actual": null
+    },
+    {
+      "rut": "17237841-2",
+      "apellido_ok": "Zuñiga Ruiz",
+      "nombre_ok": "Roger Esteban",
+      "len": 4,
+      "nombres": "Zuñiga Ruiz Roger Esteban",
+      "nombre_actual": "Zuñiga Ruiz Roger Esteban",
+      "apellido_actual": null
+    },
+    {
+      "rut": "17300390-0",
+      "apellido_ok": "Gonzalez Contreras",
+      "nombre_ok": "Cristofer Eugenio",
+      "len": 4,
+      "nombres": "Gonzalez Contreras Cristofer Eugenio",
+      "nombre_actual": "Gonzalez Contreras Cristofer Eugenio",
+      "apellido_actual": null
+    },
+    {
+      "rut": "17354442-1",
+      "apellido_ok": "Acuña Fernandez",
+      "nombre_ok": "Francisco Tomas",
+      "len": 4,
+      "nombres": "Acuña Fernandez Francisco Tomas",
+      "nombre_actual": "Acuña Fernandez Francisco Tomas",
+      "apellido_actual": null
+    },
+    {
+      "rut": "17399528-8",
+      "apellido_ok": "Silva Aguilera",
+      "nombre_ok": "Claudio Esteban",
+      "len": 4,
+      "nombres": "Silva Aguilera Claudio Esteban",
+      "nombre_actual": "Silva Aguilera Claudio Esteban",
+      "apellido_actual": null
+    },
+    {
+      "rut": "17413346-8",
+      "apellido_ok": "Poblete Toro",
+      "nombre_ok": "Alexis Esteban",
+      "len": 4,
+      "nombres": "Poblete Toro Alexis Esteban",
+      "nombre_actual": "Poblete Toro Alexis Esteban",
+      "apellido_actual": null
+    },
+    {
+      "rut": "17473543-3",
+      "apellido_ok": "Valle Avila",
+      "nombre_ok": "Francisco Javier",
+      "len": 4,
+      "nombres": "Valle Avila Francisco Javier",
+      "nombre_actual": "Valle Avila Francisco Javier",
+      "apellido_actual": null
+    }
+  ]
+}

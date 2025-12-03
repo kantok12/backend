@@ -14,7 +14,10 @@
     "test:servicios": "node test-servicios-endpoints.js",
     "test:servicios:remote": "API_URL=https://tu-servidor.com node test-servicios-endpoints.js",
     "setup:vpn": "powershell -ExecutionPolicy Bypass -File setup-aws-vpn.ps1",
-    "setup:vpn:linux": "bash setup-aws-vpn.sh"
+    "setup:vpn:linux": "bash setup-aws-vpn.sh",
+    "migrate:split-nombre-apellido": "node scripts/run_migration_split_nombre_apellido.js",
+    "migrate:split-nombre-apellido:fix": "node scripts/run_migration_003_fix_split_nombre_apellido.js",
+    "verify:split-nombre-apellido": "node scripts/verificar-split-nombre-apellido.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.21.0",
