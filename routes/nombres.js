@@ -183,6 +183,7 @@ router.put('/:rut', async (req, res) => {
   try {
     const { rut } = req.params;
     const { nombres, sexo, fecha_nacimiento, licencia_conducir } = req.body;
+    const FolderManager = require('../services/folder-manager');
     
     console.log(`📝 PUT /api/nombres/${rut} - Actualizando nombre`);
     
@@ -196,7 +197,7 @@ router.put('/:rut', async (req, res) => {
     
     // Verificar que el registro existe
     const checkExistsQuery = `
-      SELECT rut FROM mantenimiento.personal_disponible WHERE rut = $1
+      SELECT rut, nombres FROM mantenimiento.personal_disponible WHERE rut = $1
     `;
     
     const existsResult = await query(checkExistsQuery, [rut]);
@@ -208,6 +209,9 @@ router.put('/:rut', async (req, res) => {
       });
     }
     
+    // Guardar nombre anterior para renombrado de carpeta
+    const oldNombres = existsResult.rows[0].nombres || '';
+
     // Construir query de actualización dinámicamente
     const updateFields = [];
     const updateValues = [];
@@ -246,6 +250,21 @@ router.put('/:rut', async (req, res) => {
     const result = await query(updateQuery, updateValues);
     
     console.log(`✅ Nombre actualizado para RUT: ${rut}`);
+
+    // Intentar renombrar carpeta si cambió el nombre
+    try {
+      const newNombres = (nombres || result.rows[0].nombres || '').toString();
+      if (newNombres && oldNombres && newNombres !== oldNombres) {
+        const renRes = await FolderManager.renameFolder(rut, oldNombres, newNombres);
+        const msg = renRes.success ? `Carpeta ${renRes.action}` : `Carpeta renombre fallo`;
+        console.log(`📂 ${msg} -> ${renRes.path || ''}${renRes.warnings ? ' | ' + renRes.warnings : ''}`);
+      } else {
+        // asegurar carpeta con nuevo nombre por idempotencia
+        await FolderManager.ensureFolder(rut, (nombres || result.rows[0].nombres || '').toString());
+      }
+    } catch (fmErr) {
+      console.warn('⚠️ Error gestionando carpeta tras cambio de nombre:', fmErr.message);
+    }
     
     res.json({
       success: true,

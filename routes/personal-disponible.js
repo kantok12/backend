@@ -379,6 +379,10 @@ router.put('/:rut', async (req, res) => {
       RETURNING *
     `;
 
+    // Obtener oldNombres antes de actualizar
+    const prevRes = await query('SELECT nombres FROM mantenimiento.personal_disponible WHERE rut = $1', [rut]);
+    const oldNombres = (prevRes.rows[0]?.nombres || '').toString();
+
     const result = await query(queryText, [
       sexo,
       fecha_nacimiento,
@@ -412,21 +416,19 @@ router.put('/:rut', async (req, res) => {
       });
     }
 
-      // Intentar crear/verificar carpeta en unidad compartida (no bloquear respuesta)
+      // Intentar renombrar/verificar carpeta en unidad compartida (no bloquear respuesta)
       (async () => {
         try {
-          const nombresVal = (nombres || result.rows[0].nombres || '').toString();
-          const rutVal = rut;
-          if (carpetasPersonal && typeof carpetasPersonal.crearCarpetaPersonal === 'function') {
-            const carpetaRes = await carpetasPersonal.crearCarpetaPersonal(rutVal, nombresVal);
-            if (carpetaRes && carpetaRes.success) {
-              console.log(`✅ Carpeta creada/verificada para ${nombresVal} (${rutVal}): ${carpetaRes.path}`);
-            } else {
-              console.warn(`⚠️ No se pudo crear/verificar carpeta para ${nombresVal} (${rutVal}):`, carpetaRes && carpetaRes.error ? carpetaRes.error : carpetaRes);
-            }
+          const FolderManager = require('../services/folder-manager');
+          const newNombres = (result.rows[0].nombres || '').toString();
+          if (newNombres && oldNombres && newNombres !== oldNombres) {
+            const renRes = await FolderManager.renameFolder(rut, oldNombres, newNombres);
+            console.log(`📂 Carpeta ${renRes.action} -> ${renRes.path || ''}${renRes.warnings ? ' | ' + renRes.warnings : ''}`);
+          } else {
+            await FolderManager.ensureFolder(rut, newNombres);
           }
         } catch (err) {
-          console.error('Error creando carpeta para personal tras actualización:', err);
+          console.error('Error gestionando carpeta para personal tras actualización:', err);
         }
       })();
 

@@ -18,25 +18,23 @@ if (!fs.existsSync(profilesDir)) {
 const storage = multer.diskStorage({
   destination: async (req, file, cb) => {
     const { rut } = req.params;
-    // Obtener nombre completo desde la base de datos
+    const FolderManager = require('../services/folder-manager');
+    // Intentar reutilizar carpeta existente por RUT para evitar duplicados
+    try {
+      const found = await FolderManager.findFolderByRut(rut);
+      if (found.success) {
+        await FolderManager.ensureSubfolders(found.path);
+        return cb(null, found.path);
+      }
+    } catch (_) {}
+    // Si no existe, construir con nombre actual en BD y asegurar
     let nombreCompleto = rut;
     try {
-      const result = await query(
-        'SELECT nombres FROM mantenimiento.personal_disponible WHERE rut = $1',
-        [rut]
-      );
-      if (result.rows.length > 0) {
-        nombreCompleto = result.rows[0].nombres.trim();
-      }
-    } catch (err) {
-      // Si falla, usar solo rut
-    }
-    const folderName = `${nombreCompleto} - ${rut}`;
-    const userDir = path.join('G:/Unidades compartidas/Unidad de Apoyo/Personal', folderName);
-    if (!fs.existsSync(userDir)) {
-      fs.mkdirSync(userDir, { recursive: true });
-    }
-    cb(null, userDir);
+      const result = await query('SELECT nombres FROM mantenimiento.personal_disponible WHERE rut = $1', [rut]);
+      if (result.rows.length > 0) nombreCompleto = result.rows[0].nombres.trim();
+    } catch (_) {}
+    const ensured = await FolderManager.ensureFolder(rut, nombreCompleto);
+    cb(null, ensured.path);
   },
   filename: (req, file, cb) => {
     cb(null, 'foto.jpg'); // Siempre guardar como foto.jpg
